@@ -60,11 +60,19 @@ class ProviderServiceInfo(IServiceInfo):
 
 class IServiceProvider:
     @abstractmethod
-    def get(self, key) -> Any:
+    def __getitem__(self, key):
+        raise NotImplementedError
+
+    def get(self, key, d=None) -> Any:
         '''
         get a service by key.
         '''
-        raise NotImplementedError
+        try:
+            return self[key]
+        except ServiceNotFoundError as err:
+            if len(err.resolve_chain) == 1:
+                return d
+            raise
 
     @abstractmethod
     def scope(self):
@@ -73,15 +81,15 @@ class IServiceProvider:
         '''
         raise NotImplementedError
 
+    def _get(self, services, key):
+        service_info = services.get(key)
+        if service_info is None:
+            raise ServiceNotFoundError(key)
+        try:
+            return service_info.get(self)
+        except ServiceNotFoundError as err:
+            raise ServiceNotFoundError(key, *err.resolve_chain)
 
-def get(provider, services, key):
-    service_info = services.get(key)
-    if service_info is None:
-        raise ServiceNotFoundError(key)
-    try:
-        return service_info.get(provider)
-    except ServiceNotFoundError as err:
-        raise ServiceNotFoundError(key, *err.resolve_chain)
 
 class ServiceProvider(IServiceProvider):
 
@@ -109,8 +117,8 @@ class ServiceProvider(IServiceProvider):
         '''
         self._services[key] = ServiceInfo(key, factory, LifeTime.transient)
 
-    def get(self, key):
-        return get(self, self._services, key)
+    def __getitem__(self, key):
+        return self._get(self._services, key)
 
     def scope(self):
         return ScopedServiceProvider(self)
@@ -121,8 +129,8 @@ class ScopedServiceProvider(IServiceProvider):
         self._cache = {}
         self._root_provider = root_provider
 
-    def get(self, key):
-        return get(self, self._root_provider._services, key)
+    def __getitem__(self, key):
+        return self._get(self._root_provider._services, key)
 
     def scope(self):
         return ScopedServiceProvider(self._root_provider)

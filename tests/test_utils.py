@@ -30,4 +30,6 @@ def test_auto_inject_with_error():
     provider = ServiceProvider()
     provider.register_transient('some_class', auto_inject(SomeClass))
     with raises(ServiceNotFoundError):
+        provider['some_class']
+    with raises(ServiceNotFoundError):
         provider.get('some_class')

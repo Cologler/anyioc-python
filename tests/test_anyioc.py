@@ -12,7 +12,8 @@ from anyioc import ServiceProvider, ServiceNotFoundError
 def test_no_value():
     provider = ServiceProvider()
     with raises(ServiceNotFoundError):
-        provider.get('any')
+        provider['any']
+    assert provider.get('any') is None
 
 def test_parameter():
     provider = ServiceProvider()

@@ -23,6 +23,6 @@ def auto_inject(func):
     def new_func(ioc):
         kwargs = {}
         for name in names:
-            kwargs[name] = ioc.get(name)
+            kwargs[name] = ioc[name]
         return func(**kwargs)
     return new_func
