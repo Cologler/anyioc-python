@@ -25,6 +25,9 @@ def test_parameter():
     with raises(TypeError):
         provider.register_singleton(3, lambda x, y: 103)
 
+    assert provider[1] == 101
+    assert provider[2] == 102
+
 def test_singleton():
     provider = ServiceProvider()
     provider.register_singleton(1, lambda _: ServiceProvider())

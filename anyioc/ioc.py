@@ -30,16 +30,16 @@ class ServiceInfo(IServiceInfo):
 
         sign = signature(factory)
         if not sign.parameters:
-            factory = lambda _: factory()
+            self._factory = lambda _: factory()
         elif len(sign.parameters) == 1:
             arg_0 = list(sign.parameters.values())[0]
             if arg_0.kind != Parameter.POSITIONAL_OR_KEYWORD:
                 raise TypeError('1st parameter of factory must be a positional parameter.')
+            self._factory = factory
         else:
             raise TypeError('factory has too many parameters.')
 
         self._key = key
-        self._factory = factory
         self._lifetime = lifetime
 
     def get(self, provider):
