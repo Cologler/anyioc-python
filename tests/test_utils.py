@@ -5,7 +5,9 @@
 #
 # ----------
 
-from anyioc.ioc import ServiceProvider
+from pytest import raises
+
+from anyioc.ioc import ServiceProvider, ServiceNotFoundError
 from anyioc.utils import auto_inject
 
 def test_auto_inject():
@@ -19,3 +21,13 @@ def test_auto_inject():
     provider.register_transient('some_class', auto_inject(SomeClass))
     instance = provider.get('some_class')
     assert instance.value == (15, 18)
+
+def test_auto_inject_with_error():
+    class SomeClass:
+        def __init__(self, name):
+            pass
+
+    provider = ServiceProvider()
+    provider.register_transient('some_class', auto_inject(SomeClass))
+    with raises(ServiceNotFoundError):
+        provider.get('some_class')

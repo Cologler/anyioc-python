@@ -7,6 +7,8 @@
 
 from inspect import signature, Parameter
 
+from .err import ServiceNotFoundError
+
 def auto_inject(func):
     '''
     wrap the func and auto inject by parameter name.

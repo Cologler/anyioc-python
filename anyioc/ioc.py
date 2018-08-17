@@ -10,6 +10,8 @@ from typing import Any
 from enum import Enum
 from inspect import signature, Parameter
 
+from .err import ServiceNotFoundError
+
 
 class LifeTime(Enum):
     transient = 0
@@ -72,6 +74,15 @@ class IServiceProvider:
         raise NotImplementedError
 
 
+def get(provider, services, key):
+    service_info = services.get(key)
+    if service_info is None:
+        raise ServiceNotFoundError(key)
+    try:
+        return service_info.get(provider)
+    except ServiceNotFoundError as err:
+        raise ServiceNotFoundError(key, *err.resolve_chain)
+
 class ServiceProvider(IServiceProvider):
 
     def __init__(self):
@@ -99,7 +110,7 @@ class ServiceProvider(IServiceProvider):
         self._services[key] = ServiceInfo(key, factory, LifeTime.transient)
 
     def get(self, key):
-        return self._services[key].get(self)
+        return get(self, self._services, key)
 
     def scope(self):
         return ScopedServiceProvider(self)
@@ -111,7 +122,7 @@ class ScopedServiceProvider(IServiceProvider):
         self._root_provider = root_provider
 
     def get(self, key):
-        return self._root_provider._services[key].get(self)
+        return get(self, self._root_provider._services, key)
 
     def scope(self):
         return ScopedServiceProvider(self._root_provider)

@@ -1,0 +1,18 @@
+{
+  "name": "anyioc",
+  "version": "0.1.1",
+  "description": "",
+  "keywords": [],
+  "author": "Cologler",
+  "author_email": "skyoflw@gmail.com",
+  "url": "https://github.com/Cologler/anyioc-python",
+  "license": "MIT License",
+  "classifiers": [],
+  "scripts": [],
+  "entry_points": {},
+  "zip_safe": false,
+  "include_package_data": true,
+  "setup_requires": [],
+  "install_requires": [],
+  "tests_require": []
+}

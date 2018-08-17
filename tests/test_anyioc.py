@@ -7,7 +7,12 @@
 
 from pytest import raises
 
-from anyioc import ServiceProvider
+from anyioc import ServiceProvider, ServiceNotFoundError
+
+def test_no_value():
+    provider = ServiceProvider()
+    with raises(ServiceNotFoundError):
+        provider.get('any')
 
 def test_parameter():
     provider = ServiceProvider()

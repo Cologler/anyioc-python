@@ -5,4 +5,4 @@
 #
 # ----------
 
-from .ioc import ServiceProvider
+from .ioc import ServiceProvider, ServiceNotFoundError
