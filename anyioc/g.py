@@ -27,6 +27,7 @@ def ioc_bind(new_key):
     bind with new key.
     '''
     def binding(cls):
-        ioc.register_transient(new_key, lambda x: x[cls.__name__])
+        name = cls.__name__
+        ioc.register_transient(new_key, lambda x: x[name])
         return cls
     return binding
