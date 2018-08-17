@@ -11,3 +11,9 @@ provider.register_singleton('the key', lambda x: 102) # x will be scoped Service
 value = provider.get('the key')
 assert value == 102
 ```
+
+Need global ServiceProvider ? try `from anyioc.g import ioc`.
+
+There are some predefine key you can use direct, but you still can overwrite it:
+
+* `ioc` - get current scoped ServiceProvider instance.
