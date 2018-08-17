@@ -99,11 +99,19 @@ class ServiceProvider(IServiceProvider):
         self._root_provider = self
         self._services['ioc'] = ProviderServiceInfo()
 
+    def register_service_info(self, key, service_info: IServiceInfo):
+        '''
+        register a IServiceInfo by key.
+        '''
+        if not isinstance(service_info, IServiceInfo):
+            raise TypeError('service_info must be instance of IServiceInfo.')
+        self._services[key] = service_info
+
     def register(self, key, factory, lifetime):
         '''
         register a service factory by key.
         '''
-        self._services[key] = ServiceInfo(key, factory, lifetime)
+        return self.register_service_info(key, ServiceInfo(key, factory, lifetime))
 
     def register_singleton(self, key, factory):
         '''
