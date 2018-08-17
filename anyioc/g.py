@@ -21,3 +21,12 @@ def ioc_scoped(cls: type):
 def ioc_transient(cls: type):
     ioc.register_transient(cls.__name__, auto_inject(cls))
     return cls
+
+def ioc_bind(new_key):
+    '''
+    bind with new key.
+    '''
+    def binding(cls):
+        ioc.register_transient(new_key, lambda x: x[cls.__name__])
+        return cls
+    return binding
