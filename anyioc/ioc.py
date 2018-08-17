@@ -99,23 +99,29 @@ class ServiceProvider(IServiceProvider):
         self._root_provider = self
         self._services['ioc'] = ProviderServiceInfo()
 
+    def register(self, key, factory, lifetime):
+        '''
+        register a service factory by key.
+        '''
+        self._services[key] = ServiceInfo(key, factory, lifetime)
+
     def register_singleton(self, key, factory):
         '''
         register a singleton service factory by key.
         '''
-        self._services[key] = ServiceInfo(key, factory, LifeTime.singleton)
+        return self.register(key, factory, LifeTime.singleton)
 
     def register_scoped(self, key, factory):
         '''
         register a scoped service factory by key.
         '''
-        self._services[key] = ServiceInfo(key, factory, LifeTime.scoped)
+        return self.register(key, factory, LifeTime.scoped)
 
     def register_transient(self, key, factory):
         '''
         register a transient service factory by key.
         '''
-        self._services[key] = ServiceInfo(key, factory, LifeTime.transient)
+        return self.register(key, factory, LifeTime.transient)
 
     def __getitem__(self, key):
         return self._get(self._services, key)
