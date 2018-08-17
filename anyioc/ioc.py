@@ -9,6 +9,7 @@ from abc import abstractmethod
 from typing import Any
 from enum import Enum
 from inspect import signature, Parameter
+from contextlib import ExitStack
 
 from .err import ServiceNotFoundError
 
@@ -79,6 +80,12 @@ class IServiceProvider:
 
 
 class BaseServiceProvider(IServiceProvider):
+
+    def __init__(self):
+        super().__init__()
+        self._cache = {}
+        self._exit_stack = None
+
     def get(self, key, d=None) -> Any:
         '''
         get a service by key.
@@ -99,12 +106,29 @@ class BaseServiceProvider(IServiceProvider):
         except ServiceNotFoundError as err:
             raise ServiceNotFoundError(key, *err.resolve_chain)
 
+    def enter(self, context):
+        '''
+        enter the context.
+
+        returns the result of the `context.__enter__()` method.
+        '''
+        if self._exit_stack is None:
+            self._exit_stack = ExitStack()
+        return self._exit_stack.enter_context(context)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *args):
+        if self._exit_stack is not None:
+            self._exit_stack.__exit__(*args)
+
 
 class ServiceProvider(BaseServiceProvider):
 
     def __init__(self):
+        super().__init__()
         self._services = {}
-        self._cache = {}
         self._root_provider = self
         self._services['ioc'] = ProviderServiceInfo()
 
@@ -149,7 +173,7 @@ class ServiceProvider(BaseServiceProvider):
 
 class ScopedServiceProvider(BaseServiceProvider):
     def __init__(self, root_provider):
-        self._cache = {}
+        super().__init__()
         self._root_provider = root_provider
 
     def __getitem__(self, key):
