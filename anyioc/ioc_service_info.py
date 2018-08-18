@@ -58,12 +58,12 @@ class ProviderServiceInfo(IServiceInfo):
         return provider
 
 
-class RootProviderServiceInfo(IServiceInfo):
-    def __init__(self, provider):
-        self._provider = provider
+class ValueServiceInfo(IServiceInfo):
+    def __init__(self, value):
+        self._value = value
 
     def get(self, provider):
-        return self._provider
+        return self._value
 
 
 class CacheServiceInfo(IServiceInfo):

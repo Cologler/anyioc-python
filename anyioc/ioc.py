@@ -15,9 +15,11 @@ from .err import ServiceNotFoundError
 from .symbols import Symbols
 
 from .ioc_service_info import (
-    LifeTime, IServiceInfo,
+    LifeTime,
+    IServiceInfo,
     ServiceInfo,
-    ProviderServiceInfo, RootProviderServiceInfo,
+    ProviderServiceInfo,
+    ValueServiceInfo,
     CacheServiceInfo
 )
 
@@ -94,7 +96,7 @@ class ServiceProvider(BaseServiceProvider):
         self._services = {}
         self._root_provider = self
         self._services[Symbols.provider] = ProviderServiceInfo()
-        self._services[Symbols.provider_root] = RootProviderServiceInfo(self)
+        self._services[Symbols.provider_root] = ValueServiceInfo(self)
         self._services[Symbols.cache] = CacheServiceInfo()
         self._services['ioc'] = self._services[Symbols.provider]
 
