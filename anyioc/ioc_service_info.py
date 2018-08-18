@@ -41,16 +41,25 @@ class ServiceInfo(IServiceInfo):
 
         self._key = key
         self._lifetime = lifetime
+        self._cache_value = None
 
     def get(self, provider):
-        if self._lifetime == LifeTime.transient:
+        if self._lifetime is LifeTime.transient:
             return self._factory(provider)
-        if self._lifetime == LifeTime.singleton:
-            provider = provider[Symbols.provider_root]
-        cache = provider[Symbols.cache]
-        if self._key not in cache:
-            cache[self._key] = self._factory(provider)
-        return cache[self._key]
+
+        if self._lifetime is LifeTime.scoped:
+            cache = provider[Symbols.cache]
+            if self not in cache:
+                cache[self] = self._factory(provider)
+            return cache[self]
+
+        if self._lifetime is LifeTime.singleton:
+            if self._cache_value is None:
+                provider = provider[Symbols.provider_root]
+                self._cache_value = (self._factory(provider), )
+            return self._cache_value[0]
+
+        raise NotImplementedError(f'what is {self._lifetime}?')
 
 
 class ProviderServiceInfo(IServiceInfo):
