@@ -133,4 +133,7 @@ class ServiceProvider(ScopedServiceProvider):
         self._services[Symbols.provider] = ProviderServiceInfo()
         self._services[Symbols.provider_root] = ValueServiceInfo(self)
         self._services[Symbols.cache] = CacheServiceInfo()
+        # service alias
         self._services['ioc'] = self._services[Symbols.provider]
+        self._services['provider'] = self._services[Symbols.provider]
+        self._services['service_provider'] = self._services[Symbols.provider]
