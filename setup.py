@@ -22,7 +22,7 @@ setup(
     packages=find_packages(),
     # auto generated:
     name='anyioc',
-    version='0.2.3',
+    version='0.3.0',
     description='',
     keywords=[],
     author='Cologler',
