@@ -6,7 +6,7 @@
 # ----------
 
 from abc import abstractmethod
-from typing import Any
+from typing import Any, Dict
 
 
 from contextlib import ExitStack
@@ -44,12 +44,25 @@ class IServiceProvider:
         raise NotImplementedError
 
 
-class BaseServiceProvider(IServiceProvider):
+class ScopedServiceProvider(IServiceProvider):
 
-    def __init__(self):
+    def __init__(self, services: Dict[Any, IServiceInfo]):
         super().__init__()
+        self._services = services
         self._cache = {}
         self._exit_stack = None
+
+    def __getitem__(self, key):
+        return self._getitem(self._services, key)
+
+    def _getitem(self, services, key):
+        service_info = services.get(key)
+        if service_info is None:
+            raise ServiceNotFoundError(key)
+        try:
+            return service_info.get(self)
+        except ServiceNotFoundError as err:
+            raise ServiceNotFoundError(key, *err.resolve_chain)
 
     def get(self, key, d=None) -> Any:
         '''
@@ -61,15 +74,6 @@ class BaseServiceProvider(IServiceProvider):
             if len(err.resolve_chain) == 1:
                 return d
             raise
-
-    def _getitem(self, services, key):
-        service_info = services.get(key)
-        if service_info is None:
-            raise ServiceNotFoundError(key)
-        try:
-            return service_info.get(self)
-        except ServiceNotFoundError as err:
-            raise ServiceNotFoundError(key, *err.resolve_chain)
 
     def enter(self, context):
         '''
@@ -87,18 +91,6 @@ class BaseServiceProvider(IServiceProvider):
     def __exit__(self, *args):
         if self._exit_stack is not None:
             self._exit_stack.__exit__(*args)
-
-
-class ServiceProvider(BaseServiceProvider):
-
-    def __init__(self):
-        super().__init__()
-        self._services = {}
-        self._root_provider = self
-        self._services[Symbols.provider] = ProviderServiceInfo()
-        self._services[Symbols.provider_root] = ValueServiceInfo(self)
-        self._services[Symbols.cache] = CacheServiceInfo()
-        self._services['ioc'] = self._services[Symbols.provider]
 
     def register_service_info(self, key, service_info: IServiceInfo):
         '''
@@ -132,20 +124,15 @@ class ServiceProvider(BaseServiceProvider):
         '''
         return self.register(key, factory, LifeTime.transient)
 
-    def __getitem__(self, key):
-        return self._getitem(self._services, key)
-
     def scope(self):
-        return ScopedServiceProvider(self)
+        # use `copy()` ensure will not change exists parent services.
+        return ScopedServiceProvider(self._services.copy())
 
 
-class ScopedServiceProvider(BaseServiceProvider):
-    def __init__(self, root_provider):
-        super().__init__()
-        self._root_provider = root_provider
-
-    def __getitem__(self, key):
-        return self._getitem(self._root_provider._services, key)
-
-    def scope(self):
-        return ScopedServiceProvider(self._root_provider)
+class ServiceProvider(ScopedServiceProvider):
+    def __init__(self):
+        super().__init__({})
+        self._services[Symbols.provider] = ProviderServiceInfo()
+        self._services[Symbols.provider_root] = ValueServiceInfo(self)
+        self._services[Symbols.cache] = CacheServiceInfo()
+        self._services['ioc'] = self._services[Symbols.provider]
