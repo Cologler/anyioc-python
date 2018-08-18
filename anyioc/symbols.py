@@ -21,3 +21,6 @@ class Symbols:
 
     # the cache dict from `IServiceProvider`
     cache = object()
+
+    # the missing resolver from `IServiceProvider`
+    missing_resolver = object()
