@@ -108,3 +108,19 @@ def test_transient():
     assert scoped_1_1.get(1) is not scoped_1.get(1)
     assert scoped_1_1.get(1) is not scoped_2.get(1)
     assert scoped_1_1.get(1) is not scoped_1_1.get(1)
+
+def test_symbols():
+    from anyioc.symbols import Symbols
+
+    provider = ServiceProvider()
+    assert provider[Symbols.provider] is provider
+    assert provider[Symbols.provider_root] is provider
+    assert provider[Symbols.cache] is provider[Symbols.cache]
+    assert isinstance(provider[Symbols.cache], dict)
+
+    with provider.scope() as scoped_provider:
+        assert scoped_provider is not provider
+        assert scoped_provider[Symbols.provider] is scoped_provider
+        assert scoped_provider[Symbols.provider_root] is provider
+        assert scoped_provider[Symbols.cache] is not provider[Symbols.cache]
+        assert isinstance(scoped_provider[Symbols.cache], dict)
