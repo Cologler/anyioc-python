@@ -5,6 +5,7 @@
 #
 # ----------
 
+import sys
 from inspect import signature, Parameter
 
 from .err import ServiceNotFoundError
@@ -36,6 +37,5 @@ def dispose_at_exit(provider):
     import atexit
     @atexit.register
     def provider_dispose_at_exit():
-        with provider:
-            pass
+        provider.__exit__(*sys.exc_info())
     return provider
