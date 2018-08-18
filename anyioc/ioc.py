@@ -6,9 +6,8 @@
 # ----------
 
 from abc import abstractmethod
-from typing import Any, Dict
-
-
+from typing import Any
+from collections import ChainMap
 from contextlib import ExitStack
 
 from .err import ServiceNotFoundError
@@ -46,7 +45,7 @@ class IServiceProvider:
 
 class ScopedServiceProvider(IServiceProvider):
 
-    def __init__(self, services: Dict[Any, IServiceInfo]):
+    def __init__(self, services: ChainMap):
         super().__init__()
         self._services = services
         self._cache = {}
@@ -125,13 +124,12 @@ class ScopedServiceProvider(IServiceProvider):
         return self.register(key, factory, LifeTime.transient)
 
     def scope(self):
-        # use `copy()` ensure will not change exists parent services.
-        return ScopedServiceProvider(self._services.copy())
+        return ScopedServiceProvider(self._services.new_child())
 
 
 class ServiceProvider(ScopedServiceProvider):
     def __init__(self):
-        super().__init__({})
+        super().__init__(ChainMap())
         self._services[Symbols.provider] = ProviderServiceInfo()
         self._services[Symbols.provider_root] = ValueServiceInfo(self)
         self._services[Symbols.cache] = CacheServiceInfo()
