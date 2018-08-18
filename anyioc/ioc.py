@@ -18,8 +18,7 @@ from .ioc_service_info import (
     IServiceInfo,
     ServiceInfo,
     ProviderServiceInfo,
-    ValueServiceInfo,
-    CacheServiceInfo
+    ValueServiceInfo
 )
 
 
@@ -48,8 +47,8 @@ class ScopedServiceProvider(IServiceProvider):
     def __init__(self, services: ChainMap):
         super().__init__()
         self._services = services
-        self._cache = {}
         self._exit_stack = None
+        self._services[Symbols.cache] = ValueServiceInfo({})
 
     def __getitem__(self, key):
         return self._getitem(self._services, key)
@@ -132,7 +131,6 @@ class ServiceProvider(ScopedServiceProvider):
         super().__init__(ChainMap())
         self._services[Symbols.provider] = ProviderServiceInfo()
         self._services[Symbols.provider_root] = ValueServiceInfo(self)
-        self._services[Symbols.cache] = CacheServiceInfo()
         # service alias
         self._services['ioc'] = self._services[Symbols.provider]
         self._services['provider'] = self._services[Symbols.provider]

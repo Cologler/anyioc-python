@@ -73,9 +73,3 @@ class ValueServiceInfo(IServiceInfo):
 
     def get(self, provider):
         return self._value
-
-
-class CacheServiceInfo(IServiceInfo):
-    def get(self, provider):
-        # pylint: disable=W0212
-        return provider._cache
