@@ -26,3 +26,16 @@ def auto_inject(func):
             kwargs[name] = ioc[name]
         return func(**kwargs)
     return new_func
+
+def dispose_at_exit(provider):
+    '''
+    register `provider.__exit__()` into `atexit` module.
+
+    return the `provider` itself.
+    '''
+    import atexit
+    @atexit.register
+    def provider_dispose_at_exit():
+        with provider:
+            pass
+    return provider

@@ -6,9 +6,10 @@
 # ----------
 
 from .ioc import ServiceProvider
-from .utils import auto_inject
+from .utils import auto_inject, dispose_at_exit
 
 ioc = ServiceProvider()
+dispose_at_exit(ioc)
 
 def ioc_singleton(cls: type):
     ioc.register_singleton(cls.__name__, auto_inject(cls))
