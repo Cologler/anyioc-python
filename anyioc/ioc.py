@@ -18,7 +18,8 @@ from .ioc_service_info import (
     IServiceInfo,
     ServiceInfo,
     ProviderServiceInfo,
-    ValueServiceInfo
+    ValueServiceInfo,
+    GroupedServiceInfo,
 )
 
 
@@ -125,6 +126,33 @@ class ScopedServiceProvider(IServiceProvider):
         register a transient service factory by key.
         '''
         return self.register(key, factory, LifeTime.transient)
+
+    def register_value(self, key, value):
+        '''
+        register a value by key.
+
+        LifeTime: always be singleton.
+        '''
+        return self.register_service_info(key, ValueServiceInfo(value))
+
+    def register_group(self, key, keys: list):
+        '''
+        register a grouped `key` for get other `keys`.
+
+        the `keys` is a reference and you can update it later.
+
+        LifeTime: always be transient.
+
+        for example:
+
+        ``` py
+        provider.register_value('str', 'name')
+        provider.register_value('int', 1)
+        provider.register_group('any', ['str', 'int'])
+        assert provider['any'] == ('name', 1)
+        ```
+        '''
+        return self.register_service_info(key, GroupedServiceInfo(keys))
 
     def scope(self):
         return ScopedServiceProvider(self._services.new_child())

@@ -73,3 +73,11 @@ class ValueServiceInfo(IServiceInfo):
 
     def get(self, provider):
         return self._value
+
+
+class GroupedServiceInfo(IServiceInfo):
+    def __init__(self, keys: list):
+        self._keys = keys
+
+    def get(self, provider):
+        return tuple(provider[k] for k in self._keys)

@@ -109,6 +109,25 @@ def test_transient():
     assert scoped_1_1.get(1) is not scoped_2.get(1)
     assert scoped_1_1.get(1) is not scoped_1_1.get(1)
 
+def test_resolve_groups():
+    provider = ServiceProvider()
+    provider.register_transient('str', lambda: 'name')
+    provider.register_transient('int', lambda: 1)
+    provider.register_value('float', 1.1)
+    group_keys = ['str', 'int']
+    provider.register_group('any', group_keys)
+    assert provider['any'] == ('name', 1)
+    # always transient:
+    assert provider['any'] is not provider['any']
+    # allow to add later
+    group_keys.append('float')
+    assert provider['any'] == ('name', 1, 1.1)
+
+def test_resolve_value():
+    provider = ServiceProvider()
+    provider.register_value('k', 'value')
+    assert provider['k'] == 'value'
+
 def test_symbols_types():
     from anyioc.symbols import Symbols
     from anyioc.ioc import IServiceProvider
