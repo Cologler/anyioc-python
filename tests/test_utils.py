@@ -8,9 +8,9 @@
 from pytest import raises
 
 from anyioc.ioc import ServiceProvider, ServiceNotFoundError
-from anyioc.utils import auto_inject
+from anyioc.utils import inject_by_name, inject_by_anno
 
-def test_auto_inject():
+def test_inject_by_name():
     class SomeClass:
         def __init__(self, name_1, name_2):
             self.value = (name_1, name_2)
@@ -18,18 +18,58 @@ def test_auto_inject():
     provider = ServiceProvider()
     provider.register_transient('name_1', lambda _: 15)
     provider.register_transient('name_2', lambda _: 18)
-    provider.register_transient('some_class', auto_inject(SomeClass))
+    provider.register_transient('some_class', inject_by_name(SomeClass))
     instance = provider.get('some_class')
     assert instance.value == (15, 18)
 
-def test_auto_inject_with_error():
+def test_inject_by_name_with_error():
     class SomeClass:
         def __init__(self, name):
             pass
 
     provider = ServiceProvider()
-    provider.register_transient('some_class', auto_inject(SomeClass))
+    provider.register_transient('some_class', inject_by_name(SomeClass))
     with raises(ServiceNotFoundError):
-        provider['some_class']
+        _ = provider['some_class']
     with raises(ServiceNotFoundError):
-        provider.get('some_class')
+        _ = provider.get('some_class')
+
+def test_inject_by_anno():
+    class SomeClass:
+        def __init__(self, name_1: str, name_2: int):
+            self.value = (name_1, name_2)
+
+    provider = ServiceProvider()
+    provider.register_value(str, 'sd')
+    provider.register_value(int, 18)
+    provider.register_transient('some_class', inject_by_anno(SomeClass))
+    instance = provider.get('some_class')
+    assert instance.value == ('sd', 18)
+
+def test_inject_by_anno_with_default():
+    class SomeClass:
+        def __init__(self, name: int = 3):
+            self.value = name
+
+    provider = ServiceProvider()
+    provider.register_transient('some_class', inject_by_anno(SomeClass))
+    instance = provider.get('some_class')
+    assert instance.value == 3
+
+def test_inject_by_anno_without_anno():
+    class SomeClass:
+        def __init__(self, name):
+            self.value = name
+
+    with raises(ValueError):
+        inject_by_anno(SomeClass)
+
+def test_inject_by_anno_with_default_without_anno():
+    class SomeClass:
+        def __init__(self, name=3):
+            self.value = name
+
+    provider = ServiceProvider()
+    provider.register_transient('some_class', inject_by_anno(SomeClass))
+    instance = provider.get('some_class')
+    assert instance.value == 3
