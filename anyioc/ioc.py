@@ -12,7 +12,7 @@ from contextlib import ExitStack
 
 from .err import ServiceNotFoundError
 from .symbols import Symbols
-from .ioc_resolver import IServiceInfoResolver, EmptyResolver
+from .ioc_resolver import IServiceInfoResolver, ServiceInfoChainResolver
 from .ioc_service_info import (
     LifeTime,
     IServiceInfo,
@@ -163,7 +163,7 @@ class ServiceProvider(ScopedServiceProvider):
         super().__init__(ChainMap())
         self._services[Symbols.provider] = ProviderServiceInfo()
         self._services[Symbols.provider_root] = ValueServiceInfo(self)
-        self._services[Symbols.missing_resolver] = ValueServiceInfo(EmptyResolver())
+        self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
         # service alias
         self._services['ioc'] = self._services[Symbols.provider]
         self._services['provider'] = self._services[Symbols.provider]

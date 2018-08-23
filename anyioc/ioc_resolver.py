@@ -12,12 +12,11 @@ from .err import ServiceNotFoundError
 from .ioc_service_info import ValueServiceInfo
 
 class IServiceInfoResolver:
-    @abstractmethod
     def get(self, provider, key):
         '''
         get the `IServiceInfo` from resolver.
         '''
-        raise NotImplementedError
+        raise ServiceNotFoundError(key)
 
     def __add__(self, other):
         new_resolver = ServiceInfoChainResolver()
@@ -25,14 +24,11 @@ class IServiceInfoResolver:
         new_resolver.append(other)
         return new_resolver
 
-
-class EmptyResolver(IServiceInfoResolver):
-    '''
-    the default missing resolver
-    '''
-
-    def get(self, provider, key):
-        raise ServiceNotFoundError(key)
+    def cache(self):
+        '''
+        return a `CacheServiceInfoResolver`.
+        '''
+        return CacheServiceInfoResolver(self)
 
 
 class ServiceInfoChainResolver(IServiceInfoResolver):
@@ -48,7 +44,7 @@ class ServiceInfoChainResolver(IServiceInfoResolver):
                 return resolver.get(provider, key)
             except ServiceNotFoundError:
                 pass
-        raise ServiceNotFoundError(key)
+        return super().get(provider, key)
 
     def append(self, other):
         if isinstance(other, ServiceInfoChainResolver):
@@ -63,15 +59,48 @@ class ServiceInfoChainResolver(IServiceInfoResolver):
         return new_resolver
 
 
+class CacheServiceInfoResolver(IServiceInfoResolver):
+    '''
+    NOTE: if a `IServiceInfo` is affect by `provider`, you should not cache it.
+    `CacheServiceInfoResolver` only cache by the `key` and ignore the `provider` arguments.
+    '''
+    def __init__(self, base_resolver: IServiceInfoResolver):
+        super().__init__()
+        self._base_resolver = base_resolver
+        self._cache = {}
+
+    def get(self, provider, key):
+        try:
+            return self._cache[key]
+        except KeyError:
+            pass
+        service_info = self._base_resolver.get(provider, key)
+        self._cache[key] = service_info
+        return service_info
+
+    def cache(self):
+        return self
+
+
 class ImportServiceInfoResolver(IServiceInfoResolver):
     def get(self, provider, key):
         import importlib
         if isinstance(key, str):
             try:
                 module = importlib.import_module(key)
+                return ValueServiceInfo(module)
             except TypeError:
-                raise ServiceNotFoundError(key)
+                pass
             except ModuleNotFoundError:
-                raise ServiceNotFoundError(key)
-            return ValueServiceInfo(module)
-        raise ServiceNotFoundError(key)
+                pass
+        return super().get(provider, key)
+
+
+class TypesServiceInfoResolver(IServiceInfoResolver):
+    def get(self, provider, key):
+        if isinstance(key, type):
+            from .ioc_service_info import ServiceInfo, LifeTime
+            from .utils import inject_by_name
+            ctor = inject_by_name(key)
+            return ServiceInfo(key, ctor, LifeTime.transient)
+        return super().get(provider, key)
