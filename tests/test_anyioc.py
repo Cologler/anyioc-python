@@ -131,20 +131,20 @@ def test_resolve_value():
 def test_symbols_types():
     from anyioc.symbols import Symbols
     from anyioc.ioc import IServiceProvider
-    from anyioc.ioc_missing import IMissingResolver
+    from anyioc.ioc_resolver import IServiceInfoResolver
 
     provider = ServiceProvider()
 
     assert isinstance(provider[Symbols.provider], IServiceProvider)
     assert isinstance(provider[Symbols.provider_root], IServiceProvider)
     assert isinstance(provider[Symbols.cache], dict)
-    assert isinstance(provider[Symbols.missing_resolver], IMissingResolver)
+    assert isinstance(provider[Symbols.missing_resolver], IServiceInfoResolver)
 
     with provider.scope() as scoped_provider:
         assert isinstance(scoped_provider[Symbols.provider], IServiceProvider)
         assert isinstance(scoped_provider[Symbols.provider_root], IServiceProvider)
         assert isinstance(scoped_provider[Symbols.cache], dict)
-        assert isinstance(scoped_provider[Symbols.missing_resolver], IMissingResolver)
+        assert isinstance(scoped_provider[Symbols.missing_resolver], IServiceInfoResolver)
 
 def test_symbols_values_ref():
     from anyioc.symbols import Symbols

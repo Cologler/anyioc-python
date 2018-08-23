@@ -11,7 +11,7 @@ from typing import List
 from .err import ServiceNotFoundError
 from .ioc_service_info import ValueServiceInfo
 
-class IMissingResolver:
+class IServiceInfoResolver:
     @abstractmethod
     def get(self, provider, key):
         '''
@@ -20,13 +20,13 @@ class IMissingResolver:
         raise NotImplementedError
 
     def __add__(self, other):
-        new_resolver = MissingChainResolver()
+        new_resolver = ServiceInfoChainResolver()
         new_resolver.chain.append(self)
         new_resolver.append(other)
         return new_resolver
 
 
-class MissingResolver(IMissingResolver):
+class EmptyResolver(IServiceInfoResolver):
     '''
     the default missing resolver
     '''
@@ -35,12 +35,12 @@ class MissingResolver(IMissingResolver):
         raise ServiceNotFoundError(key)
 
 
-class MissingChainResolver(IMissingResolver):
+class ServiceInfoChainResolver(IServiceInfoResolver):
     '''
-    the missing chain resolver
+    the chain resolver
     '''
     def __init__(self, *resolvers):
-        self.chain: List[IMissingResolver] = list(resolvers)
+        self.chain: List[IServiceInfoResolver] = list(resolvers)
 
     def get(self, provider, key):
         for resolver in self.chain:
@@ -51,19 +51,19 @@ class MissingChainResolver(IMissingResolver):
         raise ServiceNotFoundError(key)
 
     def append(self, other):
-        if isinstance(other, MissingChainResolver):
+        if isinstance(other, ServiceInfoChainResolver):
             self.chain.extend(other.chain)
         else:
             self.chain.append(other)
 
     def __add__(self, other):
-        new_resolver = MissingChainResolver()
+        new_resolver = ServiceInfoChainResolver()
         new_resolver.chain.extend(self.chain)
         new_resolver.append(other)
         return new_resolver
 
 
-class ImportMissingResolver(IMissingResolver):
+class ImportServiceInfoResolver(IServiceInfoResolver):
     def get(self, provider, key):
         import importlib
         if isinstance(key, str):
