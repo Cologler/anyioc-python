@@ -1,0 +1,12 @@
+language: python
+python:
+  - '3.6'
+script:
+  - python -m pytest
+deploy:
+  provider: pypi
+  user: "conanvista"
+  password:
+    secure: Z9pIofXz4rxFdmt5MDSmcPbq9+F0ZrFp2oAko0kjMAa+08wzXoRHeoIXspA45vxQmNIjX1tDeXLyAPukgO91R6yREQd/r+dIZLvgBxaRROlXZ/19KxUbHsHZMwxG06SXdaSm2on6Ovi9pAJzRRNkNpKihZul72bmDf1c4F7tY907cQHoauv7kdlFv91G8E4I1QK4YsuM1EzuTo0vECDosKyyOtdOko7d82nd4oc5uf1KRCiCI63ITrGGMsxVbikKriRECjJ26Pk4mSIWAxUoC6ooVBCfQ1SnEG/36qQx3bYHoSOl87hBE6M/NeeD61e2RQMlRhHo2zB3MlKI2/lsBYV3MoidQZG/hNFzEN7DbwNZtUQctLlPD76eWXk23KS0ym6MyXBdxlwlAarO7C0pvlUHMzuaJh0VuX0tnVF7rUf9HPTugmuzYo+kYzV2RtqtLtAmJrIxipOBr60XYxb/vWflT0ScpiHXe16xIDeBAg4tYr/jB9es3p692VfjmBeaMIvaJs8dbijdXu5f1Nqxn6U/f2JzNM3XDc0Nqeo4QDEct71E9f4QaXQcZpLNolH2MYf6k1Th5KF5SX0pD7JL7z5+CUS8Vr7Qd5Lgzq2gkMj3qzhTVCliDY/nQ9+3RID31a4kyjMw7dlqnUpuvss2i8PObiRyfbPlWyUBWo0Cj9k=
+  on:
+    tags: true

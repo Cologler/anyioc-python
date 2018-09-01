@@ -1,5 +1,7 @@
 # anyioc
 
+[![Build Status](https://travis-ci.com/Cologler/anyioc-python.svg?branch=master)](https://travis-ci.com/Cologler/anyioc-python)
+
 Another simple ioc framework for python.
 
 ## Usage
