@@ -24,7 +24,9 @@ def test_ioc_singleton_cls():
         pass
     assert ioc['SomeClass_1']
     assert isinstance(ioc['SomeClass_1'], SomeClass_1)
-    assert_singleton(ioc, 'SomeClass_1')
+    assert ioc[SomeClass_1]
+    assert isinstance(ioc[SomeClass_1], SomeClass_1)
+    assert assert_singleton(ioc, 'SomeClass_1', SomeClass_1)
 
 def test_ioc_scoped_cls():
     @ioc_scoped_cls()
@@ -32,7 +34,9 @@ def test_ioc_scoped_cls():
         pass
     assert ioc['SomeClass_2']
     assert isinstance(ioc['SomeClass_2'], SomeClass_2)
-    assert_scoped(ioc, 'SomeClass_2')
+    assert ioc[SomeClass_2]
+    assert isinstance(ioc[SomeClass_2], SomeClass_2)
+    assert assert_scoped(ioc, 'SomeClass_2', SomeClass_2)
 
 def test_ioc_transient_cls():
     @ioc_transient_cls()
@@ -40,4 +44,6 @@ def test_ioc_transient_cls():
         pass
     assert ioc['SomeClass_3']
     assert isinstance(ioc['SomeClass_3'], SomeClass_3)
-    assert assert_transient(ioc, 'SomeClass_3')
+    assert ioc[SomeClass_3]
+    assert isinstance(ioc[SomeClass_3], SomeClass_3)
+    assert assert_transient(ioc, 'SomeClass_3', SomeClass_3)
