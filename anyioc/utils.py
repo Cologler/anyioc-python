@@ -98,6 +98,19 @@ def dispose_at_exit(provider):
         provider.__exit__(*sys.exc_info())
     return provider
 
+def make_group(container, group_key):
+    '''
+    add a new group into `container` by `group_key`,
+    return a decorator function for add next group item key.
+
+    '''
+    group_keys = []
+    container.register_group(group_key, group_keys)
+    def decorator(next_group_key):
+        group_keys.append(next_group_key)
+        return next_group_key
+    return decorator
+
 # keep old func names:
 
 auto_inject = inject_by_name
