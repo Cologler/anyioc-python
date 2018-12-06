@@ -26,21 +26,24 @@ def ioc_transient(func):
 def ioc_singleton_cls(wrap=inject_by_name):
     def wrapper(cls: type):
         wraped_cls = wrap(cls) if wrap else cls
-        ioc.register_singleton(cls.__name__, wraped_cls)
+        ioc.register_singleton(cls, wraped_cls)
+        ioc.register_singleton(cls.__name__, lambda x: x[cls])
         return cls
     return wrapper
 
 def ioc_scoped_cls(wrap=inject_by_name):
     def wrapper(cls: type):
         wraped_cls = wrap(cls) if wrap else cls
-        ioc.register_scoped(cls.__name__, wraped_cls)
+        ioc.register_scoped(cls, wraped_cls)
+        ioc.register_scoped(cls.__name__, lambda x: x[cls])
         return cls
     return wrapper
 
 def ioc_transient_cls(wrap=inject_by_name):
     def wrapper(cls: type):
         wraped_cls = wrap(cls) if wrap else cls
-        ioc.register_transient(cls.__name__, wraped_cls)
+        ioc.register_transient(cls, wraped_cls)
+        ioc.register_transient(cls.__name__, lambda x: x[cls])
         return cls
     return wrapper
 

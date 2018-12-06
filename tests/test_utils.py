@@ -8,7 +8,10 @@
 from pytest import raises
 
 from anyioc.ioc import ServiceProvider, ServiceNotFoundError
-from anyioc.utils import inject_by_name, inject_by_anno
+from anyioc.utils import (
+    inject_by_name, inject_by_anno,
+    make_group
+)
 
 def test_inject_by_name():
     class SomeClass:
@@ -73,3 +76,10 @@ def test_inject_by_anno_with_default_without_anno():
     provider.register_transient('some_class', inject_by_anno(SomeClass))
     instance = provider.get('some_class')
     assert instance.value == 3
+
+def test_make_group():
+    provider = ServiceProvider()
+    group = make_group(provider, 'gk')
+    group('some_group_key')
+    provider.register_value('some_group_key', 2)
+    assert provider['gk'] == (2, )
