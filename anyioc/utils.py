@@ -6,22 +6,43 @@
 # ----------
 
 import sys
-from typing import List, Tuple
+from typing import List, Tuple, Union, Any, Dict
 from inspect import signature, Parameter
 
-def inject_by(func, required: List[Tuple[str, object]], optional: List[Tuple[str, object, object]]):
+def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
+               **kw_args: Dict[str, Union[Tuple[Any], Tuple[Any, Any]]]):
     '''
-    `required`: `(name, key)`
-    `optional`: `(name, key, default)`
+    for each tuple in `pos_args`, the 1st item is the key, the 2rd item is the default value if provide.
+
+    for each value tuple in `kw_args`, the 1st item is the key, the 2rd item is the default value if provide.
+
+    example:
+
+    ``` py
+    @injectable(a=('key', 'def-val'))
+    def func(a):
+        pass
+    ```
     '''
-    def new_func(ioc):
-        kwargs = {}
-        for name, key in required:
-            kwargs[name] = ioc[key]
-        for name, key, default in optional:
-            kwargs[name] = ioc.get(key, default)
-        return func(**kwargs)
-    return new_func
+    def wrapper(func):
+        def new_func(ioc):
+            args = []
+            for item in pos_args:
+                if len(item) == 1:
+                    args.append(ioc[item[0]])
+                else:
+                    key, default = item
+                    args.append(ioc.get(key, default))
+            kwargs = {}
+            for name, item in kw_args.items():
+                if len(item) == 1:
+                    kwargs[name] = ioc[item[0]]
+                else:
+                    key, default = item
+                    kwargs[name] = ioc.get(key, default)
+            return func(*args, **kwargs)
+        return new_func
+    return wrapper
 
 def inject_by_name(func):
     '''
@@ -32,18 +53,16 @@ def inject_by_name(func):
     return the new func with signature: `(ioc) => any`
     '''
     sign = signature(func)
-    params = [p for p in sign.parameters.values() if p.kind in (
-        Parameter.POSITIONAL_OR_KEYWORD,
-        Parameter.KEYWORD_ONLY
-    )]
-    required: List[Tuple[str, str]] = []
-    optional: List[Tuple[str, str, object]] = []
+    params = [p for p in sign.parameters.values()]
+    pos_args = []
+    kw_args = {}
     for param in params:
-        if param.default is Parameter.empty:
-            required.append((param.name, param.name))
-        else:
-            optional.append((param.name, param.name, param.default))
-    return inject_by(func, required, optional)
+        val = (param.name, ) if param.default is Parameter.empty else (param.name, param.default)
+        if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
+            pos_args.append(val)
+        elif param.kind == Parameter.KEYWORD_ONLY:
+            kw_args[param.name] = val
+    return injectable(*pos_args, **kw_args)(func)
 
 def inject_by_anno(func):
     '''
@@ -54,25 +73,26 @@ def inject_by_anno(func):
     return the new func with signature: `(ioc) => any`
     '''
     sign = signature(func)
-    params = [p for p in sign.parameters.values() if p.kind in (
-        Parameter.POSITIONAL_OR_KEYWORD,
-        Parameter.KEYWORD_ONLY
-    )]
-    required: List[Tuple[str, object]] = []
-    optional: List[Tuple[str, object, object]] = []
+    params = [p for p in sign.parameters.values()]
+    pos_args = []
+    kw_args = {}
     for param in params:
-        if param.annotation is Parameter.empty:
+        anno = param.annotation
+        if anno is Parameter.empty:
             if param.default is Parameter.empty:
                 raise ValueError(f'annotation of args {param.name} is empty.')
-            else:
-                # use `object()` for ensure you never get the value.
-                optional.append((param.name, object(), param.default))
+            # use `object()` for ensure you never get the value.
+            ioc_key = object()
         else:
-            if param.default is Parameter.empty:
-                required.append((param.name, param.annotation))
-            else:
-                optional.append((param.name, param.annotation, param.default))
-    return inject_by(func, required, optional)
+            ioc_key = anno
+        val = (ioc_key, ) if param.default is Parameter.empty else (ioc_key, param.default)
+
+        if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
+            pos_args.append(val)
+        elif param.kind == Parameter.KEYWORD_ONLY:
+            kw_args[param.name] = val
+
+    return injectable(*pos_args, **kw_args)(func)
 
 def auto_enter(func):
     '''

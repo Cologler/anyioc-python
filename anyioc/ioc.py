@@ -107,7 +107,7 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         register a service factory by key.
         '''
-        return self.register_service_info(key, ServiceInfo(key, factory, lifetime))
+        return self.register_service_info(key, ServiceInfo(self, key, factory, lifetime))
 
     def register_singleton(self, key, factory):
         '''
@@ -156,6 +156,13 @@ class ScopedServiceProvider(IServiceProvider):
 
     def scope(self):
         return ScopedServiceProvider(self._services.new_child())
+
+    def decorator(self):
+        '''
+        get a decorator helper for register items.
+        '''
+        from .decorate import ServiceProviderDecorator
+        return ServiceProviderDecorator(self)
 
 
 class ServiceProvider(ScopedServiceProvider):

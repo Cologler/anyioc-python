@@ -102,5 +102,5 @@ class TypesServiceInfoResolver(IServiceInfoResolver):
             from .ioc_service_info import ServiceInfo, LifeTime
             from .utils import inject_by_name
             ctor = inject_by_name(key)
-            return ServiceInfo(key, ctor, LifeTime.transient)
+            return ServiceInfo(None, key, ctor, LifeTime.transient)
         return super().get(provider, key)
