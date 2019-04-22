@@ -157,6 +157,13 @@ class ScopedServiceProvider(IServiceProvider):
     def scope(self):
         return ScopedServiceProvider(self._services.new_child())
 
+    def decorator(self):
+        '''
+        get a decorator helper for register items.
+        '''
+        from .decorate import ServiceProviderDecorator
+        return ServiceProviderDecorator(self)
+
 
 class ServiceProvider(ScopedServiceProvider):
     def __init__(self):
