@@ -60,7 +60,7 @@ class ServiceProviderDecorator:
         if `inject_by` is None, we will fallback to use `self.inject_by`;
         if `self.inject_by` also be `None`, mean `factory` do not need to convert.
 
-        you can found `inject_by_name` and `inject_by_anno` from `anyioc.utils`.
+        you can found some `inject_by_*` from `anyioc.utils`.
 
         if `keys` is not None, it should be a keys list;
         otherwish we will use `factory` and `factory.__name__` (if exists) as keys.
@@ -84,7 +84,7 @@ class ServiceProviderDecorator:
         if `inject_by` is None, we will fallback to use `self.inject_by`;
         if `self.inject_by` also be `None`, mean `factory` do not need to convert.
 
-        you can found `inject_by_name` and `inject_by_anno` from `anyioc.utils`.
+        you can found some `inject_by_*` from `anyioc.utils`.
 
         if `keys` is not None, it should be a keys list;
         otherwish we will use `factory` and `factory.__name__` (if exists) as keys.
@@ -107,7 +107,7 @@ class ServiceProviderDecorator:
         if `inject_by` is None, we will fallback to use `self.inject_by`;
         if `self.inject_by` also be `None`, mean `factory` do not need to convert.
 
-        you can found `inject_by_name` and `inject_by_anno` from `anyioc.utils`.
+        you can found some `inject_by_*` from `anyioc.utils`.
 
         if `keys` is not None, it should be a keys list;
         otherwish we will use `factory` and `factory.__name__` (if exists) as keys.

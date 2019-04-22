@@ -94,6 +94,22 @@ def inject_by_anno(func):
 
     return injectable(*pos_args, **kw_args)(func)
 
+def inject_by_keys(**keys):
+    '''
+    wrap the func and auto inject by keys.
+
+    each key in keys should be parameter name of func.
+
+    each value in keys should use for get value from service provider.
+
+    return a decorator for wrap your func to new func with signature: `(ioc) => any`.
+    '''
+    if not keys:
+        raise RuntimeError('if you dont need keys, you can direct use func without wrap it.')
+
+    kw_args = dict((k, (v, )) for k, v in keys.items())
+    return injectable(**kw_args)
+
 def auto_enter(func):
     '''
     auto enter the context manager when it created.
