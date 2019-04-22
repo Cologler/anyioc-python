@@ -5,6 +5,7 @@ python:
   - '3.6'
   - '3.7'
 script:
+  - pipenv install --dev
   - python -m pytest
 deploy:
   provider: pypi
