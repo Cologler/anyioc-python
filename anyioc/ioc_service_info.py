@@ -5,7 +5,7 @@
 #
 # ----------
 
-from abc import abstractmethod
+from abc import abstractmethod, ABC
 from enum import Enum
 from inspect import signature, Parameter
 from typing import Any
@@ -19,7 +19,7 @@ class LifeTime(Enum):
     singleton = 2
 
 
-class IServiceInfo:
+class IServiceInfo(ABC):
     __slots__ = ()
 
     @abstractmethod
@@ -28,6 +28,8 @@ class IServiceInfo:
 
 
 class ServiceInfo(IServiceInfo):
+    '''generic `IServiceInfo`.'''
+
     __slots__ = ('_key', '_lifetime', '_cache_value', '_factory', '_service_provider')
 
     def __init__(self, service_provider, key, factory, lifetime):
@@ -71,6 +73,8 @@ class ServiceInfo(IServiceInfo):
 
 
 class ProviderServiceInfo(IServiceInfo):
+    '''a `IServiceInfo` use for get current `ServiceProvider`.'''
+
     __slots__ = ()
 
     def get(self, provider):
@@ -78,6 +82,8 @@ class ProviderServiceInfo(IServiceInfo):
 
 
 class ValueServiceInfo(IServiceInfo):
+    '''a `IServiceInfo` use for get fixed value.'''
+
     __slots__ = ('_value')
 
     def __init__(self, value):
@@ -88,6 +94,8 @@ class ValueServiceInfo(IServiceInfo):
 
 
 class GroupedServiceInfo(IServiceInfo):
+    '''a `IServiceInfo` use for get multi values as a tuple from keys list.'''
+
     __slots__ = ('_keys')
 
     def __init__(self, keys: list):
@@ -95,3 +103,15 @@ class GroupedServiceInfo(IServiceInfo):
 
     def get(self, provider):
         return tuple(provider[k] for k in self._keys)
+
+
+class BindedServiceInfo(IServiceInfo):
+    '''a `IServiceInfo` use for get value from target key.'''
+
+    __slots__ = ('_target_key')
+
+    def __init__(self, target_key):
+        self._target_key = target_key
+
+    def get(self, provider):
+        return provider[self._target_key]

@@ -89,6 +89,6 @@ class ServiceProviderDecorator:
         '''
         def binding(cls_or_func):
             name = cls_or_func.__name__
-            self._service_provider.register_transient(new_key, lambda x: x[name])
+            self._service_provider.register_bind(name, new_key)
             return cls_or_func
         return binding
