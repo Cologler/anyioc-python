@@ -12,7 +12,9 @@ from anyioc.symbols import Symbols
 from anyioc.ioc_resolver import (
     ImportServiceInfoResolver,
     TypesServiceInfoResolver,
+    TypeNameServiceInfoResolver,
 )
+from anyioc.utils import inject_by_name
 
 def test_import_resolver():
     provider = ServiceProvider()
@@ -47,7 +49,9 @@ def test_type_resolver():
     provider.register_value('name', 'some-name')
     with raises(ServiceNotFoundError):
         _ = provider[CLASS]
-    provider.register_value(Symbols.missing_resolver, TypesServiceInfoResolver().cache())
+    tsir = TypesServiceInfoResolver()
+    tsir.inject_by = inject_by_name
+    provider.register_value(Symbols.missing_resolver, tsir.cache())
     assert provider[CLASS].name == 'some-name'
     assert provider[CLASS] is not provider[CLASS]
 
@@ -60,7 +64,9 @@ def test_type_resolver_with_cache():
     provider.register_value('name', 'some-name')
     with raises(ServiceNotFoundError):
         _ = provider[CLASS]
-    provider.register_value(Symbols.missing_resolver, TypesServiceInfoResolver())
+    tsir = TypesServiceInfoResolver()
+    tsir.inject_by = inject_by_name
+    provider.register_value(Symbols.missing_resolver, tsir)
     assert provider[CLASS].name == 'some-name'
     assert provider[CLASS] is not provider[CLASS]
 
@@ -71,7 +77,9 @@ def test_chain_resolver():
 
     provider = ServiceProvider()
     provider.register_value('name', 'some-name')
-    provider.register_value(Symbols.missing_resolver, ImportServiceInfoResolver() + TypesServiceInfoResolver())
+    tsir = TypesServiceInfoResolver()
+    tsir.inject_by = inject_by_name
+    provider.register_value(Symbols.missing_resolver, ImportServiceInfoResolver() + tsir)
     import sys
     assert provider['sys'] is sys
     assert provider[CLASS].name == 'some-name'

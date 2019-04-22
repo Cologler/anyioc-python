@@ -9,7 +9,7 @@ from abc import abstractmethod
 from typing import List
 
 from .err import ServiceNotFoundError
-from .ioc_service_info import ValueServiceInfo
+from .ioc_service_info import ValueServiceInfo, ServiceInfo, LifeTime
 
 class IServiceInfoResolver:
     def get(self, provider, key):
@@ -61,7 +61,8 @@ class ServiceInfoChainResolver(IServiceInfoResolver):
 
 class CacheServiceInfoResolver(IServiceInfoResolver):
     '''
-    NOTE: if a `IServiceInfo` is affect by `provider`, you should not cache it.
+    NOTE:
+    if a `IServiceInfo` is affect by `provider`, you should not cache it.
     `CacheServiceInfoResolver` only cache by the `key` and ignore the `provider` arguments.
     '''
     def __init__(self, base_resolver: IServiceInfoResolver):
@@ -97,10 +98,28 @@ class ImportServiceInfoResolver(IServiceInfoResolver):
 
 
 class TypesServiceInfoResolver(IServiceInfoResolver):
+    inject_by = None
+
     def get(self, provider, key):
         if isinstance(key, type):
-            from .ioc_service_info import ServiceInfo, LifeTime
-            from .utils import inject_by_name
-            ctor = inject_by_name(key)
-            return ServiceInfo(None, key, ctor, LifeTime.transient)
+            factory = self.inject_by(key) if self.inject_by else key
+            return ServiceInfo(None, key, factory, LifeTime.transient)
+        return super().get(provider, key)
+
+
+class TypeNameServiceInfoResolver(IServiceInfoResolver):
+    inject_by = None
+
+    def _get_type(self, key):
+        if isinstance(key, str):
+            for klass in object.__subclasses__():
+                if getattr(klass, '__name__', None) == key:
+                    return klass
+        # None
+
+    def get(self, provider, key):
+        klass = self._get_type(str)
+        if klass is not None:
+            factory = self.inject_by(klass) if self.inject_by else klass
+            return ServiceInfo(None, key, factory, LifeTime.transient)
         return super().get(provider, key)
