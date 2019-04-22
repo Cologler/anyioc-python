@@ -12,44 +12,77 @@ ioc = ServiceProvider()
 dispose_at_exit(ioc)
 
 def ioc_singleton(func):
+    '''
+    a decorator use for register function which should have signature `(ioc) => any`.
+
+    you can get the return value from `ioc` with key: `func.__name__`
+    '''
     ioc.register_singleton(func.__name__, func)
     return func
 
 def ioc_scoped(func):
+    '''
+    a decorator use for register function which should have signature `(ioc) => any`.
+
+    you can get the return value from `ioc` with key: `func.__name__`
+    '''
     ioc.register_scoped(func.__name__, func)
     return func
 
 def ioc_transient(func):
+    '''
+    a decorator use for register function which should have signature `(ioc) => any`.
+
+    you can get the return value from `ioc` with key: `func.__name__`
+    '''
     ioc.register_transient(func.__name__, func)
     return func
 
-def ioc_singleton_cls(wrap=inject_by_name):
+def ioc_singleton_cls(cls=None, *, inject_by=inject_by_name):
+    '''
+    a decorator use for register class which should have signature `(ioc) => any`.
+
+    you can get instance from `ioc` with key: `cls` or `cls.__name__`
+    '''
     def wrapper(cls: type):
-        wraped_cls = wrap(cls) if wrap else cls
+        wraped_cls = inject_by(cls) if inject_by else cls
         ioc.register_singleton(cls, wraped_cls)
         ioc.register_singleton(cls.__name__, lambda x: x[cls])
         return cls
-    return wrapper
 
-def ioc_scoped_cls(wrap=inject_by_name):
+    return wrapper(cls) if cls else wrapper
+
+def ioc_scoped_cls(cls=None, *, inject_by=inject_by_name):
+    '''
+    a decorator use for register class which should have signature `(ioc) => any`.
+
+    you can get instance from `ioc` with key: `cls` or `cls.__name__`
+    '''
     def wrapper(cls: type):
-        wraped_cls = wrap(cls) if wrap else cls
+        wraped_cls = inject_by(cls) if inject_by else cls
         ioc.register_scoped(cls, wraped_cls)
         ioc.register_scoped(cls.__name__, lambda x: x[cls])
         return cls
-    return wrapper
 
-def ioc_transient_cls(wrap=inject_by_name):
+    return wrapper(cls) if cls else wrapper
+
+def ioc_transient_cls(cls=None, *, inject_by=inject_by_name):
+    '''
+    a decorator use for register class which should have signature `(ioc) => any`.
+
+    you can get instance from `ioc` with key: `cls` or `cls.__name__`
+    '''
     def wrapper(cls: type):
-        wraped_cls = wrap(cls) if wrap else cls
+        wraped_cls = inject_by(cls) if inject_by else cls
         ioc.register_transient(cls, wraped_cls)
         ioc.register_transient(cls.__name__, lambda x: x[cls])
         return cls
-    return wrapper
+
+    return wrapper(cls) if cls else wrapper
 
 def ioc_bind(new_key):
     '''
-    bind with new key.
+    a decorator use for bind class or function to a alias key.
     '''
     def binding(cls):
         name = cls.__name__

@@ -19,7 +19,7 @@ from assert_utils import (
 )
 
 def test_ioc_singleton_cls():
-    @ioc_singleton_cls()
+    @ioc_singleton_cls
     class SomeClass_1:
         pass
     assert ioc['SomeClass_1']
@@ -29,7 +29,7 @@ def test_ioc_singleton_cls():
     assert assert_singleton(ioc, 'SomeClass_1', SomeClass_1)
 
 def test_ioc_scoped_cls():
-    @ioc_scoped_cls()
+    @ioc_scoped_cls
     class SomeClass_2:
         pass
     assert ioc['SomeClass_2']
@@ -39,7 +39,7 @@ def test_ioc_scoped_cls():
     assert assert_scoped(ioc, 'SomeClass_2', SomeClass_2)
 
 def test_ioc_transient_cls():
-    @ioc_transient_cls()
+    @ioc_transient_cls
     class SomeClass_3:
         pass
     assert ioc['SomeClass_3']
