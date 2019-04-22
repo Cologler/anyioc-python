@@ -18,6 +18,18 @@ Need global ServiceProvider ? try `from anyioc.g import ioc`.
 
 ## Details
 
+### Features
+
+By default, you can use methods to register with lifetime:
+
+* `register_singleton(key, factory)`
+* `register_scoped(key, factory)`
+* `register_transient(key, factory)`
+* `register(key, factory, lifetime)`
+* `register_value(key, value)`
+* `register_group(key, keys)`
+* `register_bind(new_key, target_key)`
+
 ### Predefined keys
 
 There are some predefined keys you can use direct, but you still can overwrite it:

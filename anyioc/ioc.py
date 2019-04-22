@@ -155,13 +155,14 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         return self.register_service_info(key, GroupedServiceInfo(keys))
 
-    def register_bind(self, key, new_key):
+    def register_bind(self, new_key, target_key):
         '''
-        bind `key` to `new_key` so you can use `new_key` to value.
+        bind `new_key` to `target_key` so
+        you can use `new_key` as key to get value from service provider.
 
-        equals `register_transient(new_key, lambda ioc: ioc[key])`
+        equals `register_transient(new_key, lambda ioc: ioc[target_key])`
         '''
-        return self.register_service_info(new_key, BindedServiceInfo(key))
+        return self.register_service_info(new_key, BindedServiceInfo(target_key))
 
     def scope(self):
         '''
