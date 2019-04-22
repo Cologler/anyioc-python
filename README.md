@@ -16,8 +16,18 @@ assert value == 102
 
 Need global ServiceProvider ? try `from anyioc.g import ioc`.
 
-There are some predefined key you can use direct, but you still can overwrite it:
+## Details
+
+### Predefined keys
+
+There are some predefined keys you can use direct, but you still can overwrite it:
 
 * `ioc` - get current scoped ServiceProvider instance.
 * `provider` - alias of `ioc`
 * `service_provider` - alias of `ioc`
+
+### `provider.get()` vs `provider[]`
+
+`provider[]` will raise `ServiceNotFoundError` when service was not found;
+
+`provider.get()` only return `None` without error.
