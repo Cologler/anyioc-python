@@ -5,18 +5,20 @@
 # a global ioc
 # ----------
 
+from functools import partial
+
 from .ioc import ServiceProvider
 from .utils import inject_by_name, dispose_at_exit
 
 ioc = ServiceProvider()
 dispose_at_exit(ioc)
 
-_decorator = ioc.decorator()
+ioc_decorator = ioc.decorator()
 
-ioc_singleton = _decorator.singleton
-ioc_scoped = _decorator.scoped
-ioc_transient = _decorator.transient
-ioc_singleton_cls = _decorator.singleton_cls
-ioc_scoped_cls = _decorator.scoped_cls
-ioc_transient_cls = _decorator.transient_cls
-ioc_bind = _decorator.bind
+ioc_singleton = ioc_decorator.singleton
+ioc_scoped = ioc_decorator.scoped
+ioc_transient = ioc_decorator.transient
+ioc_singleton_cls = partial(ioc_decorator.singleton, inject_by=inject_by_name)
+ioc_scoped_cls = partial(ioc_decorator.scoped, inject_by=inject_by_name)
+ioc_transient_cls = partial(ioc_decorator.transient, inject_by=inject_by_name)
+ioc_bind = ioc_decorator.bind

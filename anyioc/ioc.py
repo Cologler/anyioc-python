@@ -20,6 +20,7 @@ from .ioc_service_info import (
     ProviderServiceInfo,
     ValueServiceInfo,
     GroupedServiceInfo,
+    BindedServiceInfo,
 )
 
 
@@ -131,7 +132,7 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         register a value by key.
 
-        LifeTime: always be singleton.
+        equals `register_transient(key, lambda ioc: value)`
         '''
         return self.register_service_info(key, ValueServiceInfo(value))
 
@@ -139,9 +140,7 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         register a grouped `key` for get other `keys`.
 
-        the `keys` is a reference and you can update it later.
-
-        LifeTime: always be transient.
+        the `keys` can be a ref and you can update it later.
 
         for example:
 
@@ -151,10 +150,24 @@ class ScopedServiceProvider(IServiceProvider):
         provider.register_group('any', ['str', 'int'])
         assert provider['any'] == ('name', 1)
         ```
+
+        equals `register_transient(key, lambda ioc: tuple(ioc[k] for k in keys))`
         '''
         return self.register_service_info(key, GroupedServiceInfo(keys))
 
+    def register_bind(self, new_key, target_key):
+        '''
+        bind `new_key` to `target_key` so
+        you can use `new_key` as key to get value from service provider.
+
+        equals `register_transient(new_key, lambda ioc: ioc[target_key])`
+        '''
+        return self.register_service_info(new_key, BindedServiceInfo(target_key))
+
     def scope(self):
+        '''
+        create a scoped service provider.
+        '''
         return ScopedServiceProvider(self._services.new_child())
 
     def decorator(self):
