@@ -43,3 +43,26 @@ There are some predefined keys you can use direct, but you still can overwrite i
 `provider[]` will raise `ServiceNotFoundError` when service was not found;
 
 `provider.get()` only return `None` without error.
+
+### IServiceInfoResolver
+
+By default, you need to register a service before you get it.
+
+So if you want to dynamic get it without register:
+
+``` py
+from anyioc import ServiceProvider
+from anyioc.symbols import Symbols
+from anyioc.ioc_resolver import ImportServiceInfoResolver
+
+import sys
+provider = ServiceProvider()
+provider[Symbols.missing_resolver].append(ImportServiceInfoResolver())
+assert sys is provider['sys']
+```
+
+There are other builtin resolvers:
+
+* ImportServiceInfoResolver - import a module from a `str` key
+* TypesServiceInfoResolver - create instance from a `type` key
+* TypeNameServiceInfoResolver - from `str` key find a `type`, then create instance
