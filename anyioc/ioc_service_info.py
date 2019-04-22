@@ -28,9 +28,9 @@ class IServiceInfo:
 
 
 class ServiceInfo(IServiceInfo):
-    __slots__ = ('_key', '_lifetime', '_cache_value', '_factory')
+    __slots__ = ('_key', '_lifetime', '_cache_value', '_factory', '_service_provider')
 
-    def __init__(self, key, factory, lifetime):
+    def __init__(self, service_provider, key, factory, lifetime):
 
         sign = signature(factory)
         if not sign.parameters:
@@ -46,6 +46,10 @@ class ServiceInfo(IServiceInfo):
         self._key = key
         self._lifetime = lifetime
         self._cache_value = None
+        self._service_provider = service_provider
+
+        # service_provider is required when lifetime == singleton
+        assert self._service_provider is not None or self._lifetime != LifeTime.singleton
 
     def get(self, provider):
         if self._lifetime is LifeTime.transient:
@@ -59,7 +63,7 @@ class ServiceInfo(IServiceInfo):
 
         if self._lifetime is LifeTime.singleton:
             if self._cache_value is None:
-                provider = provider[Symbols.provider_root]
+                provider = self._service_provider
                 self._cache_value = (self._factory(provider), )
             return self._cache_value[0]
 

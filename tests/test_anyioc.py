@@ -15,7 +15,7 @@ def test_no_value():
         provider['any']
     assert provider.get('any') is None
 
-def test_parameter():
+def test_parameters_count():
     provider = ServiceProvider()
     # 0 args
     provider.register_singleton(1, lambda: 101)
@@ -27,6 +27,49 @@ def test_parameter():
 
     assert provider[1] == 101
     assert provider[2] == 102
+
+def test_argument_ioc_at_root():
+    root_provider = ServiceProvider()
+    with root_provider.scope() as scoped_provider:
+        def singleton_func(ioc):
+            assert ioc is root_provider
+            return 'singleton'
+        def scoped_func(ioc):
+            assert ioc is scoped_provider
+            return 'scoped'
+        def transient_func(ioc):
+            assert ioc is scoped_provider
+            return 'transient'
+        root_provider.register_singleton(1, singleton_func)
+        root_provider.register_scoped(2, scoped_func)
+        root_provider.register_transient(3, transient_func)
+
+        assert scoped_provider[1] == 'singleton'
+        assert scoped_provider[2] == 'scoped'
+        assert scoped_provider[3] == 'transient'
+
+def test_argument_ioc_at_scoped():
+    root_provider = ServiceProvider()
+    with root_provider.scope() as scoped_provider:
+        def singleton_func(ioc):
+            # when you register in scoped_provider,
+            # value should singleton base on scoped_provider.
+            assert ioc is scoped_provider
+            return 'singleton'
+        def scoped_func(ioc):
+            assert ioc is scoped_provider
+            return 'scoped'
+        def transient_func(ioc):
+            assert ioc is scoped_provider
+            return 'transient'
+        scoped_provider.register_singleton(1, singleton_func)
+        scoped_provider.register_scoped(2, scoped_func)
+        scoped_provider.register_transient(3, transient_func)
+
+        assert scoped_provider[1] == 'singleton'
+        assert scoped_provider[2] == 'scoped'
+        assert scoped_provider[3] == 'transient'
+
 
 def test_singleton():
     provider = ServiceProvider()
