@@ -1,6 +1,8 @@
 # anyioc
 
+![GitHub](https://img.shields.io/github/license/Cologler/anyioc-python.svg)
 [![Build Status](https://travis-ci.com/Cologler/anyioc-python.svg?branch=master)](https://travis-ci.com/Cologler/anyioc-python)
+[![PyPI](https://img.shields.io/pypi/v/anyioc.svg)](https://pypi.org/project/anyioc/)
 
 Another simple ioc framework for python.
 
