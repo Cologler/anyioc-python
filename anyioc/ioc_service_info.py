@@ -20,12 +20,16 @@ class LifeTime(Enum):
 
 
 class IServiceInfo:
+    __slots__ = ()
+
     @abstractmethod
     def get(self, provider) -> Any:
         raise NotImplementedError
 
 
 class ServiceInfo(IServiceInfo):
+    __slots__ = ('_key', '_lifetime', '_cache_value', '_factory')
+
     def __init__(self, key, factory, lifetime):
 
         sign = signature(factory)
@@ -63,11 +67,15 @@ class ServiceInfo(IServiceInfo):
 
 
 class ProviderServiceInfo(IServiceInfo):
+    __slots__ = ()
+
     def get(self, provider):
         return provider
 
 
 class ValueServiceInfo(IServiceInfo):
+    __slots__ = ('_value')
+
     def __init__(self, value):
         self._value = value
 
@@ -76,6 +84,8 @@ class ValueServiceInfo(IServiceInfo):
 
 
 class GroupedServiceInfo(IServiceInfo):
+    __slots__ = ('_keys')
+
     def __init__(self, keys: list):
         self._keys = keys
 
