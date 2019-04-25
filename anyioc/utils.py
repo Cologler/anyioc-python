@@ -12,14 +12,16 @@ from inspect import signature, Parameter
 def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                **kw_args: Dict[str, Union[Tuple[Any], Tuple[Any, Any]]]):
     '''
-    for each tuple in `pos_args`, the 1st item is the key, the 2rd item is the default value if provide.
+    each **value** in `pos_args` and `kw_args` should be a tuple,
+    the 1st item in tuple is the key for get service from ioc container;
 
-    for each value tuple in `kw_args`, the 1st item is the key, the 2rd item is the default value if provide.
+    if len of tuple is 2,
+    the 2rd item is the default value.
 
     example:
 
     ``` py
-    @injectable(a=('key', 'def-val'))
+    @injectable(a=('ioc-key', 'default-value-for-param'))
     def func(a):
         pass
     ```
@@ -104,8 +106,6 @@ def inject_by_keys(**keys):
 
     return a decorator for wrap your func to new func with signature: `(ioc) => any`.
     '''
-    if not keys:
-        raise RuntimeError('if you dont need keys, you can direct use func without wrap it.')
 
     kw_args = dict((k, (v, )) for k, v in keys.items())
     return injectable(**kw_args)
