@@ -6,13 +6,18 @@
 # ----------
 
 from abc import abstractmethod
+import typing
 from typing import List
 
 from .err import ServiceNotFoundError
-from .ioc_service_info import ValueServiceInfo, ServiceInfo, LifeTime
+from .ioc_service_info import ValueServiceInfo, ServiceInfo, LifeTime, IServiceInfo, GroupedServiceInfo
 
 class IServiceInfoResolver:
-    def get(self, provider, key):
+    '''
+    the base class for dynamic resolve `IServiceInfo`.
+    '''
+
+    def get(self, provider, key) -> IServiceInfo:
         '''
         get the `IServiceInfo` from resolver.
         '''
@@ -26,15 +31,17 @@ class IServiceInfoResolver:
 
     def cache(self):
         '''
-        return a `CacheServiceInfoResolver`.
+        return a `IServiceInfoResolver` to cache all values from current `IServiceInfoResolver`.
+        that mean all values will not dynamic update after first resolved.
         '''
         return CacheServiceInfoResolver(self)
 
 
 class ServiceInfoChainResolver(IServiceInfoResolver):
     '''
-    the chain resolver
+    a helper resolver for resolve values from each `IServiceInfoResolver`
     '''
+
     def __init__(self, *resolvers):
         self.chain: List[IServiceInfoResolver] = list(resolvers)
 
@@ -61,10 +68,13 @@ class ServiceInfoChainResolver(IServiceInfoResolver):
 
 class CacheServiceInfoResolver(IServiceInfoResolver):
     '''
+    a helper resolver for cache values from other `IServiceInfoResolver`
+
     NOTE:
     if a `IServiceInfo` is affect by `provider`, you should not cache it.
     `CacheServiceInfoResolver` only cache by the `key` and ignore the `provider` arguments.
     '''
+
     def __init__(self, base_resolver: IServiceInfoResolver):
         super().__init__()
         self._base_resolver = base_resolver
@@ -84,6 +94,10 @@ class CacheServiceInfoResolver(IServiceInfoResolver):
 
 
 class ImportServiceInfoResolver(IServiceInfoResolver):
+    '''
+    dynamic resolve `IServiceInfo` if the key is a package name.
+    '''
+
     def get(self, provider, key):
         import importlib
         if isinstance(key, str):
@@ -97,17 +111,35 @@ class ImportServiceInfoResolver(IServiceInfoResolver):
         return super().get(provider, key)
 
 
+class SimpleServiceInfo(IServiceInfo):
+    __slots__ = ('_factory')
+
+    def __init__(self, factory):
+        self._factory = factory
+
+    def get(self, provider):
+        return self._factory(provider)
+
+
 class TypesServiceInfoResolver(IServiceInfoResolver):
+    '''
+    dynamic resolve `IServiceInfo` if the key is a type instance.
+    '''
+
     inject_by = None
 
     def get(self, provider, key):
         if isinstance(key, type):
             factory = self.inject_by(key) if self.inject_by else key
-            return ServiceInfo(None, key, factory, LifeTime.transient)
+            return SimpleServiceInfo(factory)
         return super().get(provider, key)
 
 
 class TypeNameServiceInfoResolver(IServiceInfoResolver):
+    '''
+    dynamic resolve `IServiceInfo` if the key is a type name or qualname.
+    '''
+
     inject_by = None
 
     def _get_type(self, key):
@@ -115,11 +147,43 @@ class TypeNameServiceInfoResolver(IServiceInfoResolver):
             for klass in object.__subclasses__():
                 if getattr(klass, '__name__', None) == key:
                     return klass
+                if getattr(klass, '__qualname__', None) == key:
+                    return klass
         # None
 
     def get(self, provider, key):
         klass = self._get_type(str)
         if klass is not None:
             factory = self.inject_by(klass) if self.inject_by else klass
-            return ServiceInfo(None, key, factory, LifeTime.transient)
+            return SimpleServiceInfo(factory)
+        return super().get(provider, key)
+
+
+class TypingServiceInfoResolver(IServiceInfoResolver):
+    '''
+    dynamic resolve `IServiceInfo` if the key is a generic type make from typing.
+
+    to use this, you need to install `type_info` module from pypi.
+    '''
+
+    def get(self, provider, key):
+        from type_info import get_type_info
+
+        try:
+            type_info = get_type_info(key)
+        except TypeError:
+            type_info = None
+
+        if type_info and type_info.is_generic:
+            factory = None
+
+            if type_info.generic_type is typing.Tuple:
+                if all(not a.is_generic and not a.is_typevar for a in type_info.generic_args):
+                    keys = [t.target_type for t in type_info.generic_args]
+                    def factory(ioc):
+                        return type_info.std_type(provider[k] for k in keys)
+
+            if factory is not None:
+                return SimpleServiceInfo(factory)
+
         return super().get(provider, key)

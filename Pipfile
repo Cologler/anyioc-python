@@ -5,6 +5,8 @@ verify_ssl = true
 
 [dev-packages]
 setupmeta-builder = "*"
+type-info = "*"
+pytest = "*"
 
 [packages]
 
