@@ -9,6 +9,7 @@ from abc import abstractmethod, ABC
 from enum import Enum
 from inspect import signature, Parameter
 from typing import Any
+from threading import RLock
 
 from .symbols import Symbols
 
@@ -30,7 +31,13 @@ class IServiceInfo(ABC):
 class ServiceInfo(IServiceInfo):
     '''generic `IServiceInfo`.'''
 
-    __slots__ = ('_key', '_lifetime', '_cache_value', '_factory', '_service_provider')
+    __slots__ = (
+        '_key', '_lifetime', '_factory',
+        # for not transient
+        '_lock',
+        # for singleton
+        '_cache_value', '_service_provider'
+    )
 
     def __init__(self, service_provider, key, factory, lifetime):
 
@@ -50,26 +57,47 @@ class ServiceInfo(IServiceInfo):
         self._cache_value = None
         self._service_provider = service_provider
 
-        # service_provider is required when lifetime == singleton
-        assert self._service_provider is not None or self._lifetime != LifeTime.singleton
+        if self._lifetime != LifeTime.transient:
+            self._lock = RLock()
+        else:
+            self._lock = None
+
+        if self._lifetime == LifeTime.singleton:
+            # service_provider is required when lifetime == singleton
+            assert self._service_provider is not None
 
     def get(self, provider):
         if self._lifetime is LifeTime.transient:
             return self._factory(provider)
 
         if self._lifetime is LifeTime.scoped:
-            cache = provider[Symbols.cache]
-            if self not in cache:
-                cache[self] = self._factory(provider)
-            return cache[self]
+            return self._from_scoped(provider)
 
         if self._lifetime is LifeTime.singleton:
-            if self._cache_value is None:
-                provider = self._service_provider
-                self._cache_value = (self._factory(provider), )
-            return self._cache_value[0]
+            return self._from_singleton()
 
         raise NotImplementedError(f'what is {self._lifetime}?')
+
+    def _from_scoped(self, provider):
+        cache: dict = provider[Symbols.cache]
+        try:
+            return cache[self]
+        except KeyError:
+            pass
+        with self._lock:
+            try:
+                return cache[self]
+            except KeyError:
+                value = self._factory(provider)
+                cache[self] = value
+                return value
+
+    def _from_singleton(self):
+        if self._cache_value is None:
+            with self._lock:
+                if self._cache_value is None:
+                    self._cache_value = (self._factory(self._service_provider), )
+        return self._cache_value[0]
 
 
 class ProviderServiceInfo(IServiceInfo):
