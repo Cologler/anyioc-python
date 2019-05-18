@@ -6,10 +6,14 @@
 # ----------
 
 from anyioc.g import (
+    ServiceProvider,
+
     ioc,
     ioc_singleton, ioc_scoped, ioc_transient,
     ioc_singleton_cls, ioc_scoped_cls, ioc_transient_cls,
-    ioc_bind
+    ioc_bind,
+
+    get_module_provider, get_package_provider
 )
 
 from assert_utils import (
@@ -47,3 +51,25 @@ def test_ioc_transient_cls():
     assert ioc[SomeClass_3]
     assert isinstance(ioc[SomeClass_3], SomeClass_3)
     assert assert_transient(ioc, 'SomeClass_3', SomeClass_3)
+
+def test_get_module_provider():
+    assert get_module_provider('A') is not get_module_provider('B')
+    assert get_module_provider('A') is get_module_provider('A')
+    assert get_module_provider() is get_module_provider(__name__)
+
+    # diff for `get_module_provider` and `get_package_provider`
+    assert get_module_provider('A.B') is not get_module_provider('A.C')
+
+    assert isinstance(get_module_provider(), ServiceProvider)
+
+def test_get_package_provider():
+    assert get_package_provider('A') is not get_package_provider('B')
+    assert get_package_provider('A') is get_package_provider('A')
+    assert get_package_provider() is get_package_provider(__name__)
+
+    # diff for `get_module_provider` and `get_package_provider`
+    assert get_package_provider('A.B.C') is get_package_provider('A.C.E')
+
+    assert get_package_provider('A.B.C') is get_module_provider('A')
+
+    assert isinstance(get_package_provider(), ServiceProvider)
