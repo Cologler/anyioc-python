@@ -8,6 +8,8 @@
 from abc import abstractmethod
 import typing
 from typing import List
+from threading import RLock
+from contextlib import nullcontext
 
 from .err import ServiceNotFoundError
 from .ioc_service_info import ValueServiceInfo, ServiceInfo, LifeTime, IServiceInfo, GroupedServiceInfo
@@ -29,12 +31,12 @@ class IServiceInfoResolver:
         new_resolver.append(other)
         return new_resolver
 
-    def cache(self):
+    def cache(self, *, sync=False):
         '''
         return a `IServiceInfoResolver` to cache all values from current `IServiceInfoResolver`.
         that mean all values will not dynamic update after first resolved.
         '''
-        return CacheServiceInfoResolver(self)
+        return CacheServiceInfoResolver(self, sync=sync)
 
 
 class ServiceInfoChainResolver(IServiceInfoResolver):
@@ -75,19 +77,25 @@ class CacheServiceInfoResolver(IServiceInfoResolver):
     `CacheServiceInfoResolver` only cache by the `key` and ignore the `provider` arguments.
     '''
 
-    def __init__(self, base_resolver: IServiceInfoResolver):
+    def __init__(self, base_resolver: IServiceInfoResolver, *, sync=False):
         super().__init__()
         self._base_resolver = base_resolver
         self._cache = {}
+        self._lock = RLock() if sync else nullcontext()
 
     def get(self, provider, key):
         try:
             return self._cache[key]
         except KeyError:
             pass
-        service_info = self._base_resolver.get(provider, key)
-        self._cache[key] = service_info
-        return service_info
+        with self._lock:
+            try:
+                return self._cache[key]
+            except KeyError:
+                pass
+            service_info = self._base_resolver.get(provider, key)
+            self._cache[key] = service_info
+            return service_info
 
     def cache(self):
         return self
