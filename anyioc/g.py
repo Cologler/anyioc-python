@@ -55,6 +55,9 @@ def get_module_provider(module_name: str=None) -> ServiceProvider:
         mo = inspect.getmodule(fr.frame)
         module_name = mo.__name__
 
+    if not isinstance(module_name, str):
+        raise TypeError
+
     return _module_scoped_provider[module_name]
 
 def get_package_provider(package_name: str=None) -> ServiceProvider:
@@ -69,6 +72,9 @@ def get_package_provider(package_name: str=None) -> ServiceProvider:
         fr = inspect.getouterframes(inspect.currentframe())[1]
         mo = inspect.getmodule(fr.frame)
         package_name = mo.__name__
+
+    if not isinstance(package_name, str):
+        raise TypeError
 
     package_name = package_name.partition('.')[0]
     return _module_scoped_provider[package_name]
