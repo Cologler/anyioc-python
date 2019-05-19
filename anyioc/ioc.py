@@ -107,24 +107,39 @@ class ScopedServiceProvider(IServiceProvider):
     def register(self, key, factory, lifetime):
         '''
         register a service factory by key.
-        '''
-        return self.register_service_info(key, ServiceInfo(self, key, factory, lifetime))
 
-    def register_singleton(self, key, factory):
+        `factory` accept a function which require one or zero parameter.
+        If the count of parameter is one, will pass a `IServiceProvider` as the argument.
+
+        `register()` can be use as a decorator if you set `factory` to `None`.
+        '''
+        def decorator(func):
+            self.register_service_info(key, ServiceInfo(self, key, func, lifetime))
+            return func
+
+        return decorator if factory is None else decorator(factory)
+
+    def register_singleton(self, key, factory=None):
         '''
         register a singleton service factory by key.
+
+        `register_singleton()` can be use as a decorator if you set `factory` to `None`.
         '''
         return self.register(key, factory, LifeTime.singleton)
 
-    def register_scoped(self, key, factory):
+    def register_scoped(self, key, factory=None):
         '''
         register a scoped service factory by key.
+
+        `register_scoped()` can be use as a decorator if you set `factory` to `None`.
         '''
         return self.register(key, factory, LifeTime.scoped)
 
-    def register_transient(self, key, factory):
+    def register_transient(self, key, factory=None):
         '''
         register a transient service factory by key.
+
+        `register_transient()` can be use as a decorator if you set `factory` to `None`.
         '''
         return self.register(key, factory, LifeTime.transient)
 

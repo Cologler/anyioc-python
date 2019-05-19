@@ -5,6 +5,8 @@
 #
 # ----------
 
+import itertools
+
 from pytest import raises
 
 from anyioc import ServiceProvider, ServiceNotFoundError
@@ -70,87 +72,68 @@ def test_argument_ioc_at_scoped():
         assert scoped_provider[2] == 'scoped'
         assert scoped_provider[3] == 'transient'
 
+def assert_value_singleton(provider: ServiceProvider, key):
+    scoped_1 = provider.scope()
+    scoped_2 = provider.scope()
+    scoped_1_1 = scoped_1.scope()
+
+    for l, r in itertools.combinations_with_replacement([provider, scoped_1, scoped_2, scoped_1_1], 2):
+        assert l.get(key) is r.get(key)
 
 def test_singleton():
     provider = ServiceProvider()
-    provider.register_singleton(1, lambda _: ServiceProvider())
+    provider.register_singleton(1, lambda: ServiceProvider())
+    assert_value_singleton(provider, 1)
+
+def test_singleton_as_decorator():
+    provider = ServiceProvider()
+    @provider.register_singleton(1)
+    def func():
+        return ServiceProvider()
+    assert_value_singleton(provider, 1)
+
+def assert_value_scoped(provider: ServiceProvider, key):
     scoped_1 = provider.scope()
     scoped_2 = provider.scope()
     scoped_1_1 = scoped_1.scope()
 
-    assert provider.get(1) is provider.get(1)
-    assert provider.get(1) is scoped_1.get(1)
-    assert provider.get(1) is scoped_2.get(1)
-    assert provider.get(1) is scoped_1_1.get(1)
-
-    assert scoped_1.get(1) is provider.get(1)
-    assert scoped_1.get(1) is scoped_1.get(1)
-    assert scoped_1.get(1) is scoped_2.get(1)
-    assert scoped_1.get(1) is scoped_1_1.get(1)
-
-    assert scoped_2.get(1) is provider.get(1)
-    assert scoped_2.get(1) is scoped_1.get(1)
-    assert scoped_2.get(1) is scoped_2.get(1)
-    assert scoped_2.get(1) is scoped_1_1.get(1)
-
-    assert scoped_1_1.get(1) is provider.get(1)
-    assert scoped_1_1.get(1) is scoped_1.get(1)
-    assert scoped_1_1.get(1) is scoped_2.get(1)
-    assert scoped_1_1.get(1) is scoped_1_1.get(1)
+    for l, r in itertools.combinations_with_replacement([provider, scoped_1, scoped_2, scoped_1_1], 2):
+        if l is r:
+            assert l.get(key) is r.get(key)
+        else:
+            assert l.get(key) is not r.get(key)
 
 def test_scoped():
     provider = ServiceProvider()
-    provider.register_scoped(1, lambda _: ServiceProvider())
+    provider.register_scoped(1, lambda: ServiceProvider())
+    assert_value_scoped(provider, 1)
+
+def test_scoped_as_decorator():
+    provider = ServiceProvider()
+    @provider.register_scoped(1)
+    def func():
+        return ServiceProvider()
+    assert_value_scoped(provider, 1)
+
+def assert_value_transient(provider: ServiceProvider, key):
     scoped_1 = provider.scope()
     scoped_2 = provider.scope()
     scoped_1_1 = scoped_1.scope()
 
-    assert provider.get(1) is provider.get(1)
-    assert provider.get(1) is not scoped_1.get(1)
-    assert provider.get(1) is not scoped_2.get(1)
-    assert provider.get(1) is not scoped_1_1.get(1)
-
-    assert scoped_1.get(1) is not provider.get(1)
-    assert scoped_1.get(1) is scoped_1.get(1)
-    assert scoped_1.get(1) is not scoped_2.get(1)
-    assert scoped_1.get(1) is not scoped_1_1.get(1)
-
-    assert scoped_2.get(1) is not provider.get(1)
-    assert scoped_2.get(1) is not scoped_1.get(1)
-    assert scoped_2.get(1) is scoped_2.get(1)
-    assert scoped_2.get(1) is not scoped_1_1.get(1)
-
-    assert scoped_1_1.get(1) is not provider.get(1)
-    assert scoped_1_1.get(1) is not scoped_1.get(1)
-    assert scoped_1_1.get(1) is not scoped_2.get(1)
-    assert scoped_1_1.get(1) is scoped_1_1.get(1)
+    for l, r in itertools.combinations_with_replacement([provider, scoped_1, scoped_2, scoped_1_1], 2):
+        assert l.get(key) is not r.get(key)
 
 def test_transient():
     provider = ServiceProvider()
-    provider.register_transient(1, lambda _: ServiceProvider())
-    scoped_1 = provider.scope()
-    scoped_2 = provider.scope()
-    scoped_1_1 = scoped_1.scope()
+    provider.register_transient(1, lambda: ServiceProvider())
+    assert_value_transient(provider, 1)
 
-    assert provider.get(1) is not provider.get(1)
-    assert provider.get(1) is not scoped_1.get(1)
-    assert provider.get(1) is not scoped_2.get(1)
-    assert provider.get(1) is not scoped_1_1.get(1)
-
-    assert scoped_1.get(1) is not provider.get(1)
-    assert scoped_1.get(1) is not scoped_1.get(1)
-    assert scoped_1.get(1) is not scoped_2.get(1)
-    assert scoped_1.get(1) is not scoped_1_1.get(1)
-
-    assert scoped_2.get(1) is not provider.get(1)
-    assert scoped_2.get(1) is not scoped_1.get(1)
-    assert scoped_2.get(1) is not scoped_2.get(1)
-    assert scoped_2.get(1) is not scoped_1_1.get(1)
-
-    assert scoped_1_1.get(1) is not provider.get(1)
-    assert scoped_1_1.get(1) is not scoped_1.get(1)
-    assert scoped_1_1.get(1) is not scoped_2.get(1)
-    assert scoped_1_1.get(1) is not scoped_1_1.get(1)
+def test_transient_as_decorator():
+    provider = ServiceProvider()
+    @provider.register_transient(1)
+    def func():
+        return ServiceProvider()
+    assert_value_transient(provider, 1)
 
 def test_resolve_groups():
     provider = ServiceProvider()
