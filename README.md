@@ -16,13 +16,11 @@ value = provider.get('the key')
 assert value == 102
 ```
 
-Need global ServiceProvider ? try `from anyioc.g import ioc`.
-
 ## Details
 
 ### Features
 
-By default, you can use methods of `ServiceProvider` to register with lifetime:
+By default, you can use methods of `ServiceProvider` to register services with lifetime:
 
 * `register_singleton(key, factory)`
 * `register_scoped(key, factory)`
@@ -38,19 +36,19 @@ By default, you can use methods of `ServiceProvider` to register with lifetime:
 
 By default, you should create your `ServiceProvider`.
 
-However, we can use a global `ServiceProvider` to share service in whole process.
+However, we can use a global `ServiceProvider` to share services in python process.
 
 ``` py
 from anyioc.g import ioc
 
-# ioc is a global `ServiceProvider`
+# ioc is a global `ServiceProvider` instance
 ```
 
 #### Module scoped and namespace scoped
 
-Also we got module scoped `ServiceProvider` and namespace scoped `ServiceProvider`.
+Also we have module scoped `ServiceProvider` and namespace scoped `ServiceProvider`.
 
-If we got a project:
+If you have a project:
 
 ``` tree
 src/
@@ -93,14 +91,14 @@ There are some predefined string keys you can use direct, but you still can over
 
 There are two ways to get services from `ServiceProvider`:
 
-* `provider[]` will raise `ServiceNotFoundError` when service was not found;
-* `provider.get()` only return `None` without error.
+* `provider[]` will raise `ServiceNotFoundError` if the service was not found;
+* `provider.get()` only return `None` if the service was not found.
 
 ### IServiceInfoResolver
 
-By default, you need to register a service before you get it.
+By default, you can get a service after you register it;
 
-But if you want to dynamic get it without register, you can do that by use `IServiceInfoResolver`.
+If you want to dynamic get it without register, you can do that by use `IServiceInfoResolver`:
 
 ``` py
 from anyioc import ServiceProvider
@@ -109,10 +107,11 @@ from anyioc.ioc_resolver import ImportServiceInfoResolver
 
 import sys
 provider = ServiceProvider()
-provider[Symbols.missing_resolver].append(ImportServiceInfoResolver())
-# you may want to replace `ImportServiceInfoResolver()` with `ImportServiceInfoResolver().cache()` to cache the results.
+provider[Symbols.missing_resolver].append(ImportServiceInfoResolver().cache())
 assert sys is provider['sys']
 ```
+
+*`.cache()` can cache the results.*
 
 There are other builtin resolvers:
 
@@ -120,5 +119,3 @@ There are other builtin resolvers:
 * `TypesServiceInfoResolver` - create instance by type from a `type` key
 * `TypeNameServiceInfoResolver` - create instance by type name from a `str` key
 * `TypingServiceInfoResolver` - get services tuple by keys from a `typing.Tuple` key.
-
-*you may want to replace `IServiceInfoResolver()` with `IServiceInfoResolver().cache()` to cache the results.*
