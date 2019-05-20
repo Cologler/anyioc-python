@@ -13,7 +13,7 @@ from anyioc.g import (
     ioc_singleton_cls, ioc_scoped_cls, ioc_transient_cls,
     ioc_bind,
 
-    get_module_provider, get_package_provider
+    get_module_provider, get_namespace_provider
 )
 
 from assert_utils import (
@@ -57,19 +57,19 @@ def test_get_module_provider():
     assert get_module_provider('A') is get_module_provider('A')
     assert get_module_provider() is get_module_provider(__name__)
 
-    # diff for `get_module_provider` and `get_package_provider`
+    # diff for `get_module_provider` and `get_namespace_provider`
     assert get_module_provider('A.B') is not get_module_provider('A.C')
 
     assert isinstance(get_module_provider(), ServiceProvider)
 
-def test_get_package_provider():
-    assert get_package_provider('A') is not get_package_provider('B')
-    assert get_package_provider('A') is get_package_provider('A')
-    assert get_package_provider() is get_package_provider(__name__)
+def test_get_namespace_provider():
+    assert get_namespace_provider('A') is not get_namespace_provider('B')
+    assert get_namespace_provider('A') is get_namespace_provider('A')
+    assert get_namespace_provider() is get_namespace_provider(__name__)
 
-    # diff for `get_module_provider` and `get_package_provider`
-    assert get_package_provider('A.B.C') is get_package_provider('A.C.E')
+    # diff for `get_module_provider` and `get_namespace_provider`
+    assert get_namespace_provider('A.B.C') is get_namespace_provider('A.C.E')
 
-    assert get_package_provider('A.B.C') is get_module_provider('A')
+    assert get_namespace_provider('A.B.C') is get_module_provider('A')
 
-    assert isinstance(get_package_provider(), ServiceProvider)
+    assert isinstance(get_namespace_provider(), ServiceProvider)

@@ -55,20 +55,26 @@ def get_module_provider(module_name: str=None) -> ServiceProvider:
         mo = inspect.getmodule(fr.frame)
         module_name = mo.__name__
 
+    if not isinstance(module_name, str):
+        raise TypeError
+
     return _module_scoped_provider[module_name]
 
-def get_package_provider(package_name: str=None) -> ServiceProvider:
+def get_namespace_provider(namespace: str=None) -> ServiceProvider:
     '''
-    get the TOP package scoped singleton `ServiceProvider`.
+    get the namespace scoped singleton `ServiceProvider`.
 
-    if `package_name` is `None`, use caller package name.
+    if `namespace` is `None`, use caller namespace.
 
-    for example, `get_package_provider('A.B.C.D')` is equals `get_module_provider('A')`
+    for example, `get_namespace_provider('A.B.C.D')` is equals `get_module_provider('A')`
     '''
-    if package_name is None:
+    if namespace is None:
         fr = inspect.getouterframes(inspect.currentframe())[1]
         mo = inspect.getmodule(fr.frame)
-        package_name = mo.__name__
+        namespace = mo.__name__
 
-    package_name = package_name.partition('.')[0]
-    return _module_scoped_provider[package_name]
+    if not isinstance(namespace, str):
+        raise TypeError
+
+    namespace = namespace.partition('.')[0]
+    return _module_scoped_provider[namespace]
