@@ -62,7 +62,7 @@ def get_module_provider(module_name: str=None) -> ServiceProvider:
 
     if `module_name` is `None`, use caller module name.
 
-    if module `{module_name}.init_ioc` exists and it has a attr `conf_ioc`, wii auto config like:
+    if module `{module_name}.init_ioc` exists and it has a attr `conf_ioc`, will auto config like:
 
     ``` py
     (importlib.import_module(module_name + '.init_ioc')).conf_ioc(module_provider)
