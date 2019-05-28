@@ -5,6 +5,7 @@
 # a global ioc
 # ----------
 
+import importlib
 import functools
 import inspect
 
@@ -33,7 +34,18 @@ def _make_module_scoped_provider():
 
     class ServiceProviderServiceInfoResolver(IServiceInfoResolver):
         def get(self, provider, key) -> IServiceInfo:
-            return ValueServiceInfo(ServiceProvider())
+            new_provider = ServiceProvider()
+
+            try:
+                init_ioc = importlib.import_module(key + '.init_ioc')
+            except ImportError:
+                init_ioc = None
+            if init_ioc is not None:
+                conf_ioc = getattr(init_ioc, 'conf_ioc', None)
+                if conf_ioc is not None:
+                    conf_ioc(new_provider)
+
+            return ValueServiceInfo(new_provider)
 
     provider = ServiceProvider()
     provider[Symbols.missing_resolver].append(
@@ -42,13 +54,19 @@ def _make_module_scoped_provider():
     dispose_at_exit(provider)
     return provider
 
-_module_scoped_provider = _make_module_scoped_provider()
+_module_scoped_providers = _make_module_scoped_provider()
 
 def get_module_provider(module_name: str=None) -> ServiceProvider:
     '''
     get the module scoped singleton `ServiceProvider`.
 
     if `module_name` is `None`, use caller module name.
+
+    if module `{module_name}.init_ioc` exists and it has a attr `conf_ioc`, wii auto config like:
+
+    ``` py
+    (importlib.import_module(module_name + '.init_ioc')).conf_ioc(module_provider)
+    ```
     '''
     if module_name is None:
         fr = inspect.getouterframes(inspect.currentframe())[1]
@@ -58,7 +76,7 @@ def get_module_provider(module_name: str=None) -> ServiceProvider:
     if not isinstance(module_name, str):
         raise TypeError
 
-    return _module_scoped_provider[module_name]
+    return _module_scoped_providers[module_name]
 
 def get_namespace_provider(namespace: str=None) -> ServiceProvider:
     '''
@@ -77,4 +95,4 @@ def get_namespace_provider(namespace: str=None) -> ServiceProvider:
         raise TypeError
 
     namespace = namespace.partition('.')[0]
-    return _module_scoped_provider[namespace]
+    return _module_scoped_providers[namespace]
