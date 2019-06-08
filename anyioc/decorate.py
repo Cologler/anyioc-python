@@ -43,81 +43,73 @@ class ServiceProviderDecorator:
         self._service_provider = service_provider
         self.inject_by = None
 
-    def _register_with(self, lifetime, target, wraped_target, keys):
-        id = object()
-        self._service_provider.register(id, wraped_target, lifetime)
-        for k in _get_keys(target, keys):
-            self._service_provider.register_bind(k, id)
+    def _register_with(self, lifetime, target, *, keys, inject_by):
+
+        def wrapper(factory):
+            nonlocal keys
+            wraped_factory = inject_by(factory) if inject_by else factory
+            id = object()
+            keys = _get_keys(factory, keys)
+            self._service_provider.register(id, wraped_factory, lifetime)
+            for k in keys:
+                self._service_provider.register_bind(k, id)
+            return factory
+
+        return wrapper(target) if target else wrapper
 
     def singleton(self, factory=None, *, inject_by = None, keys: Optional[Iterable[Any]] = None):
         '''
         a decorator use for register factory.
         factory which should have signature `(ioc) => any` or `() => any`.
 
-        if factory don't have the signature, you need to set `inject_by`.
-        `inject_by` is a function that use to convert `factory` signature to `ioc => any`.
+        you can use `inject_by` function to convert `factory` signature to `ioc => any`.
+        you can found some `inject_by_*` in `anyioc.utils`.
 
-        if `inject_by` is None, we will fallback to use `self.inject_by`;
-        if `self.inject_by` also be `None`, mean `factory` do not need to convert.
+        if `keys` is not `None`, it should be the keys list;
+        otherwish anyioc will use `factory` and `factory.__name__` (if exists) as keys.
 
-        you can found some `inject_by_*` from `anyioc.utils`.
-
-        if `keys` is not None, it should be a keys list;
-        otherwish we will use `factory` and `factory.__name__` (if exists) as keys.
+        return factory itself.
         '''
-        def wrapper(target):
-            wrapfunc = inject_by or self.inject_by
-            wraped_target = wrapfunc(target) if wrapfunc else target
-            self._register_with(LifeTime.singleton, target, wraped_target, keys)
-            return target
-
-        return wrapper(factory) if factory else wrapper
+        return self._register_with(
+            LifeTime.singleton, factory,
+            inject_by=inject_by, keys=keys
+        )
 
     def scoped(self, factory=None, *, inject_by = None, keys: Optional[Iterable[Any]] = None):
         '''
         a decorator use for register factory.
         factory which should have signature `(ioc) => any` or `() => any`.
 
-        if factory don't have the signature, you need to set `inject_by`.
-        `inject_by` is a function that use to convert `factory` signature to `ioc => any`.
+        you can use `inject_by` function to convert `factory` signature to `ioc => any`.
+        you can found some `inject_by_*` in `anyioc.utils`.
 
-        if `inject_by` is None, we will fallback to use `self.inject_by`;
-        if `self.inject_by` also be `None`, mean `factory` do not need to convert.
+        if `keys` is not `None`, it should be the keys list;
+        otherwish anyioc will use `factory` and `factory.__name__` (if exists) as keys.
 
-        you can found some `inject_by_*` from `anyioc.utils`.
-
-        if `keys` is not None, it should be a keys list;
-        otherwish we will use `factory` and `factory.__name__` (if exists) as keys.
+        return factory itself.
         '''
-        def wrapper(target):
-            wraped_target = inject_by(target) if inject_by else target
-            self._register_with(LifeTime.scoped, target, wraped_target, keys)
-            return target
-
-        return wrapper(factory) if factory else wrapper
+        return self._register_with(
+            LifeTime.scoped, factory,
+            inject_by=inject_by, keys=keys
+        )
 
     def transient(self, factory=None, *, inject_by = None, keys: Optional[Iterable[Any]] = None):
         '''
         a decorator use for register factory.
         factory which should have signature `(ioc) => any` or `() => any`.
 
-        if factory don't have the signature, you need to set `inject_by`.
-        `inject_by` is a function that use to convert `factory` signature to `ioc => any`.
+        you can use `inject_by` function to convert `factory` signature to `ioc => any`.
+        you can found some `inject_by_*` in `anyioc.utils`.
 
-        if `inject_by` is None, we will fallback to use `self.inject_by`;
-        if `self.inject_by` also be `None`, mean `factory` do not need to convert.
+        if `keys` is not `None`, it should be the keys list;
+        otherwish anyioc will use `factory` and `factory.__name__` (if exists) as keys.
 
-        you can found some `inject_by_*` from `anyioc.utils`.
-
-        if `keys` is not None, it should be a keys list;
-        otherwish we will use `factory` and `factory.__name__` (if exists) as keys.
+        return factory itself.
         '''
-        def wrapper(target):
-            wraped_target = inject_by(target) if inject_by else target
-            self._register_with(LifeTime.transient, target, wraped_target, keys)
-            return target
-
-        return wrapper(factory) if factory else wrapper
+        return self._register_with(
+            LifeTime.transient, factory,
+            inject_by=inject_by, keys=keys
+        )
 
     def bind(self, new_key, target_key=None):
         '''
