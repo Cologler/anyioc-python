@@ -46,10 +46,9 @@ class ServiceProviderDecorator:
 
         def wrapper(factory):
             nonlocal keys
-            wraped_factory = inject_by(factory) if inject_by else factory
             id = object()
             keys = _get_keys(factory, keys)
-            self._service_provider.register(id, wraped_factory, lifetime)
+            self._service_provider.register(id, factory, lifetime, inject_by=inject_by)
             for k in keys:
                 self._service_provider.register_bind(k, id)
             return factory
