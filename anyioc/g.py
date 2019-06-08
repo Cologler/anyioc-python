@@ -17,9 +17,6 @@ dispose_at_exit(ioc)
 
 ioc_decorator = ioc.decorator()
 
-ioc_singleton = ioc_decorator.singleton
-ioc_scoped = ioc_decorator.scoped
-ioc_transient = ioc_decorator.transient
 ioc_singleton_cls = functools.partial(ioc_decorator.singleton, inject_by=inject_by_name)
 ioc_scoped_cls = functools.partial(ioc_decorator.scoped, inject_by=inject_by_name)
 ioc_transient_cls = functools.partial(ioc_decorator.transient, inject_by=inject_by_name)

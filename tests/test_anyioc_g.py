@@ -9,7 +9,6 @@ from anyioc.g import (
     ServiceProvider,
 
     ioc,
-    ioc_singleton, ioc_scoped, ioc_transient,
     ioc_singleton_cls, ioc_scoped_cls, ioc_transient_cls,
     ioc_bind,
 
