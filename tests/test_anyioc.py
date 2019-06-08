@@ -154,6 +154,12 @@ def test_resolve_value():
     provider.register_value('k', 'value')
     assert provider['k'] == 'value'
 
+def test_register_bind():
+    provider = ServiceProvider()
+    provider.register_value('k', 'value')
+    provider.register_bind('b', 'k')
+    assert provider['b'] == 'value'
+
 def test_symbols_types():
     from anyioc.symbols import Symbols
     from anyioc.ioc import IServiceProvider
