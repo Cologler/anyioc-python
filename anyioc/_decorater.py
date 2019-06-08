@@ -37,11 +37,10 @@ def _get_keys(target, keys):
 
 
 class ServiceProviderDecorator:
-    __slots__ = ('_service_provider', 'inject_by')
+    __slots__ = ('_service_provider')
 
     def __init__(self, service_provider: ScopedServiceProvider):
         self._service_provider = service_provider
-        self.inject_by = None
 
     def _register_with(self, lifetime, target, *, keys, inject_by):
 

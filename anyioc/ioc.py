@@ -189,7 +189,7 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         get a decorator helper for register items.
         '''
-        from .decorate import ServiceProviderDecorator
+        from ._decorater import ServiceProviderDecorator
         return ServiceProviderDecorator(self)
 
 
