@@ -11,11 +11,21 @@ class ServiceProviderBuilder:
     '''
     the high level register API for `ServiceProvider`.
     '''
-    __slots__ = ('_provider', '_group_keys_list')
+    __slots__ = ('_provider', '_group_keys_list', '_last_added_key')
 
     def __init__(self, provider: ScopedServiceProvider, group_keys_list: list=None):
         self._provider = provider
         self._group_keys_list = group_keys_list
+        self._last_added_key = None
+
+    @property
+    def last_added_key(self):
+        return self._last_added_key
+
+    def _on_key_added(self, key):
+        if self._group_keys_list is not None:
+            self._group_keys_list.append(key)
+        self._last_added_key = key
 
     def register(self, lifetime, key=None, factory=None, *, inject_by=None):
         '''
@@ -36,12 +46,9 @@ class ServiceProviderBuilder:
 
         def decorator(func):
             safe_key = key if key is not None else func
-
             wraped_func = inject_by(func) if inject_by else func
             self._provider.register(safe_key, wraped_func, lifetime)
-
-            if self._group_keys_list is not None:
-                self._group_keys_list.append(safe_key)
+            self._on_key_added(safe_key)
             return func
 
         return decorator if factory is None else decorator(factory)
@@ -107,18 +114,18 @@ class ServiceProviderBuilder:
         this function can use like a decorator if only have 1 arguments.
 
         if `key` is `None`, use a new `object()` as key.
+        you can get the generated new key by access `ServiceProviderBuilder.last_added_key`.
 
-        return the key.
+        return the value.
         '''
         if len(value) > 1:
             raise TypeError(f'takes 1 or 2 arguments but {len(value)+1} was given')
 
         def decorator(value):
-            safekey = key if key is not None else object()
-            self._provider.register_value(safekey, value)
-            if self._group_keys_list is not None:
-                self._group_keys_list.append(safekey)
-            return safekey
+            safe_key = key if key is not None else object()
+            self._provider.register_value(safe_key, value)
+            self._on_key_added(safe_key)
+            return value
 
         return decorator(value[0]) if value else decorator
 

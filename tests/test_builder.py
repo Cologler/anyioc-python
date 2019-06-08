@@ -43,9 +43,15 @@ def test_builder_value():
     assert provider[1] == 2
 
 def test_builder_value_none_key():
+    # since none key cannot get, we need to use group
     provider = ServiceProvider()
-    key = provider.builder.value(None, 2)
-    assert provider[key] == 2
+    builder = provider.builder
+    @builder.value(None)
+    class A:
+        pass
+    key = builder.last_added_key
+    assert isinstance(A, type)
+    assert provider[key] is A
 
 def test_builder_group():
     provider = ServiceProvider()
