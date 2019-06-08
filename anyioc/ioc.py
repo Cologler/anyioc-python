@@ -98,90 +98,47 @@ class ScopedServiceProvider(IServiceProvider):
 
     def register_service_info(self, key, service_info: IServiceInfo):
         '''
-        register a IServiceInfo by key.
+        register a `IServiceInfo` by key.
         '''
         if not isinstance(service_info, IServiceInfo):
             raise TypeError('service_info must be instance of IServiceInfo.')
         self._services[key] = service_info
 
-    def register(self, key, factory, lifetime, *, inject_by=None):
+    def register(self, key, factory, lifetime):
         '''
         register a service factory by key.
 
         `factory` accept a function which require one or zero parameter.
-        If the count of parameter is one, will pass a `IServiceProvider` as the argument.
-
-        if `key` is `None`, use `factory` as key.
-
-        this function can use like a decorator if `factory` is `None`.
-
-        decorator return the factory.
-
-        `inject_by`: you can pass a function to convert `factory` signature to `ioc => any`;
-        there are some `inject_by_*` helper functions in `anyioc.utils`.
+        if the count of parameter is 1, pass a `IServiceProvider` as the argument.
         '''
+        return self.register_service_info(key, ServiceInfo(self, key, factory, lifetime))
 
-        def decorator(func):
-            safekey = key if key is not None else func
-            wraped_func = inject_by(func) if inject_by else func
-            self.register_service_info(safekey, ServiceInfo(self, safekey, wraped_func, lifetime))
-            return func
-
-        return decorator if factory is None else decorator(factory)
-
-    def register_singleton(self, key, factory=None, *, inject_by=None):
+    def register_singleton(self, key, factory=None):
         '''
         register a service factory by key.
 
         `factory` accept a function which require one or zero parameter.
-        If the count of parameter is one, will pass a `IServiceProvider` as the argument.
-
-        if `key` is `None`, use `factory` as key.
-
-        this function can use like a decorator if `factory` is `None`.
-
-        decorator return the factory.
-
-        `inject_by`: you can pass a function to convert `factory` signature to `ioc => any`;
-        there are some `inject_by_*` helper functions in `anyioc.utils`.
+        if the count of parameter is 1, pass a `IServiceProvider` as the argument.
         '''
-        return self.register(key, factory, LifeTime.singleton, inject_by=inject_by)
+        return self.register(key, factory, LifeTime.singleton)
 
-    def register_scoped(self, key, factory=None, *, inject_by=None):
+    def register_scoped(self, key, factory=None):
         '''
         register a service factory by key.
 
         `factory` accept a function which require one or zero parameter.
-        If the count of parameter is one, will pass a `IServiceProvider` as the argument.
-
-        if `key` is `None`, use `factory` as key.
-
-        this function can use like a decorator if `factory` is `None`.
-
-        decorator return the factory.
-
-        `inject_by`: you can pass a function to convert `factory` signature to `ioc => any`;
-        there are some `inject_by_*` helper functions in `anyioc.utils`.
+        if the count of parameter is 1, pass a `IServiceProvider` as the argument.
         '''
-        return self.register(key, factory, LifeTime.scoped, inject_by=inject_by)
+        return self.register(key, factory, LifeTime.scoped)
 
-    def register_transient(self, key, factory=None, *, inject_by=None):
+    def register_transient(self, key, factory=None):
         '''
         register a service factory by key.
 
         `factory` accept a function which require one or zero parameter.
-        If the count of parameter is one, will pass a `IServiceProvider` as the argument.
-
-        if `key` is `None`, use `factory` as key.
-
-        this function can use like a decorator if `factory` is `None`.
-
-        decorator return the factory.
-
-        `inject_by`: you can pass a function to convert `factory` signature to `ioc => any`;
-        there are some `inject_by_*` helper functions in `anyioc.utils`.
+        if the count of parameter is 1, pass a `IServiceProvider` as the argument.
         '''
-        return self.register(key, factory, LifeTime.transient, inject_by=inject_by)
+        return self.register(key, factory, LifeTime.transient)
 
     def register_value(self, key, value):
         '''
@@ -225,12 +182,13 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         return ScopedServiceProvider(self._services.new_child())
 
-    def decorator(self):
+    @property
+    def builder(self):
         '''
-        get a decorator helper for register items.
+        get a `ServiceProviderBuilder` for use high level api for this `ServiceProvider`.
         '''
-        from ._decorater import ServiceProviderDecorator
-        return ServiceProviderDecorator(self)
+        from ._builder import ServiceProviderBuilder
+        return ServiceProviderBuilder(self)
 
 
 class ServiceProvider(ScopedServiceProvider):

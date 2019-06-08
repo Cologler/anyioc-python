@@ -15,13 +15,6 @@ from .utils import inject_by_name, dispose_at_exit
 ioc = ServiceProvider()
 dispose_at_exit(ioc)
 
-ioc_decorator = ioc.decorator()
-
-ioc_singleton_cls = functools.partial(ioc_decorator.singleton, inject_by=inject_by_name)
-ioc_scoped_cls = functools.partial(ioc_decorator.scoped, inject_by=inject_by_name)
-ioc_transient_cls = functools.partial(ioc_decorator.transient, inject_by=inject_by_name)
-
-
 # scoped global ioc
 
 def _make_module_scoped_provider():

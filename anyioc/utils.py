@@ -157,6 +157,25 @@ def make_group(container, group_key=None):
 
     return add_next_key
 
+def find_keys(obj):
+    keys = []
+
+    if isinstance(obj, type):
+        try:
+            # only hashable() canbe key
+            hash(obj)
+            keys.append(obj)
+        except TypeError:
+            pass
+
+    try:
+        name = getattr(obj, '__name__')
+        keys.append(name)
+    except AttributeError:
+        pass
+
+    return keys
+
 # keep old func names:
 
 auto_inject = inject_by_name
