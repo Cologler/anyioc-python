@@ -115,6 +115,14 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         def decorator(func):
             self.register_service_info(key, ServiceInfo(self, key, func, lifetime))
+
+            # I hope we can use like this:
+            # @ioc.register_singleton('a')
+            # class A: ...
+            # x: A = ioc['a'] # language server know `A` is what
+            #
+            # if here return the key, anyioc can to use as decorator arguments,
+            # but language server maybe did not know what is A.
             return func
 
         return decorator if factory is None else decorator(factory)
