@@ -7,11 +7,8 @@
 
 from anyioc.g import (
     ServiceProvider,
-
     ioc,
     ioc_singleton_cls, ioc_scoped_cls, ioc_transient_cls,
-    ioc_bind,
-
     get_module_provider, get_namespace_provider
 )
 

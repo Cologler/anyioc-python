@@ -109,16 +109,3 @@ class ServiceProviderDecorator:
             LifeTime.transient, factory,
             inject_by=inject_by, keys=keys
         )
-
-    def bind(self, new_key, target_key=None):
-        '''
-        a decorator use for bind class or function to a alias key.
-
-        if `target_key` is `None`, use `__name__` as `target_key`.
-        '''
-        def binding(target):
-            key = target.__name__ if target_key is None else target_key
-            self._service_provider.register_bind(new_key, key)
-            return target
-
-        return binding

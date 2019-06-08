@@ -20,7 +20,7 @@ ioc_decorator = ioc.decorator()
 ioc_singleton_cls = functools.partial(ioc_decorator.singleton, inject_by=inject_by_name)
 ioc_scoped_cls = functools.partial(ioc_decorator.scoped, inject_by=inject_by_name)
 ioc_transient_cls = functools.partial(ioc_decorator.transient, inject_by=inject_by_name)
-ioc_bind = ioc_decorator.bind
+
 
 # scoped global ioc
 
