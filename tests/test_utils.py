@@ -77,13 +77,6 @@ def test_inject_by_anno_with_default_without_anno():
     instance = provider.get('some_class')
     assert instance.value == 3
 
-def test_make_group():
-    provider = ServiceProvider()
-    group = make_group(provider, 'gk')
-    group('some_group_key')
-    provider.register_value('some_group_key', 2)
-    assert provider['gk'] == (2, )
-
 def test_inject_by_keys():
     class SomeClass:
         def __init__(self, first, second):
@@ -95,3 +88,17 @@ def test_inject_by_keys():
     provider.register_transient('some_class', inject_by_keys(first='val1', second='val2')(SomeClass))
     instance = provider.get('some_class')
     assert instance.value == (100, 200)
+
+def test_make_group():
+    provider = ServiceProvider()
+    group = make_group(provider, 'gk')
+    group('some_group_key')
+    provider.register_value('some_group_key', 2)
+    assert provider['gk'] == (2, )
+
+def test_make_group_without_group_key():
+    provider = ServiceProvider()
+    group = make_group(provider)
+    group('some_group_key')
+    provider.register_value('some_group_key', 2)
+    assert provider[group] == (2, )
