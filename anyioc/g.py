@@ -23,8 +23,9 @@ def _make_module_scoped_provider():
     from .symbols import Symbols
 
     class ServiceProviderServiceInfoResolver(IServiceInfoResolver):
-        def get(self, provider, key) -> IServiceInfo:
+        def get(self, provider: ServiceProvider, key) -> IServiceInfo:
             new_provider = ServiceProvider()
+            provider.enter(new_provider)
 
             try:
                 init_ioc = importlib.import_module(key + '.init_ioc')
