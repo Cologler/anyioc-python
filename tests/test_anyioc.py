@@ -135,6 +135,13 @@ def test_transient_as_decorator():
         return ServiceProvider()
     assert_value_transient(provider, 1)
 
+def test_transient_none_key():
+    provider = ServiceProvider()
+    @provider.register_transient(None)
+    def func():
+        return ServiceProvider()
+    assert_value_transient(provider, func)
+
 def test_resolve_groups():
     provider = ServiceProvider()
     provider.register_transient('str', lambda: 'name')

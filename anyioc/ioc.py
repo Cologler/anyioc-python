@@ -111,43 +111,61 @@ class ScopedServiceProvider(IServiceProvider):
         `factory` accept a function which require one or zero parameter.
         If the count of parameter is one, will pass a `IServiceProvider` as the argument.
 
-        `register()` can use as a decorator if you set `factory` to `None`.
+        if `key` is `None`, use `factory` as key.
+
+        this function can use like a decorator if `factory` is `None`.
+
+        decorator return the factory.
         '''
         def decorator(func):
-            self.register_service_info(key, ServiceInfo(self, key, func, lifetime))
-
-            # I hope we can use like this:
-            # @ioc.register_singleton('a')
-            # class A: ...
-            # x: A = ioc['a'] # language server know `A` is what
-            #
-            # if here return the key, anyioc can to use as decorator arguments,
-            # but language server maybe did not know what is A.
+            safekey = key if key is not None else func
+            self.register_service_info(safekey, ServiceInfo(self, safekey, func, lifetime))
             return func
 
         return decorator if factory is None else decorator(factory)
 
     def register_singleton(self, key, factory=None):
         '''
-        register a singleton service factory by key.
+        register a service factory by key.
 
-        `register_singleton()` can use as a decorator if you set `factory` to `None`.
+        `factory` accept a function which require one or zero parameter.
+        If the count of parameter is one, will pass a `IServiceProvider` as the argument.
+
+        if `key` is `None`, use `factory` as key.
+
+        this function can use like a decorator if `factory` is `None`.
+
+        decorator return the factory.
         '''
         return self.register(key, factory, LifeTime.singleton)
 
     def register_scoped(self, key, factory=None):
         '''
-        register a scoped service factory by key.
+        register a service factory by key.
 
-        `register_scoped()` can use as a decorator if you set `factory` to `None`.
+        `factory` accept a function which require one or zero parameter.
+        If the count of parameter is one, will pass a `IServiceProvider` as the argument.
+
+        if `key` is `None`, use `factory` as key.
+
+        this function can use like a decorator if `factory` is `None`.
+
+        decorator return the factory.
         '''
         return self.register(key, factory, LifeTime.scoped)
 
     def register_transient(self, key, factory=None):
         '''
-        register a transient service factory by key.
+        register a service factory by key.
 
-        `register_transient()` can use as a decorator if you set `factory` to `None`.
+        `factory` accept a function which require one or zero parameter.
+        If the count of parameter is one, will pass a `IServiceProvider` as the argument.
+
+        if `key` is `None`, use `factory` as key.
+
+        this function can use like a decorator if `factory` is `None`.
+
+        decorator return the factory.
         '''
         return self.register(key, factory, LifeTime.transient)
 
