@@ -134,18 +134,47 @@ def dispose_at_exit(provider):
         provider.__exit__(*sys.exc_info())
     return provider
 
-def make_group(container, group_key):
+def make_group(container, group_key=None):
     '''
-    add a new group into `container` by `group_key`,
-    return a decorator function for add next group item key.
+    add a new group into `container` by key `group_key`.
+    if `group_key` is `None`, use return function as key.
 
+    return a function accept single argument for add next group item key.
     '''
     group_keys = []
-    container.register_group(group_key, group_keys)
-    def decorator(next_group_key):
+
+    def add_next_key(next_group_key):
+        '''
+        add next key into this group.
+        '''
         group_keys.append(next_group_key)
         return next_group_key
-    return decorator
+
+    if group_key is None:
+        group_key = add_next_key
+
+    container.register_group(group_key, group_keys)
+
+    return add_next_key
+
+def find_keys(obj):
+    keys = []
+
+    if isinstance(obj, type):
+        try:
+            # only hashable() canbe key
+            hash(obj)
+            keys.append(obj)
+        except TypeError:
+            pass
+
+    try:
+        name = getattr(obj, '__name__')
+        keys.append(name)
+    except AttributeError:
+        pass
+
+    return keys
 
 # keep old func names:
 
