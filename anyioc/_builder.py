@@ -142,6 +142,7 @@ class ServiceProviderBuilder:
         group_keys_list = []
         group = Group(self._provider, group_keys_list)
         self._provider.register_group(group, group_keys_list)
+        self._on_key_added(group)
         if group_key is not None:
             self._provider.register_bind(group_key, group)
         return group

@@ -74,3 +74,10 @@ def test_builder_group_as_decorator():
         pass
     instance, = provider[group]
     assert isinstance(instance, A)
+
+def test_builder_multi_level_group():
+    provider = ServiceProvider()
+    root_group = provider.builder.group()
+    sub_group = root_group.group()
+    sub_group.value(None, 2)
+    assert provider[root_group] == ((2, ), )

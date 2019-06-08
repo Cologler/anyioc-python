@@ -185,7 +185,7 @@ class ScopedServiceProvider(IServiceProvider):
     @property
     def builder(self):
         '''
-        get a `ServiceProviderBuilder` for use high level api for this `ServiceProvider`.
+        get a new `ServiceProviderBuilder` for use high level api for this `ServiceProvider`.
         '''
         from ._builder import ServiceProviderBuilder
         return ServiceProviderBuilder(self)
