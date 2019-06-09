@@ -81,3 +81,9 @@ def test_builder_multi_level_group():
     sub_group = root_group.group()
     sub_group.value(None, 2)
     assert provider[root_group] == ((2, ), )
+
+def test_builder_group_with_group_key_then_from_group_src_symbol():
+    from anyioc.symbols import Symbols
+    provider = ServiceProvider()
+    group = provider.builder.group('gk')
+    assert group is provider[Symbols.get_symbol_for_group_src('gk')]
