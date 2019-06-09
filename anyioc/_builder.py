@@ -11,11 +11,10 @@ class ServiceProviderBuilder:
     '''
     the high level register API for `ServiceProvider`.
     '''
-    __slots__ = ('_provider', '_group_keys_list', '_last_added_key')
+    __slots__ = ('_provider', '_last_added_key')
 
-    def __init__(self, provider: ScopedServiceProvider, group_keys_list: list=None):
+    def __init__(self, provider: ScopedServiceProvider):
         self._provider = provider
-        self._group_keys_list = group_keys_list
         self._last_added_key = None
 
     @property
@@ -23,8 +22,6 @@ class ServiceProviderBuilder:
         return self._last_added_key
 
     def _on_key_added(self, key):
-        if self._group_keys_list is not None:
-            self._group_keys_list.append(key)
         self._last_added_key = key
 
     def register(self, lifetime, key=None, factory=None, *, inject_by=None):
@@ -139,9 +136,8 @@ class ServiceProviderBuilder:
         '''
         from .utils import make_group
 
-        group_keys_list = []
-        group = Group(self._provider, group_keys_list)
-        self._provider.register_group(group, group_keys_list)
+        group = Group(self._provider)
+        self._provider.register_group(group, group)
         self._on_key_added(group)
         if group_key is not None:
             self._provider.register_bind(group_key, group)
@@ -152,4 +148,16 @@ class Group(ServiceProviderBuilder):
     '''
     a `Group` class use for build `ServiceProvider` and use as unique group key.
     '''
-    __slots__ = ()
+    __slots__ = ('_group_keys_list', )
+
+    def __init__(self, provider: ScopedServiceProvider):
+        super().__init__(provider)
+        self._group_keys_list = []
+
+    def __iter__(self):
+        return iter(self._group_keys_list)
+
+    def _on_key_added(self, key):
+        if self._group_keys_list is not None:
+            self._group_keys_list.append(key)
+        super()._on_key_added(key)
