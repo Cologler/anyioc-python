@@ -6,6 +6,7 @@
 # ----------
 
 from .ioc import ScopedServiceProvider, LifeTime
+from .symbols import Symbols
 
 class ServiceProviderBuilder:
     '''
@@ -141,6 +142,8 @@ class ServiceProviderBuilder:
         self._on_key_added(group)
         if group_key is not None:
             self._provider.register_bind(group_key, group)
+            sym = Symbols.get_symbol_for_group_src(group_key)
+            self._provider.register_value(sym, group)
         return group
 
 
