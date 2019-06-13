@@ -113,7 +113,7 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         return self.register_service_info(key, ServiceInfo(self, key, factory, lifetime))
 
-    def register_singleton(self, key, factory=None):
+    def register_singleton(self, key, factory):
         '''
         register a service factory by key.
 
@@ -122,7 +122,7 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         return self.register(key, factory, LifeTime.singleton)
 
-    def register_scoped(self, key, factory=None):
+    def register_scoped(self, key, factory):
         '''
         register a service factory by key.
 
@@ -131,7 +131,7 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         return self.register(key, factory, LifeTime.scoped)
 
-    def register_transient(self, key, factory=None):
+    def register_transient(self, key, factory):
         '''
         register a service factory by key.
 
