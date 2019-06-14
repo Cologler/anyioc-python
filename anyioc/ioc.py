@@ -25,6 +25,10 @@ from .ioc_service_info import (
 
 
 class IServiceProvider:
+    '''
+    the base interface for `ServiceProvider`.
+    '''
+
     @abstractmethod
     def __getitem__(self, key):
         raise NotImplementedError
@@ -51,6 +55,7 @@ class ScopedServiceProvider(IServiceProvider):
         self._services = services
         self._exit_stack = None
         self._services[Symbols.cache] = ValueServiceInfo({})
+        self.__class__ = ServiceProvider # hack
 
     def _get_service_info(self, key) -> IServiceInfo:
         try:
@@ -194,12 +199,19 @@ class ScopedServiceProvider(IServiceProvider):
 
 
 class ServiceProvider(ScopedServiceProvider):
+    '''
+    the default impl for `IServiceProvider`.
+    '''
+
     def __init__(self):
         super().__init__(ChainMap())
-        self._services[Symbols.provider] = ProviderServiceInfo()
+        provider_service_info = ProviderServiceInfo()
+        self._services[Symbols.provider] = provider_service_info
         self._services[Symbols.provider_root] = ValueServiceInfo(self)
         self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
         # service alias
-        self._services['ioc'] = self._services[Symbols.provider]
-        self._services['provider'] = self._services[Symbols.provider]
-        self._services['service_provider'] = self._services[Symbols.provider]
+        self._services['ioc'] = provider_service_info
+        self._services['provider'] = provider_service_info
+        self._services['service_provider'] = provider_service_info
+        self._services[ServiceProvider] = provider_service_info
+        self._services[IServiceProvider] = provider_service_info
