@@ -87,6 +87,11 @@ There are some predefined string keys you can use direct, but you still can over
 * `provider` - alias of `ioc`
 * `service_provider` - alias of `ioc`
 
+And predefined types:
+
+* `ServiceProvider`
+* `IServiceProvider`
+
 ### `provider.get()` vs `provider[]`
 
 There are two ways to get services from `ServiceProvider`:
