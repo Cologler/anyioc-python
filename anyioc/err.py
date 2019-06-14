@@ -6,6 +6,10 @@
 # ----------
 
 class ServiceNotFoundError(Exception):
+    '''
+    raise when a service is unable to resolve.
+    '''
+
     def __init__(self, *resolve_chain):
         self.resolve_chain = resolve_chain
         msg = f'unknown service: {repr(resolve_chain[-1])}'

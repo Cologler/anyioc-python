@@ -5,7 +5,7 @@
 #
 # ----------
 
-from anyioc import ServiceProvider
+from anyioc import ServiceProvider, IServiceProvider
 from anyioc.symbols import Symbols
 
 from tests.assert_utils import assert_value_singleton, assert_value_scoped, assert_value_transient
@@ -55,3 +55,20 @@ def test_register_bind():
     provider.register_value('k', 'value')
     provider.register_bind('b', 'k')
     assert provider['b'] == 'value'
+
+def test_predefined_keys():
+    provider = ServiceProvider()
+    with provider.scope() as scoped:
+        assert scoped is scoped['ioc']
+        assert scoped is scoped['provider']
+        assert scoped is scoped['service_provider']
+        assert scoped is scoped[ServiceProvider]
+        assert scoped is scoped[IServiceProvider]
+        assert scoped is scoped[Symbols.provider]
+        assert provider is provider[Symbols.provider_root]
+
+def test_types():
+    # since scoped is scoped[ServiceProvider]
+    provider = ServiceProvider()
+    with provider.scope() as scoped:
+        assert isinstance(scoped, ServiceProvider)
