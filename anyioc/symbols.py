@@ -5,6 +5,22 @@
 #
 # ----------
 
+
+class _Symbol:
+    'a symbol _Symbol with description'
+
+    __slots__ = ('_name', )
+
+    def __init__(self, name=''):
+        self._name = name
+
+    def __str__(self):
+        return repr(self)
+
+    def __repr__(self):
+        return f'Symbol({self._name})'
+
+
 class Symbols:
     '''
     the symbols use for ioc.
@@ -14,19 +30,19 @@ class Symbols:
     '''
 
     # current scoped `IServiceProvider`
-    provider = object()
+    provider = _Symbol('provider')
 
     # the root `IServiceProvider`
-    provider_root = object()
+    provider_root = _Symbol('provider_root')
 
     # the cache dict from `IServiceProvider`
-    cache = object()
+    cache = _Symbol('cache')
 
     # the missing resolver from `IServiceProvider`
-    missing_resolver = object()
+    missing_resolver = _Symbol('missing_resolver')
 
     # the named group tag for builder
-    _group_src_tag = object()
+    _group_src_tag = _Symbol('_group_src_tag')
 
     @classmethod
     def get_symbol_for_group_src(cls, group):
