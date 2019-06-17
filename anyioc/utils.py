@@ -6,7 +6,7 @@
 # ----------
 
 import sys
-from typing import List, Tuple, Union, Any, Dict
+from typing import List, Tuple, Union, Any, Dict, Callable
 from inspect import signature, Parameter
 
 def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
@@ -46,55 +46,76 @@ def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
         return new_func
     return wrapper
 
+def inject_by_key_selector(selector: Callable[[Parameter], Any]):
+    '''
+    wrap the func and auto inject by key selector.
+
+    `selector` should be a callcable which accept a `Parameter` object as argument,
+    return the key use for inject.
+
+    var keyword parameter and var positional parameter will be ignore.
+
+    `inject_by_key_selector` return a function decorator,
+    and the decorator return the new func with signature: `(ioc) => any`
+    '''
+
+    if not callable(selector):
+        raise TypeError
+
+    def decorator(func):
+        sign = signature(func)
+        params = [p for p in sign.parameters.values()]
+        pos_args = []
+        kw_args = {}
+        for param in params:
+            ioc_key = selector(param)
+            val = (ioc_key, ) if param.default is Parameter.empty else (ioc_key, param.default)
+            if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
+                pos_args.append(val)
+            elif param.kind == Parameter.KEYWORD_ONLY:
+                kw_args[param.name] = val
+        return injectable(*pos_args, **kw_args)(func)
+
+    return decorator
+
 def inject_by_name(func):
     '''
     wrap the func and auto inject by parameter name.
 
-    var keyword parameter and var positional parameter will not be inject.
+    var keyword parameter and var positional parameter will be ignore.
 
     return the new func with signature: `(ioc) => any`
     '''
-    sign = signature(func)
-    params = [p for p in sign.parameters.values()]
-    pos_args = []
-    kw_args = {}
-    for param in params:
-        val = (param.name, ) if param.default is Parameter.empty else (param.name, param.default)
-        if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
-            pos_args.append(val)
-        elif param.kind == Parameter.KEYWORD_ONLY:
-            kw_args[param.name] = val
-    return injectable(*pos_args, **kw_args)(func)
+    return inject_by_key_selector(lambda x: x.name)(func)
 
-def inject_by_anno(func):
+def inject_by_anno(func=None, *, use_name_if_empty: bool = False):
     '''
     wrap the func and auto inject by parameter annotation.
 
-    var keyword parameter and var positional parameter will not be inject.
+    var keyword parameter and var positional parameter will be ignore.
+
+    `use_name_if_empty`: whether use `Parameter.name` as key when `Parameter.annotation` is empty.
 
     return the new func with signature: `(ioc) => any`
     '''
-    sign = signature(func)
-    params = [p for p in sign.parameters.values()]
-    pos_args = []
-    kw_args = {}
-    for param in params:
-        anno = param.annotation
-        if anno is Parameter.empty:
-            if param.default is Parameter.empty:
-                raise ValueError(f'annotation of args {param.name} is empty.')
-            # use `object()` for ensure you never get the value.
-            ioc_key = object()
-        else:
-            ioc_key = anno
-        val = (ioc_key, ) if param.default is Parameter.empty else (ioc_key, param.default)
+    def decorator(func):
+        def selector(param: Parameter):
+            anno = param.annotation
+            if anno is Parameter.empty:
+                if use_name_if_empty:
+                    ioc_key = param.name
+                elif param.default is Parameter.empty:
+                    raise ValueError(f'annotation of args {param.name} is empty.')
+                else:
+                    # use `object()` for ensure you never get any value.
+                    ioc_key = object()
+            else:
+                ioc_key = anno
+            return ioc_key
 
-        if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
-            pos_args.append(val)
-        elif param.kind == Parameter.KEYWORD_ONLY:
-            kw_args[param.name] = val
+        return inject_by_key_selector(selector)(func)
 
-    return injectable(*pos_args, **kw_args)(func)
+    return decorator if func is None else decorator(func)
 
 def inject_by_keys(**keys):
     '''
