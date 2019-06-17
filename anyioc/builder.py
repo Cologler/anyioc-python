@@ -25,7 +25,7 @@ class ServiceProviderBuilder:
     def _on_key_added(self, key):
         self._last_added_key = key
 
-    def register(self, lifetime, key=None, factory=None, *, inject_by=None):
+    def register(self, lifetime: LifeTime, key=None, factory=None, *, inject_by=None):
         '''
         register a service factory by key.
 
@@ -161,6 +161,5 @@ class Group(ServiceProviderBuilder):
         return iter(self._group_keys_list)
 
     def _on_key_added(self, key):
-        if self._group_keys_list is not None:
-            self._group_keys_list.append(key)
+        self._group_keys_list.append(key)
         super()._on_key_added(key)
