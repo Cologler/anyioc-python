@@ -187,7 +187,9 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         create a scoped service provider.
         '''
-        return ScopedServiceProvider(self._services.new_child())
+        sp = ScopedServiceProvider(self._services.new_child())
+        self.enter(sp)
+        return sp
 
     @property
     def builder(self):
