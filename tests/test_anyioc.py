@@ -104,3 +104,12 @@ def test_symbols_values_ref():
         assert scoped_provider[Symbols.provider_root] is provider
         assert scoped_provider[Symbols.cache] is scoped_provider[Symbols.cache]
         assert scoped_provider[Symbols.cache] is not provider[Symbols.cache]
+
+def test_error_message():
+    provider = ServiceProvider()
+    provider.register_transient('a', lambda ioc: ioc['b'])
+    provider.register_transient('b', lambda ioc: ioc['c'])
+    provider.register_transient('c', lambda ioc: ioc['d'])
+
+    with raises(ServiceNotFoundError, match="unknown service: 'd'; resolve chain: 'a'->'b'->'c'->'d'"):
+        provider['a']
