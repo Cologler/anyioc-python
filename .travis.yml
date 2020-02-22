@@ -8,6 +8,7 @@ install:
   - pipenv install --dev --skip-lock
 script:
   - python -m pytest
+  - python setup.py print_attrs
 deploy:
   provider: pypi
   user: $PYPI_USER
