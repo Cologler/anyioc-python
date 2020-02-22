@@ -3,8 +3,10 @@ dist: xenial
 sudo: true
 python:
   - '3.7'
+  - '3.8'
+install:
+  - pipenv install --dev --skip-lock
 script:
-  - pipenv install --dev
   - python -m pytest
 deploy:
   provider: pypi

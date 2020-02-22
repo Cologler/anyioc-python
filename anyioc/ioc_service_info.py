@@ -10,6 +10,7 @@ from enum import Enum
 from inspect import signature, Parameter
 from typing import Any
 from threading import RLock
+import inspect
 
 from .symbols import Symbols
 
@@ -143,3 +144,16 @@ class BindedServiceInfo(IServiceInfo):
 
     def get(self, provider):
         return provider[self._target_key]
+
+
+class CallerFrameServiceInfo(IServiceInfo):
+    'a `IServiceInfo` use for get caller frameinfo'
+
+    __slots__ = ()
+
+    def get(self, _):
+        frs = inspect.getouterframes(inspect.currentframe())
+        for fr in frs[2:]:
+            mo = inspect.getmodule(fr.frame)
+            if mo.__name__.partition('.')[0] != 'anyioc':
+                return fr

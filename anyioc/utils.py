@@ -6,27 +6,41 @@
 # ----------
 
 import sys
-from typing import List, Tuple, Union, Any, Dict
+from typing import List, Tuple, Union, Any, Dict, Callable
 from inspect import signature, Parameter
+
 
 def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                **kw_args: Dict[str, Union[Tuple[Any], Tuple[Any, Any]]]):
     '''
-    each **value** in `pos_args` and `kw_args` should be a tuple,
-    the 1st item in tuple is the key for get service from ioc container;
+    return a decorator that use to convert a callable to `(ioc) => any` signature.
 
-    if len of tuple is 2,
-    the 2rd item is the default value.
+    each arguments must be a tuple, each tuple can contains 1 or 2 elements.
+    the 1st element is the key for get service from ioc container;
+    the 2rd element will be the default value if provide.
 
-    example:
+    Example:
 
     ``` py
-    @injectable(a=('ioc-key', 'default-value-for-param'))
-    def func(a):
-        pass
+    @injectable(a=('key1', 1), b=('key2'))
+    def func(a, b):
+        return a + b
+    ```
+
+    equals:
+
+    ``` py
+    def wrapper(ioc):
+        return func(a=ioc.get('key1', 1), b=ioc['key2'])
     ```
     '''
-    def wrapper(func):
+    for tup in list(pos_args) + list(kw_args.values()):
+        if not isinstance(tup, tuple):
+            raise TypeError(f'excepted tuple, got {type(tup)}')
+        if len(tup) not in (1, 2):
+            raise ValueError('tuple should contains 1 or 2 elements')
+
+    def decorator(func):
         def new_func(ioc):
             args = []
             for item in pos_args:
@@ -44,67 +58,89 @@ def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                     kwargs[name] = ioc.get(key, default)
             return func(*args, **kwargs)
         return new_func
-    return wrapper
 
-def inject_by_name(func):
+    return decorator
+
+def inject_by_key_selector(selector: Callable[[Parameter], Any]):
     '''
-    wrap the func and auto inject by parameter name.
+    return a decorator that use to convert a callable to `(ioc) => any` signature
+    with auto inject arguments by selector.
 
-    var keyword parameter and var positional parameter will not be inject.
+    `selector` should be a callcable which accept a `inspect.Parameter` object as argument,
+    return the key use for inject.
 
-    return the new func with signature: `(ioc) => any`
+    Note: *var keyword parameter and var positional parameter will be ignore.*
     '''
-    sign = signature(func)
-    params = [p for p in sign.parameters.values()]
-    pos_args = []
-    kw_args = {}
-    for param in params:
-        val = (param.name, ) if param.default is Parameter.empty else (param.name, param.default)
-        if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
-            pos_args.append(val)
-        elif param.kind == Parameter.KEYWORD_ONLY:
-            kw_args[param.name] = val
-    return injectable(*pos_args, **kw_args)(func)
 
-def inject_by_anno(func):
+    if not callable(selector):
+        raise TypeError
+
+    def decorator(func):
+        sign = signature(func)
+        params = [p for p in sign.parameters.values()]
+        pos_args = []
+        kw_args = {}
+        for param in params:
+            ioc_key = selector(param)
+            val = (ioc_key, ) if param.default is Parameter.empty else (ioc_key, param.default)
+            if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
+                pos_args.append(val)
+            elif param.kind == Parameter.KEYWORD_ONLY:
+                kw_args[param.name] = val
+        return injectable(*pos_args, **kw_args)(func)
+
+    return decorator
+
+def inject_by_name(func=None):
     '''
-    wrap the func and auto inject by parameter annotation.
+    convert a callable to `(ioc) => any` signature with auto inject arguments by parameter name.
 
-    var keyword parameter and var positional parameter will not be inject.
+    return a decorator if func is `None`.
 
-    return the new func with signature: `(ioc) => any`
+    Note: *var keyword parameter and var positional parameter will be ignore.*
     '''
-    sign = signature(func)
-    params = [p for p in sign.parameters.values()]
-    pos_args = []
-    kw_args = {}
-    for param in params:
-        anno = param.annotation
-        if anno is Parameter.empty:
-            if param.default is Parameter.empty:
-                raise ValueError(f'annotation of args {param.name} is empty.')
-            # use `object()` for ensure you never get the value.
-            ioc_key = object()
-        else:
-            ioc_key = anno
-        val = (ioc_key, ) if param.default is Parameter.empty else (ioc_key, param.default)
+    decorator = inject_by_key_selector(lambda x: x.name)
 
-        if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
-            pos_args.append(val)
-        elif param.kind == Parameter.KEYWORD_ONLY:
-            kw_args[param.name] = val
+    return decorator if func is None else decorator(func)
 
-    return injectable(*pos_args, **kw_args)(func)
+def inject_by_anno(func=None, *, use_name_if_empty: bool = False):
+    '''
+    convert a callable to `(ioc) => any` signature with auto inject arguments by parameter annotation.
+
+    return a decorator if func is `None`.
+
+    Options:
+
+    - `use_name_if_empty`: whether use `Parameter.name` as key when `Parameter.annotation` is empty.
+
+    Note: *var keyword parameter and var positional parameter will be ignore.*
+    '''
+    def decorator(func):
+        def selector(param: Parameter):
+            anno = param.annotation
+            if anno is Parameter.empty:
+                if use_name_if_empty:
+                    ioc_key = param.name
+                elif param.default is Parameter.empty:
+                    raise ValueError(f'annotation of args {param.name} is empty.')
+                else:
+                    # use `object()` for ensure you never get any value.
+                    ioc_key = object()
+            else:
+                ioc_key = anno
+            return ioc_key
+
+        return inject_by_key_selector(selector)(func)
+
+    return decorator if func is None else decorator(func)
 
 def inject_by_keys(**keys):
     '''
-    wrap the func and auto inject by keys.
+    return a decorator that use to convert a callable to `(ioc) => any` signature
+    with auto inject arguments by keys.
 
-    each key in keys should be parameter name of func.
-
-    each value in keys should use for get value from service provider.
-
-    return a decorator for wrap your func to new func with signature: `(ioc) => any`.
+    - keys should be parameter name of func.
+    - values are the key that use to get service from service provider.
     '''
 
     kw_args = dict((k, (v, )) for k, v in keys.items())
@@ -175,6 +211,26 @@ def find_keys(obj):
         pass
 
     return keys
+
+def get_logger(ioc):
+    '''
+    a helper that use to get logger from ioc.
+
+    Usage:
+
+    ``` py
+    ioc.register_transient('logger', get_logger) # use transient to ensure no cache
+    logger = ioc['logger']
+    assert logger.name == __name__ # the logger should have module name
+    ```
+    '''
+    import logging
+    import inspect
+    from .symbols import Symbols
+
+    fr = ioc[Symbols.caller_frame]
+    mo = inspect.getmodule(fr.frame)
+    return logging.getLogger(mo.__name__)
 
 # keep old func names:
 
