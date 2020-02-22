@@ -21,6 +21,7 @@ from .ioc_service_info import (
     ValueServiceInfo,
     GroupedServiceInfo,
     BindedServiceInfo,
+    CallerFrameServiceInfo
 )
 
 
@@ -211,6 +212,7 @@ class ServiceProvider(ScopedServiceProvider):
         self._services[Symbols.provider] = provider_service_info
         self._services[Symbols.provider_root] = ValueServiceInfo(self)
         self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
+        self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
         # service alias
         self._services['ioc'] = provider_service_info
         self._services['provider'] = provider_service_info

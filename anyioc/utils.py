@@ -9,6 +9,7 @@ import sys
 from typing import List, Tuple, Union, Any, Dict, Callable
 from inspect import signature, Parameter
 
+
 def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                **kw_args: Dict[str, Union[Tuple[Any], Tuple[Any, Any]]]):
     '''
@@ -210,6 +211,26 @@ def find_keys(obj):
         pass
 
     return keys
+
+def get_logger(ioc):
+    '''
+    a helper that use to get logger from ioc.
+
+    Usage:
+
+    ``` py
+    ioc.register_transient('logger', get_logger) # use transient to ensure no cache
+    logger = ioc['logger']
+    assert logger.name == __name__ # the logger should have module name
+    ```
+    '''
+    import logging
+    import inspect
+    from .symbols import Symbols
+
+    fr = ioc[Symbols.caller_frame]
+    mo = inspect.getmodule(fr.frame)
+    return logging.getLogger(mo.__name__)
 
 # keep old func names:
 

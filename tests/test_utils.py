@@ -114,3 +114,12 @@ def test_make_group_without_group_key():
     group('some_group_key')
     provider.register_value('some_group_key', 2)
     assert provider[group] == (2, )
+
+def test_helper_get_logger():
+    from anyioc.utils import get_logger
+
+    provider = ServiceProvider()
+    provider.register_transient('logger', get_logger)
+    logger = provider['logger']
+    assert logger.name == __name__
+    assert logger.name == 'tests.test_utils'

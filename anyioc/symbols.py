@@ -41,6 +41,9 @@ class Symbols:
     # the missing resolver from `IServiceProvider`
     missing_resolver = _Symbol('missing_resolver')
 
+    # get frame info of caller
+    caller_frame = _Symbol('caller_frame')
+
     # the named group tag for builder
     _group_src_tag = _Symbol('_group_src_tag')
 
