@@ -155,5 +155,5 @@ class CallerFrameServiceInfo(IServiceInfo):
         frs = inspect.getouterframes(inspect.currentframe())
         for fr in frs[2:]:
             mo = inspect.getmodule(fr.frame)
-            if mo.__name__.partition('.')[0] != 'anyioc':
+            if mo is None or mo.__name__.partition('.')[0] != 'anyioc':
                 return fr
