@@ -122,4 +122,4 @@ def test_helper_get_logger():
     provider.register_transient('logger', get_logger)
     logger = provider['logger']
     assert logger.name == __name__
-    assert logger.name == 'tests.test_utils'
+    assert logger.name == 'test_utils'
