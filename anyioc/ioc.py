@@ -190,6 +190,7 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         sp = ScopedServiceProvider(self._services.new_child())
         self.enter(sp)
+        sp.register_value(Symbols.provider_parent, self)
         return sp
 
     @property
@@ -211,6 +212,7 @@ class ServiceProvider(ScopedServiceProvider):
         provider_service_info = ProviderServiceInfo()
         self._services[Symbols.provider] = provider_service_info
         self._services[Symbols.provider_root] = ValueServiceInfo(self)
+        self._services[Symbols.provider_parent] = ValueServiceInfo(None)
         self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
         self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
         # service alias
