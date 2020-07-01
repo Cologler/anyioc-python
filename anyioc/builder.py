@@ -10,7 +10,7 @@ from .symbols import Symbols, _Symbol
 
 class ServiceProviderBuilder:
     '''
-    the high level register API for `ServiceProvider`.
+    provide decorator api for `ServiceProvider`.
     '''
     __slots__ = ('_provider', '_last_added_key')
 
