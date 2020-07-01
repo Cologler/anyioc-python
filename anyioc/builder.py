@@ -7,6 +7,14 @@
 
 from .ioc import ScopedServiceProvider, LifeTime
 from .symbols import Symbols, _Symbol
+from .utils import inject_by_anno, inject_by_name
+
+inject_by_table = {
+    'anno': inject_by_anno,
+    'inject_by_anno': inject_by_anno,
+    'name': inject_by_name,
+    'inject_by_name': inject_by_name
+}
 
 class ServiceProviderBuilder:
     '''
@@ -40,6 +48,12 @@ class ServiceProviderBuilder:
         - decorator return the factory.
         - non-decorator always return None
         '''
+
+        if isinstance(inject_by, str):
+            if inject_by in inject_by_table:
+                inject_by = inject_by_table[inject_by]
+            else:
+                raise ValueError(f'{inject_by} is not one of known `inject by` action.')
 
         def decorator(func):
             aliases = ()

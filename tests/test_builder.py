@@ -5,6 +5,8 @@
 #
 # ----------
 
+import pytest
+
 from anyioc import ServiceProvider
 
 from tests.assert_utils import assert_value_singleton, assert_value_scoped, assert_value_transient
@@ -18,7 +20,7 @@ def test_builder_register_key_canbe_none():
 
 def test_builder_register_key_canbe_a_list():
     provider = ServiceProvider()
-    @provider.builder.singleton(key=[1, 2])
+    @provider.builder.singleton([1, 2])
     def func():
         return 3
     assert provider[1] == 3
@@ -55,6 +57,29 @@ def test_builder_transient_as_decorator():
     def func():
         return ServiceProvider()
     assert_value_transient(provider, 1)
+
+def test_builder_register_inject_by_can_be_str_name():
+    provider = ServiceProvider()
+    provider.register_value('f1', 1)
+    provider.register_value('f2', 2)
+    @provider.builder.transient('wtf', inject_by='name')
+    def func(f1, f2):
+        return f1 + f2
+    assert 3 == provider['wtf']
+
+def test_builder_register_inject_by_can_be_str_anno():
+    provider = ServiceProvider()
+    provider.register_value(int, 10)
+    provider.register_value(str, '2')
+    @provider.builder.transient('wtf', inject_by='anno')
+    def func(f1: int, f2: str):
+        return f'{f1}{f2}'
+    assert '102' == provider['wtf']
+
+def test_builder_register_inject_by_cannot_be_other_strs():
+    provider = ServiceProvider()
+    with pytest.raises(ValueError, match='dsds is not one of known `inject by` action.'):
+        provider.builder.transient('wtf', inject_by='dsds')
 
 def test_builder_value():
     provider = ServiceProvider()
