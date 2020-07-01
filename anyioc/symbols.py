@@ -46,4 +46,3 @@ class Symbols:
 
     # get frame info of caller
     caller_frame = _Symbol('caller_frame')
-    

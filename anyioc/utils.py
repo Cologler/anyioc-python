@@ -229,8 +229,12 @@ def get_logger(ioc):
     from .symbols import Symbols
 
     fr = ioc[Symbols.caller_frame]
-    mo = inspect.getmodule(fr.frame)
-    return logging.getLogger(mo.__name__)
+    if fr.filename == '<stdin>':
+        name = '<stdin>'
+    else:
+        mo = inspect.getmodule(fr.frame)
+        name = mo.__name__
+    return logging.getLogger(name)
 
 # keep old func names:
 
