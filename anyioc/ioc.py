@@ -7,7 +7,6 @@
 
 from abc import abstractmethod
 from typing import Any, List
-from collections import ChainMap
 from contextlib import ExitStack
 
 from .err import ServiceNotFoundError

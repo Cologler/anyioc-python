@@ -5,10 +5,7 @@
 #
 # ----------
 
-from collections.abc import MutableMapping
-from collections import ChainMap
-
-class ServicesMap(ChainMap):
+class ServicesMap:
     def __init__(self, *maps):
         self.maps = list(maps) or [{}]
 
