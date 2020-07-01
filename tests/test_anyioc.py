@@ -113,3 +113,34 @@ def test_error_message():
 
     with raises(ServiceNotFoundError, match="unknown service: 'd'; resolve chain: 'a'->'b'->'c'->'d'"):
         provider['a']
+
+def test_get_many():
+    provider = ServiceProvider()
+    provider.register_transient('a', lambda ioc: 1)
+    provider.register_transient('a', lambda ioc: 2)
+    provider.register_transient('a', lambda ioc: 3)
+
+    assert [3, 2, 1] == provider.get_many('a')
+
+def test_get_many_from_empty():
+    provider = ServiceProvider()
+    assert [] == provider.get_many('a') # wont raise error
+
+def test_get_many_from_multilevel():
+    provider = ServiceProvider()
+    provider.register_transient('a', lambda ioc: 10)
+    provider.register_transient('a', lambda ioc: 11)
+
+    provider2 = provider.scope()
+    provider2.register_transient('a', lambda ioc: 20)
+    provider2.register_transient('a', lambda ioc: 21)
+
+    provider3 = provider2.scope()
+    provider3.register_transient('a', lambda ioc: 30)
+    provider3.register_transient('a', lambda ioc: 31)
+
+    provider4 = provider3.scope()
+    provider4.register_transient('a', lambda ioc: 40)
+    provider4.register_transient('a', lambda ioc: 41)
+
+    assert [31, 30, 21, 20, 11, 10] == provider3.get_many('a')

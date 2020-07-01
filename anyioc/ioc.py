@@ -6,12 +6,12 @@
 # ----------
 
 from abc import abstractmethod
-from typing import Any
-from collections import ChainMap
+from typing import Any, List
 from contextlib import ExitStack
 
 from .err import ServiceNotFoundError
 from .symbols import Symbols
+from .ioc_services import ServicesMap
 from .ioc_resolver import IServiceInfoResolver, ServiceInfoChainResolver
 from .ioc_service_info import (
     LifeTime,
@@ -51,7 +51,7 @@ class IServiceProvider:
 
 class ScopedServiceProvider(IServiceProvider):
 
-    def __init__(self, services: ChainMap):
+    def __init__(self, services: ServicesMap):
         super().__init__()
         self._services = services
         self._exit_stack = None
@@ -66,6 +66,9 @@ class ScopedServiceProvider(IServiceProvider):
         # load missing resolver and resolve service info.
         resolver: IServiceInfoResolver = self._services[Symbols.missing_resolver].get(self)
         return resolver.get(self, key)
+
+    def _get_service_info_list(self, key) -> List[IServiceInfo]:
+        return self._services.get_many(key)
 
     def __getitem__(self, key):
         service_info = self._get_service_info(key)
@@ -84,6 +87,27 @@ class ScopedServiceProvider(IServiceProvider):
             if len(err.resolve_chain) == 1:
                 return d
             raise
+
+    def get_many(self, key) -> List[Any]:
+        '''
+        get services by key.
+
+        ### example
+
+        when you registered multi services with the same key,
+        you can get them all:
+
+        ``` py
+        provider.register_value('a', 1)
+        provider.register_value('a', 2)
+        assert provider.get_many('a') == [2, 1] # rev order
+        ```
+        '''
+        service_infos = self._get_service_info_list(key)
+        try:
+            return [si.get(self) for si in service_infos]
+        except ServiceNotFoundError as err:
+            raise ServiceNotFoundError(key, *err.resolve_chain)
 
     def enter(self, context):
         '''
@@ -188,8 +212,9 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         create a scoped service provider.
         '''
-        sp = ScopedServiceProvider(self._services.new_child())
+        sp = ScopedServiceProvider(self._services.scope())
         self.enter(sp)
+        sp.register_value(Symbols.provider_parent, self)
         return sp
 
     @property
@@ -207,10 +232,11 @@ class ServiceProvider(ScopedServiceProvider):
     '''
 
     def __init__(self):
-        super().__init__(ChainMap())
+        super().__init__(ServicesMap())
         provider_service_info = ProviderServiceInfo()
         self._services[Symbols.provider] = provider_service_info
         self._services[Symbols.provider_root] = ValueServiceInfo(self)
+        self._services[Symbols.provider_parent] = ValueServiceInfo(None)
         self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
         self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
         # service alias

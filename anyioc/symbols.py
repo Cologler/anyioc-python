@@ -35,6 +35,9 @@ class Symbols:
     # the root `IServiceProvider`
     provider_root = _Symbol('provider_root')
 
+    # the parent of current `IServiceProvider`
+    provider_parent = _Symbol('provider_parent')
+
     # the cache dict from `IServiceProvider`
     cache = _Symbol('cache')
 

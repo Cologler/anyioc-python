@@ -57,15 +57,32 @@ def test_register_bind():
     assert provider['b'] == 'value'
 
 def test_predefined_keys():
+    map_to_self_keys = (
+        # str
+        'ioc', 'provider', 'service_provider',
+        # type
+        ServiceProvider, IServiceProvider,
+        # symbol
+        Symbols.provider
+    )
+
     provider = ServiceProvider()
+    for k in map_to_self_keys:
+        assert provider is provider[k]
+    assert provider is provider[Symbols.provider_root]
+    assert None is provider[Symbols.provider_parent]
+
     with provider.scope() as scoped:
-        assert scoped is scoped['ioc']
-        assert scoped is scoped['provider']
-        assert scoped is scoped['service_provider']
-        assert scoped is scoped[ServiceProvider]
-        assert scoped is scoped[IServiceProvider]
-        assert scoped is scoped[Symbols.provider]
-        assert provider is provider[Symbols.provider_root]
+        for k in map_to_self_keys:
+            assert scoped is scoped[k]
+        assert provider is scoped[Symbols.provider_root]
+        assert provider is scoped[Symbols.provider_parent]
+
+        with scoped.scope() as deep_scoped:
+            for k in map_to_self_keys:
+                assert deep_scoped is deep_scoped[k]
+            assert provider is deep_scoped[Symbols.provider_root]
+            assert scoped is deep_scoped[Symbols.provider_parent]
 
 def test_types():
     # since scoped is scoped[ServiceProvider]
