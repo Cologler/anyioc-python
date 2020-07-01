@@ -12,18 +12,13 @@ class ServiceProviderBuilder:
     '''
     provide decorator api for `ServiceProvider`.
     '''
-    __slots__ = ('_provider', '_last_added_key')
+    __slots__ = ('_provider')
 
     def __init__(self, provider: ScopedServiceProvider):
         self._provider = provider
-        self._last_added_key = None
-
-    @property
-    def last_added_key(self):
-        return self._last_added_key
 
     def _on_key_added(self, key):
-        self._last_added_key = key
+        pass
 
     def register(self, lifetime: LifeTime, key=None, factory=None, *, inject_by=None):
         '''
@@ -136,27 +131,17 @@ class ServiceProviderBuilder:
         '''
         return self.register(LifeTime.transient, key, factory, inject_by=inject_by)
 
-    def value(self, key, *value):
+    def value(self, key):
         '''
-        register a value by key.
-
-        this function can use like a decorator if only have 1 arguments.
-
-        if `key` is `None`, use a new `object()` as key.
-        you can get the generated new key by access `ServiceProviderBuilder.last_added_key`.
-
-        return the value.
+        get a decorator that use to register a singleton value by key.
         '''
-        if len(value) > 1:
-            raise TypeError(f'takes 1 or 2 arguments but {len(value)+1} was given')
 
         def decorator(value):
-            safe_key = key if key is not None else object()
-            self._provider.register_value(safe_key, value)
-            self._on_key_added(safe_key)
+            self._provider.register_value(key, value)
+            self._on_key_added(key)
             return value
 
-        return decorator(value[0]) if value else decorator
+        return decorator
 
     def group(self, group_key=None):
         '''

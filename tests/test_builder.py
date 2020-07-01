@@ -58,30 +58,22 @@ def test_builder_transient_as_decorator():
 
 def test_builder_value():
     provider = ServiceProvider()
-    key = provider.builder.value(1, 2)
-    assert provider[1] == 2
-
-def test_builder_value_none_key():
-    # since none key cannot get, we need to use group
-    provider = ServiceProvider()
-    builder = provider.builder
-    @builder.value(None)
+    @provider.builder.value('type:A')
     class A:
         pass
-    key = builder.last_added_key
+    assert provider['type:A'] == A
     assert isinstance(A, type)
-    assert provider[key] is A
 
 def test_builder_group():
     provider = ServiceProvider()
     group = provider.builder.group()
-    group.value(None, 2)
+    group.value(None)(2)
     assert provider[group] == (2, )
 
 def test_builder_group_with_group_key():
     provider = ServiceProvider()
     group = provider.builder.group('gk')
-    group.value(None, 2)
+    group.value(None)(2)
     assert provider[group] == (2, )
     assert provider['gk'] == (2, )
 
@@ -98,7 +90,7 @@ def test_builder_multi_level_group():
     provider = ServiceProvider()
     root_group = provider.builder.group()
     sub_group = root_group.group()
-    sub_group.value(None, 2)
+    sub_group.value(None)(2)
     assert provider[root_group] == ((2, ), )
 
 def test_builder_group_with_group_key_then_from_group_src_symbol():
