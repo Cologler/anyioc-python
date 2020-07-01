@@ -220,7 +220,7 @@ class ScopedServiceProvider(IServiceProvider):
     @property
     def builder(self):
         '''
-        get a new `ServiceProviderBuilder` for use high level api for this `ServiceProvider`.
+        get a new `ServiceProviderBuilder` wrapper for this `ServiceProvider`.
         '''
         from .builder import ServiceProviderBuilder
         return ServiceProviderBuilder(self)
