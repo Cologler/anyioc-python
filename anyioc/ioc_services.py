@@ -5,41 +5,37 @@
 #
 # ----------
 
+from typing import Dict, List, Any, Iterable
+
 class ServicesMap:
     def __init__(self, *maps):
-        self.maps = list(maps) or [{}]
+        self.maps: List[Dict[Any, list]] = list(maps) or [{}]
 
-    def __missing__(self, key):
-        raise KeyError(key)
-
-    def __getitem__(self, key):
+    def resolve(self, key):
+        '''
+        resolve items with reverse order.
+        '''
         for mapping in self.maps:
-            try:
-                services: list = mapping[key]
-                return services[-1]
-            except KeyError:
-                pass
-        return self.__missing__(key)
+            yield from reversed(mapping.get(key, []))
 
     def __setitem__(self, key, value):
-        mapping0: dict = self.maps[0]
-        services = mapping0.setdefault(key, [])
-        services.append(value)
+        self.maps[0].setdefault(key, []).append(value)
+
+    def __getitem__(self, key):
+        'get item or raise `KeyError`` if not found'
+        for value in self.resolve(key):
+            return value
+        raise KeyError(key)
 
     def get(self, key, default=None):
-        try:
-            return self[key]
-        except KeyError:
-            return default
+        'get item or `default` if not found'
+        for value in self.resolve(key):
+            return value
+        return default
 
     def get_many(self, key):
-        services = []
-        for mapping in self.maps:
-            try:
-                services.extend(reversed(mapping[key]))
-            except KeyError:
-                pass
-        return services
+        'get items as list'
+        return list(self.resolve(key))
 
     def scope(self):
         return self.__class__({}, *self.maps)
