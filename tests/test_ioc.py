@@ -39,12 +39,6 @@ def test_resolve_group():
     group_keys.append('float')
     assert provider['any'] == ('name', 1, 1.1)
 
-def test_resolve_group_then_from_group_src_symbol():
-    provider = ServiceProvider()
-    src = []
-    provider.register_group('group', src)
-    assert src is provider[Symbols.get_symbol_for_group_src('group')]
-
 def test_resolve_value():
     provider = ServiceProvider()
     provider.register_value('k', 'value')

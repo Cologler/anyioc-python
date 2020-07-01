@@ -195,8 +195,6 @@ class ScopedServiceProvider(IServiceProvider):
 
         equals `register_transient(key, lambda ioc: tuple(ioc[k] for k in keys))`
         '''
-        sym = Symbols.get_symbol_for_group_src(key)
-        self.register_value(sym, keys)
         return self.register_service_info(key, GroupedServiceInfo(keys))
 
     def register_bind(self, new_key, target_key):
