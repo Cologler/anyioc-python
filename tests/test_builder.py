@@ -64,18 +64,22 @@ def test_builder_value():
     assert provider['type:A'] == A
     assert isinstance(A, type)
 
-def test_builder_group():
-    provider = ServiceProvider()
-    group = provider.builder.group()
-    group.value(None)(2)
-    assert provider[group] == (2, )
-
-def test_builder_group_with_group_key():
+def test_builder_group_with_keys():
     provider = ServiceProvider()
     group = provider.builder.group('gk')
-    group.value(None)(2)
-    assert provider[group] == (2, )
-    assert provider['gk'] == (2, )
+    group.value(object())(2)
+    group.value(object())(4)
+    group.value(object())(6)
+    assert provider[group] == (2, 4, 6)
+    assert provider['gk'] == (2, 4, 6)
+
+def test_builder_group_with_no_keys():
+    provider = ServiceProvider()
+    group = provider.builder.group()
+    group.value(object())(2)
+    group.value(object())(4)
+    group.value(object())(6)
+    assert provider[group] == (2, 4, 6)
 
 def test_builder_group_as_decorator():
     provider = ServiceProvider()
@@ -92,4 +96,3 @@ def test_builder_multi_level_group():
     sub_group = root_group.group()
     sub_group.value(None)(2)
     assert provider[root_group] == ((2, ), )
-    

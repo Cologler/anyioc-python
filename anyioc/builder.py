@@ -143,21 +143,20 @@ class ServiceProviderBuilder:
 
         return decorator
 
-    def group(self, group_key=None):
+    def group(self, *keys):
         '''
-        add a new group into `ServiceProvider` by key `group_key`.
+        add a new group into `ServiceProvider` by keys,
+        return a group scoped `ServiceProviderBuilder` to build sub services.
 
-        if `group_key` is `None`, use return value as key.
-
-        return a `Group` instance as the unique key.
+        the return instance can also use like a unique key.
         '''
         from .utils import make_group
 
         group = Group(self._provider)
         self._provider.register_group(group, group)
         self._on_key_added(group)
-        if group_key is not None:
-            self._provider.register_bind(group_key, group)
+        for k in keys:
+            self._provider.register_bind(k, group)
         return group
 
 
