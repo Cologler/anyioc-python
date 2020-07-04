@@ -56,7 +56,7 @@ This is helpful if you writing a final application instead of a library/package.
 
 #### Module scoped and namespace scoped
 
-We also have module scoped `ServiceProvider` and namespace scoped `ServiceProvider`.
+anyioc also provide module scoped `ServiceProvider` and namespace scoped `ServiceProvider`.
 
 If you have a project:
 
