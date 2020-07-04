@@ -25,4 +25,23 @@ def test_symbol_caller_frame_from_deep():
         return mo.__name__
     provider.register_transient('name', get_name)
     assert provider['name'] == 'test_symbols'
-    
+
+def _create_scopes(provider: ServiceProvider, count: int=5):
+    providers = [provider]
+    for i in range(0, count):
+        providers.append(providers[-1].scope())
+    return providers
+
+def test_symbol_provider_root():
+    root_provider = ServiceProvider()
+    providers = _create_scopes(root_provider)
+    for provider in providers:
+        assert provider[Symbols.provider_root] is root_provider
+
+def test_symbol_provider_parent_for_root_provider():
+    assert ServiceProvider()[Symbols.provider_parent] is None
+
+def test_symbol_provider_parent_for_child_provider():
+    providers = _create_scopes(ServiceProvider())
+    for parent_index, provider in enumerate(providers[1:]):
+        assert provider[Symbols.provider_parent] is providers[parent_index]
