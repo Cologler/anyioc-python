@@ -7,23 +7,26 @@
 
 from .ioc import ScopedServiceProvider, LifeTime
 from .symbols import Symbols, _Symbol
+from .utils import inject_by_anno, inject_by_name
+
+inject_by_table = {
+    'anno': inject_by_anno,
+    'inject_by_anno': inject_by_anno,
+    'name': inject_by_name,
+    'inject_by_name': inject_by_name
+}
 
 class ServiceProviderBuilder:
     '''
-    the high level register API for `ServiceProvider`.
+    provide decorator api for `ServiceProvider`.
     '''
-    __slots__ = ('_provider', '_last_added_key')
+    __slots__ = ('_provider')
 
     def __init__(self, provider: ScopedServiceProvider):
         self._provider = provider
-        self._last_added_key = None
-
-    @property
-    def last_added_key(self):
-        return self._last_added_key
 
     def _on_key_added(self, key):
-        self._last_added_key = key
+        pass
 
     def register(self, lifetime: LifeTime, key=None, factory=None, *, inject_by=None):
         '''
@@ -45,6 +48,12 @@ class ServiceProviderBuilder:
         - decorator return the factory.
         - non-decorator always return None
         '''
+
+        if isinstance(inject_by, str):
+            if inject_by in inject_by_table:
+                inject_by = inject_by_table[inject_by]
+            else:
+                raise ValueError(f'{inject_by} is not one of known `inject by` action.')
 
         def decorator(func):
             aliases = ()
@@ -136,45 +145,32 @@ class ServiceProviderBuilder:
         '''
         return self.register(LifeTime.transient, key, factory, inject_by=inject_by)
 
-    def value(self, key, *value):
+    def value(self, key):
         '''
-        register a value by key.
-
-        this function can use like a decorator if only have 1 arguments.
-
-        if `key` is `None`, use a new `object()` as key.
-        you can get the generated new key by access `ServiceProviderBuilder.last_added_key`.
-
-        return the value.
+        get a decorator that use to register a singleton value by key.
         '''
-        if len(value) > 1:
-            raise TypeError(f'takes 1 or 2 arguments but {len(value)+1} was given')
 
         def decorator(value):
-            safe_key = key if key is not None else object()
-            self._provider.register_value(safe_key, value)
-            self._on_key_added(safe_key)
+            self._provider.register_value(key, value)
+            self._on_key_added(key)
             return value
 
-        return decorator(value[0]) if value else decorator
+        return decorator
 
-    def group(self, group_key=None):
+    def group(self, *keys):
         '''
-        add a new group into `ServiceProvider` by key `group_key`.
+        add a new group into `ServiceProvider` by keys,
+        return a group scoped `ServiceProviderBuilder` to build sub services.
 
-        if `group_key` is `None`, use return value as key.
-
-        return a `Group` instance as the unique key.
+        the return instance can also use like a unique key.
         '''
         from .utils import make_group
 
         group = Group(self._provider)
         self._provider.register_group(group, group)
         self._on_key_added(group)
-        if group_key is not None:
-            self._provider.register_bind(group_key, group)
-            sym = Symbols.get_symbol_for_group_src(group_key)
-            self._provider.register_value(sym, group)
+        for k in keys:
+            self._provider.register_bind(k, group)
         return group
 
 

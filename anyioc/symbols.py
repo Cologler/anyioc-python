@@ -46,15 +46,3 @@ class Symbols:
 
     # get frame info of caller
     caller_frame = _Symbol('caller_frame')
-
-    # the named group tag for builder
-    _group_src_tag = _Symbol('_group_src_tag')
-
-    @classmethod
-    def get_symbol_for_group_src(cls, group):
-        '''
-        get a symbol for get group source from `ServiceProvider`.
-
-        this may change after anyioc update (include return value type).
-        '''
-        return (cls._group_src_tag, group)

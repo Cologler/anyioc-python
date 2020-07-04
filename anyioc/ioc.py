@@ -18,6 +18,7 @@ from .ioc_service_info import (
     IServiceInfo,
     ServiceInfo,
     ProviderServiceInfo,
+    GetAttrServiceInfo,
     ValueServiceInfo,
     GroupedServiceInfo,
     BindedServiceInfo,
@@ -51,11 +52,12 @@ class IServiceProvider:
 
 class ScopedServiceProvider(IServiceProvider):
 
-    def __init__(self, services: ServicesMap):
+    def __init__(self, services: ServicesMap, parent=None):
         super().__init__()
         self._services = services
         self._exit_stack = None
-        self._services[Symbols.cache] = ValueServiceInfo({})
+        self._scoped_cache = {}
+        self._parent = parent
         self.__class__ = ServiceProvider # hack
 
     def _get_service_info(self, key) -> IServiceInfo:
@@ -195,8 +197,6 @@ class ScopedServiceProvider(IServiceProvider):
 
         equals `register_transient(key, lambda ioc: tuple(ioc[k] for k in keys))`
         '''
-        sym = Symbols.get_symbol_for_group_src(key)
-        self.register_value(sym, keys)
         return self.register_service_info(key, GroupedServiceInfo(keys))
 
     def register_bind(self, new_key, target_key):
@@ -212,15 +212,14 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         create a scoped service provider.
         '''
-        sp = ScopedServiceProvider(self._services.scope())
+        sp = ScopedServiceProvider(self._services.scope(), self)
         self.enter(sp)
-        sp.register_value(Symbols.provider_parent, self)
         return sp
 
     @property
     def builder(self):
         '''
-        get a new `ServiceProviderBuilder` for use high level api for this `ServiceProvider`.
+        get a new `ServiceProviderBuilder` wrapper for this `ServiceProvider`.
         '''
         from .builder import ServiceProviderBuilder
         return ServiceProviderBuilder(self)
@@ -236,7 +235,8 @@ class ServiceProvider(ScopedServiceProvider):
         provider_service_info = ProviderServiceInfo()
         self._services[Symbols.provider] = provider_service_info
         self._services[Symbols.provider_root] = ValueServiceInfo(self)
-        self._services[Symbols.provider_parent] = ValueServiceInfo(None)
+        self._services[Symbols.provider_parent] = GetAttrServiceInfo('_parent')
+        self._services[Symbols.cache] = GetAttrServiceInfo('_scoped_cache')
         self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
         self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
         # service alias

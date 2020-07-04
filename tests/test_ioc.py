@@ -39,12 +39,6 @@ def test_resolve_group():
     group_keys.append('float')
     assert provider['any'] == ('name', 1, 1.1)
 
-def test_resolve_group_then_from_group_src_symbol():
-    provider = ServiceProvider()
-    src = []
-    provider.register_group('group', src)
-    assert src is provider[Symbols.get_symbol_for_group_src('group')]
-
 def test_resolve_value():
     provider = ServiceProvider()
     provider.register_value('k', 'value')
@@ -69,20 +63,14 @@ def test_predefined_keys():
     provider = ServiceProvider()
     for k in map_to_self_keys:
         assert provider is provider[k]
-    assert provider is provider[Symbols.provider_root]
-    assert None is provider[Symbols.provider_parent]
 
     with provider.scope() as scoped:
         for k in map_to_self_keys:
             assert scoped is scoped[k]
-        assert provider is scoped[Symbols.provider_root]
-        assert provider is scoped[Symbols.provider_parent]
 
         with scoped.scope() as deep_scoped:
             for k in map_to_self_keys:
                 assert deep_scoped is deep_scoped[k]
-            assert provider is deep_scoped[Symbols.provider_root]
-            assert scoped is deep_scoped[Symbols.provider_parent]
 
 def test_types():
     # since scoped is scoped[ServiceProvider]

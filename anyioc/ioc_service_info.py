@@ -110,6 +110,19 @@ class ProviderServiceInfo(IServiceInfo):
         return provider
 
 
+class GetAttrServiceInfo(IServiceInfo):
+    '''getattr from current `ServiceProvider`.'''
+
+    __slots__ = ('_attr_info')
+
+    def __init__(self, *attr_info: tuple):
+        super().__init__()
+        self._attr_info = attr_info
+
+    def get(self, provider):
+        return getattr(provider, *self._attr_info)
+
+
 class ValueServiceInfo(IServiceInfo):
     '''a `IServiceInfo` use for get fixed value.'''
 
