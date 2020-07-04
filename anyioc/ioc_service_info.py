@@ -110,13 +110,17 @@ class ProviderServiceInfo(IServiceInfo):
         return provider
 
 
-class ParentProviderServiceInfo(IServiceInfo):
-    '''a `IServiceInfo` use for get parent `ServiceProvider`.'''
+class GetAttrServiceInfo(IServiceInfo):
+    '''getattr from current `ServiceProvider`.'''
 
-    __slots__ = ()
+    __slots__ = ('_attr_info')
+
+    def __init__(self, *attr_info: tuple):
+        super().__init__()
+        self._attr_info = attr_info
 
     def get(self, provider):
-        return provider._parent
+        return getattr(provider, *self._attr_info)
 
 
 class ValueServiceInfo(IServiceInfo):

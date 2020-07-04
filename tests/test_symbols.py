@@ -55,3 +55,13 @@ def test_symbol_provider_parent_get_many():
     providers = _create_scopes(ServiceProvider())
     for provider in providers:
         assert len(provider.get_many(Symbols.provider_parent)) == 1
+
+def test_symbol_cache():
+    providers = _create_scopes(ServiceProvider())
+    for provider in providers:
+        assert isinstance(provider[Symbols.cache], dict)
+
+def test_symbol_cache_get_many():
+    providers = _create_scopes(ServiceProvider())
+    for provider in providers:
+        assert len(provider.get_many(Symbols.cache)) == 1

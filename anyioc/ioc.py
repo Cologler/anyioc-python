@@ -18,7 +18,7 @@ from .ioc_service_info import (
     IServiceInfo,
     ServiceInfo,
     ProviderServiceInfo,
-    ParentProviderServiceInfo,
+    GetAttrServiceInfo,
     ValueServiceInfo,
     GroupedServiceInfo,
     BindedServiceInfo,
@@ -56,7 +56,7 @@ class ScopedServiceProvider(IServiceProvider):
         super().__init__()
         self._services = services
         self._exit_stack = None
-        self._services[Symbols.cache] = ValueServiceInfo({})
+        self._scoped_cache = {}
         self._parent = parent
         self.__class__ = ServiceProvider # hack
 
@@ -235,7 +235,8 @@ class ServiceProvider(ScopedServiceProvider):
         provider_service_info = ProviderServiceInfo()
         self._services[Symbols.provider] = provider_service_info
         self._services[Symbols.provider_root] = ValueServiceInfo(self)
-        self._services[Symbols.provider_parent] = ParentProviderServiceInfo()
+        self._services[Symbols.provider_parent] = GetAttrServiceInfo('_parent')
+        self._services[Symbols.cache] = GetAttrServiceInfo('_scoped_cache')
         self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
         self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
         # service alias
