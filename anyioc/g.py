@@ -11,7 +11,8 @@ import inspect
 import threading
 
 from .ioc import ServiceProvider
-from .utils import inject_by_name, dispose_at_exit, get_module_name
+from .utils import inject_by_name
+from ._utils import get_module_name, dispose_at_exit
 
 ioc = ServiceProvider()
 dispose_at_exit(ioc)

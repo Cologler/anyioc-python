@@ -10,6 +10,8 @@ from typing import List, Tuple, Union, Any, Dict, Callable
 import inspect
 from inspect import signature, Parameter
 
+from ._utils import get_module_name
+
 
 def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                **kw_args: Dict[str, Union[Tuple[Any], Tuple[Any, Any]]]):
@@ -159,18 +161,6 @@ def auto_enter(func):
         return item
     return new_func
 
-def dispose_at_exit(provider):
-    '''
-    register `provider.__exit__()` into `atexit` module.
-
-    return the `provider` itself.
-    '''
-    import atexit
-    @atexit.register
-    def provider_dispose_at_exit():
-        provider.__exit__(*sys.exc_info())
-    return provider
-
 def make_group(container, group_key=None):
     '''
     add a new group into `container` by key `group_key`.
@@ -193,12 +183,6 @@ def make_group(container, group_key=None):
     container.register_group(group_key, group_keys)
 
     return add_next_key
-
-def get_module_name(fr: inspect.FrameInfo):
-    'get module name from frame info'
-    mo = inspect.getmodule(fr.frame)
-    name = '<stdin>' if mo is None else mo.__name__
-    return name
 
 def get_logger(ioc):
     '''
