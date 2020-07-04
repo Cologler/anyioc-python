@@ -18,6 +18,7 @@ from .ioc_service_info import (
     IServiceInfo,
     ServiceInfo,
     ProviderServiceInfo,
+    ParentProviderServiceInfo,
     ValueServiceInfo,
     GroupedServiceInfo,
     BindedServiceInfo,
@@ -51,11 +52,12 @@ class IServiceProvider:
 
 class ScopedServiceProvider(IServiceProvider):
 
-    def __init__(self, services: ServicesMap):
+    def __init__(self, services: ServicesMap, parent=None):
         super().__init__()
         self._services = services
         self._exit_stack = None
         self._services[Symbols.cache] = ValueServiceInfo({})
+        self._parent = parent
         self.__class__ = ServiceProvider # hack
 
     def _get_service_info(self, key) -> IServiceInfo:
@@ -210,9 +212,8 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         create a scoped service provider.
         '''
-        sp = ScopedServiceProvider(self._services.scope())
+        sp = ScopedServiceProvider(self._services.scope(), self)
         self.enter(sp)
-        sp.register_value(Symbols.provider_parent, self)
         return sp
 
     @property
@@ -234,7 +235,7 @@ class ServiceProvider(ScopedServiceProvider):
         provider_service_info = ProviderServiceInfo()
         self._services[Symbols.provider] = provider_service_info
         self._services[Symbols.provider_root] = ValueServiceInfo(self)
-        self._services[Symbols.provider_parent] = ValueServiceInfo(None)
+        self._services[Symbols.provider_parent] = ParentProviderServiceInfo()
         self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
         self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
         # service alias

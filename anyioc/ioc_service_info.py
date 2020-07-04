@@ -110,6 +110,15 @@ class ProviderServiceInfo(IServiceInfo):
         return provider
 
 
+class ParentProviderServiceInfo(IServiceInfo):
+    '''a `IServiceInfo` use for get parent `ServiceProvider`.'''
+
+    __slots__ = ()
+
+    def get(self, provider):
+        return provider._parent
+
+
 class ValueServiceInfo(IServiceInfo):
     '''a `IServiceInfo` use for get fixed value.'''
 

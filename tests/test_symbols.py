@@ -38,6 +38,11 @@ def test_symbol_provider_root():
     for provider in providers:
         assert provider[Symbols.provider_root] is root_provider
 
+def test_symbol_provider_root_get_many():
+    providers = _create_scopes(ServiceProvider())
+    for provider in providers:
+        assert len(provider.get_many(Symbols.provider_root)) == 1
+
 def test_symbol_provider_parent_for_root_provider():
     assert ServiceProvider()[Symbols.provider_parent] is None
 
@@ -45,3 +50,8 @@ def test_symbol_provider_parent_for_child_provider():
     providers = _create_scopes(ServiceProvider())
     for parent_index, provider in enumerate(providers[1:]):
         assert provider[Symbols.provider_parent] is providers[parent_index]
+
+def test_symbol_provider_parent_get_many():
+    providers = _create_scopes(ServiceProvider())
+    for provider in providers:
+        assert len(provider.get_many(Symbols.provider_parent)) == 1
