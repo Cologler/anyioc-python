@@ -11,7 +11,7 @@ import inspect
 import threading
 
 from .ioc import ServiceProvider
-from .utils import inject_by_name, dispose_at_exit
+from .utils import inject_by_name, dispose_at_exit, get_module_name
 
 ioc = ServiceProvider()
 dispose_at_exit(ioc)
@@ -30,6 +30,9 @@ def _get_module_provider(module_name: str):
             if provider is None:
                 provider = ServiceProvider()
                 dispose_at_exit(provider)
+                _module_scoped_providers[module_name] = provider
+
+                # auto init ioc
                 try:
                     init_ioc = importlib.import_module(module_name + '.init_ioc')
                 except ImportError:
@@ -38,8 +41,11 @@ def _get_module_provider(module_name: str):
                     conf_ioc = getattr(init_ioc, 'conf_ioc', None)
                     if conf_ioc is not None:
                         conf_ioc(provider)
-                _module_scoped_providers[module_name] = provider
     return provider
+
+def _get_caller_module_name():
+    fr = inspect.getouterframes(inspect.currentframe())[2]
+    return get_module_name(fr)
 
 def get_module_provider(module_name: str=None) -> ServiceProvider:
     '''
@@ -54,9 +60,7 @@ def get_module_provider(module_name: str=None) -> ServiceProvider:
     ```
     '''
     if module_name is None:
-        fr = inspect.getouterframes(inspect.currentframe())[1]
-        mo = inspect.getmodule(fr.frame)
-        module_name = mo.__name__
+        module_name = _get_caller_module_name()
 
     if not isinstance(module_name, str):
         raise TypeError
@@ -72,9 +76,7 @@ def get_namespace_provider(namespace: str=None) -> ServiceProvider:
     for example, `get_namespace_provider('A.B.C.D')` is equals `get_module_provider('A')`
     '''
     if namespace is None:
-        fr = inspect.getouterframes(inspect.currentframe())[1]
-        mo = inspect.getmodule(fr.frame)
-        namespace = mo.__name__
+        namespace = _get_caller_module_name()
 
     if not isinstance(namespace, str):
         raise TypeError

@@ -7,6 +7,7 @@
 
 import sys
 from typing import List, Tuple, Union, Any, Dict, Callable
+import inspect
 from inspect import signature, Parameter
 
 
@@ -212,6 +213,12 @@ def find_keys(obj):
 
     return keys
 
+def get_module_name(fr: inspect.FrameInfo):
+    'get module name from frame info'
+    mo = inspect.getmodule(fr.frame)
+    name = '<stdin>' if mo is None else mo.__name__
+    return name
+
 def get_logger(ioc):
     '''
     a helper that use to get logger from ioc.
@@ -229,11 +236,7 @@ def get_logger(ioc):
     from .symbols import Symbols
 
     fr = ioc[Symbols.caller_frame]
-    if fr.filename == '<stdin>':
-        name = '<stdin>'
-    else:
-        mo = inspect.getmodule(fr.frame)
-        name = mo.__name__
+    name = get_module_name(fr)
     return logging.getLogger(name)
 
 # keep old func names:
