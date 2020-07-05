@@ -43,6 +43,13 @@ class IServiceProvider:
         raise NotImplementedError
 
     @abstractmethod
+    def get_many(self, key) -> List[Any]:
+        '''
+        get services by key.
+        '''
+        raise NotImplementedError
+
+    @abstractmethod
     def scope(self):
         '''
         create a scoped service provider for get scoped services.
