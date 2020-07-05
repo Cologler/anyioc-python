@@ -11,7 +11,7 @@ from contextlib import ExitStack
 
 from .err import ServiceNotFoundError
 from .symbols import Symbols
-from .ioc_services import ServicesMap
+from ._servicesmap import ServicesMap
 from .ioc_resolver import IServiceInfoResolver, ServiceInfoChainResolver
 from .ioc_service_info import (
     LifeTime,
