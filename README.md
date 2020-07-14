@@ -38,6 +38,13 @@ And use following methods to resolve services:
 
 *`get` return `None` if the service was not found, but `__getitem__` will raise a `ServiceNotFoundError`.*
 
+### Thread safety
+
+- Root `ServiceProvider` is thread-safe.
+- Scoped `ServiceProvider` is **NOT** thread-safe.
+- Singleton service is thread-safe.
+- Value service is thread-safe.
+
 ### Global `ServiceProvider`
 
 #### Process scoped
