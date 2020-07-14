@@ -18,17 +18,32 @@ assert value == 102
 
 ## Details
 
-### Features
+### Register and resolve
 
-By default, you can use methods of `ServiceProvider` to register services with lifetime:
+By default, you can use following methods to register services:
 
-* `register_singleton(key, factory)`
-* `register_scoped(key, factory)`
-* `register_transient(key, factory)`
-* `register(key, factory, lifetime)`
-* `register_value(key, value)`
-* `register_group(key, keys)`
-* `register_bind(new_key, target_key)`
+- `ServiceProvider.register_singleton(key, factory)`
+- `ServiceProvider.register_scoped(key, factory)`
+- `ServiceProvider.register_transient(key, factory)`
+- `ServiceProvider.register(key, factory, lifetime)`
+- `ServiceProvider.register_value(key, value)`
+- `ServiceProvider.register_group(key, keys)`
+- `ServiceProvider.register_bind(new_key, target_key)`
+
+And use following methods to resolve services:
+
+- `ServiceProvider.__getitem__(key)`
+- `ServiceProvider.get(key)`
+- `ServiceProvider.get_many(key)`
+
+*`get` return `None` if the service was not found, but `__getitem__` will raise a `ServiceNotFoundError`.*
+
+### Thread safety
+
+- Root `ServiceProvider` is thread-safe.
+- Scoped `ServiceProvider` is **NOT** thread-safe.
+- Singleton service is thread-safe.
+- Value service is thread-safe.
 
 ### Global `ServiceProvider`
 
@@ -36,17 +51,19 @@ By default, you can use methods of `ServiceProvider` to register services with l
 
 By default, you should create your `ServiceProvider`.
 
-However, we can use a global `ServiceProvider` to share services in python process.
+However, anyioc provide a singleton global `ServiceProvider` to share services in python process.
 
 ``` py
 from anyioc.g import ioc
 
-# ioc is a global `ServiceProvider` instance
+# ioc just a global `ServiceProvider` instance
 ```
+
+This is helpful if you writing a final application instead of a library/package.
 
 #### Module scoped and namespace scoped
 
-Also we have module scoped `ServiceProvider` and namespace scoped `ServiceProvider`.
+anyioc also provide module scoped `ServiceProvider` and namespace scoped `ServiceProvider`.
 
 If you have a project:
 
@@ -83,21 +100,14 @@ assert provider is get_module_provider('your_package')
 
 There are some predefined string keys you can use direct, but you still can overwrite it:
 
-* `ioc` - get current scoped `ServiceProvider` instance.
-* `provider` - alias of `ioc`
-* `service_provider` - alias of `ioc`
+- `ioc` - get current scoped `ServiceProvider` instance.
+- `provider` - alias of `ioc`
+- `service_provider` - alias of `ioc`
 
 And predefined types:
 
-* `ServiceProvider`
-* `IServiceProvider`
-
-### `provider.get()` vs `provider[]`
-
-There are two ways to get services from `ServiceProvider`:
-
-* `provider[]` will raise `ServiceNotFoundError` if the service was not found;
-* `provider.get()` only return `None` if the service was not found.
+- `ServiceProvider` - alias of `ioc`
+- `IServiceProvider` - alias of `ioc`
 
 ### IServiceInfoResolver
 
@@ -112,15 +122,16 @@ from anyioc.ioc_resolver import ImportServiceInfoResolver
 
 import sys
 provider = ServiceProvider()
-provider[Symbols.missing_resolver].append(ImportServiceInfoResolver().cache())
+resolver = ImportServiceInfoResolver().cache() # use `.cache()` can cache the results and prevent resolve again.
+provider[Symbols.missing_resolver].append(resolver)
 assert sys is provider['sys']
 ```
 
-*`.cache()` can cache the results.*
-
 There are other builtin resolvers:
 
-* `ImportServiceInfoResolver` - import module by name from a `str` key
-* `TypesServiceInfoResolver` - create instance by type from a `type` key
-* `TypeNameServiceInfoResolver` - create instance by type name from a `str` key
-* `TypingServiceInfoResolver` - get services tuple by keys from a `typing.Tuple` key.
+- `ImportServiceInfoResolver` - import module by name from a `str` key
+- `TypesServiceInfoResolver` - create instance by type from a `type` key
+- `TypeNameServiceInfoResolver` - create instance by type name from a `str` key
+- `TypingServiceInfoResolver` - get services tuple by keys from a `typing.Tuple` key.
+
+**`IServiceInfoResolver` only work when service was missing.**

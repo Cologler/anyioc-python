@@ -10,6 +10,7 @@ from anyioc.g import (
     ioc,
     get_module_provider, get_namespace_provider
 )
+from anyioc.symbols import Symbols
 
 from tests.assert_utils import (
     assert_value_singleton,
@@ -38,3 +39,7 @@ def test_get_namespace_provider():
     assert get_namespace_provider('A.B.C') is get_module_provider('A')
 
     assert isinstance(get_namespace_provider(), ServiceProvider)
+
+def test_scoped_provider_is_provider_root():
+    provider = get_namespace_provider('a.b')
+    assert provider[Symbols.provider_root] is provider

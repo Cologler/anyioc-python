@@ -7,11 +7,12 @@
 
 from abc import abstractmethod
 from typing import Any, List
-from contextlib import ExitStack
+from contextlib import ExitStack, nullcontext
+from threading import RLock
 
 from .err import ServiceNotFoundError
 from .symbols import Symbols
-from .ioc_services import ServicesMap
+from ._servicesmap import ServicesMap
 from .ioc_resolver import IServiceInfoResolver, ServiceInfoChainResolver
 from .ioc_service_info import (
     LifeTime,
@@ -43,6 +44,13 @@ class IServiceProvider:
         raise NotImplementedError
 
     @abstractmethod
+    def get_many(self, key) -> List[Any]:
+        '''
+        get services by key.
+        '''
+        raise NotImplementedError
+
+    @abstractmethod
     def scope(self):
         '''
         create a scoped service provider for get scoped services.
@@ -59,6 +67,10 @@ class ScopedServiceProvider(IServiceProvider):
         self._scoped_cache = {}
         self._parent = parent
         self.__class__ = ServiceProvider # hack
+        if parent is None: # root provider
+            self._lock = RLock()
+        else:
+            self._lock = nullcontext()
 
     def _get_service_info(self, key) -> IServiceInfo:
         try:
@@ -117,16 +129,19 @@ class ScopedServiceProvider(IServiceProvider):
 
         returns the result of the `context.__enter__()` method.
         '''
-        if self._exit_stack is None:
-            self._exit_stack = ExitStack()
-        return self._exit_stack.enter_context(context)
+        with self._lock:
+            if self._exit_stack is None:
+                self._exit_stack = ExitStack()
+            return self._exit_stack.enter_context(context)
 
     def __enter__(self):
         return self
 
     def __exit__(self, *args):
-        if self._exit_stack is not None:
-            self._exit_stack.__exit__(*args)
+        with self._lock:
+            if self._exit_stack is not None:
+                self._exit_stack.__exit__(*args)
+                self._exit_stack = None
 
     def register_service_info(self, key, service_info: IServiceInfo):
         '''

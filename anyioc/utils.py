@@ -7,7 +7,10 @@
 
 import sys
 from typing import List, Tuple, Union, Any, Dict, Callable
+import inspect
 from inspect import signature, Parameter
+
+from ._utils import get_module_name
 
 
 def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
@@ -158,18 +161,6 @@ def auto_enter(func):
         return item
     return new_func
 
-def dispose_at_exit(provider):
-    '''
-    register `provider.__exit__()` into `atexit` module.
-
-    return the `provider` itself.
-    '''
-    import atexit
-    @atexit.register
-    def provider_dispose_at_exit():
-        provider.__exit__(*sys.exc_info())
-    return provider
-
 def make_group(container, group_key=None):
     '''
     add a new group into `container` by key `group_key`.
@@ -193,25 +184,6 @@ def make_group(container, group_key=None):
 
     return add_next_key
 
-def find_keys(obj):
-    keys = []
-
-    if isinstance(obj, type):
-        try:
-            # only hashable() canbe key
-            hash(obj)
-            keys.append(obj)
-        except TypeError:
-            pass
-
-    try:
-        name = getattr(obj, '__name__')
-        keys.append(name)
-    except AttributeError:
-        pass
-
-    return keys
-
 def get_logger(ioc):
     '''
     a helper that use to get logger from ioc.
@@ -229,11 +201,7 @@ def get_logger(ioc):
     from .symbols import Symbols
 
     fr = ioc[Symbols.caller_frame]
-    if fr.filename == '<stdin>':
-        name = '<stdin>'
-    else:
-        mo = inspect.getmodule(fr.frame)
-        name = mo.__name__
+    name = get_module_name(fr)
     return logging.getLogger(name)
 
 # keep old func names:
