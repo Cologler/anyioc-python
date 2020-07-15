@@ -72,13 +72,14 @@ def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
 
 def inject_by_key_selector(selector: Callable[[Parameter], Any]):
     '''
-    return a decorator that use to convert a callable to `(ioc) => any` signature
-    with auto inject arguments by selector.
+    inject arguments by `selector`.
 
-    `selector` should be a callcable which accept a `inspect.Parameter` object as argument,
+    return a decorator that use to wrap a callable with signature `(ioc) => any`.
+
+    `selector` should be a callable which accept a `inspect.Parameter` object as argument,
     return the key use for inject.
 
-    Note: *var keyword parameter and var positional parameter will be ignore.*
+    Note: var keyword parameters and var positional parameters will be ignore.
     '''
 
     if not callable(selector):
@@ -102,11 +103,26 @@ def inject_by_key_selector(selector: Callable[[Parameter], Any]):
 
 def inject_by_name(func=None):
     '''
-    convert a callable to `(ioc) => any` signature with auto inject arguments by parameter name.
+    wrap a callable with signature `(ioc) => any` for inject arguments by parameter name.
 
-    return a decorator if func is `None`.
+    return a decorator when `func` is `None`.
 
-    Note: *var keyword parameter and var positional parameter will be ignore.*
+    ### Example:
+
+    ``` py
+    @inject_by_name
+    def func(a, b='x'):
+        return a + b
+    ```
+
+    is equals:
+
+    ``` py
+    def func(ioc):
+        def _func(a, b):
+            return a + b
+        return _func(a=ioc['a'], b=ioc.get('b', 'x'))
+    ```
     '''
     decorator = inject_by_key_selector(lambda x: x.name)
 
@@ -114,15 +130,30 @@ def inject_by_name(func=None):
 
 def inject_by_anno(func=None, *, use_name_if_empty: bool = False):
     '''
-    convert a callable to `(ioc) => any` signature with auto inject arguments by parameter annotation.
+    wrap a callable with signature `(ioc) => any` for inject arguments by parameter annotation.
 
-    return a decorator if func is `None`.
+    return a decorator when `func` is `None`.
 
     Options:
 
-    - `use_name_if_empty`: whether use `Parameter.name` as key when `Parameter.annotation` is empty.
+    - `use_name_if_empty`: whether use `Parameter.name` as key when the `Parameter.annotation` is empty.
 
-    Note: *var keyword parameter and var positional parameter will be ignore.*
+    ### Example:
+
+    ``` py
+    @inject_by_anno
+    def func(a: int, b: str='x'):
+        return a + b
+    ```
+
+    is equals:
+
+    ``` py
+    def func(ioc):
+        def _func(a, b):
+            return a + b
+        return _func(a=ioc[int], b=ioc.get(str, 'x'))
+    ```
     '''
     def decorator(func):
         def selector(param: Parameter):
@@ -133,7 +164,7 @@ def inject_by_anno(func=None, *, use_name_if_empty: bool = False):
                 elif param.default is Parameter.empty:
                     raise ValueError(f'annotation of args {param.name} is empty.')
                 else:
-                    # use `object()` for ensure you never get any value.
+                    # use `object()` as key to ensure never get any value from container.
                     ioc_key = object()
             else:
                 ioc_key = anno
@@ -145,11 +176,29 @@ def inject_by_anno(func=None, *, use_name_if_empty: bool = False):
 
 def inject_by_keys(**keys):
     '''
-    return a decorator that use to convert a callable to `(ioc) => any` signature
-    with auto inject arguments by keys.
+    inject arguments by `keys`.
+
+    return a decorator that use to wrap a callable with signature `(ioc) => any`.
 
     - keys should be parameter name of func.
     - values are the key that use to get service from service provider.
+
+    ### Example:
+
+    ``` py
+    @inject_by_keys(a='key1', b='key2')
+    def func(a, b):
+        return a + b
+    ```
+
+    is equals:
+
+    ``` py
+    def func(ioc):
+        def _func(a, b):
+            return a + b
+        return _func(a=ioc['key1'], b=ioc['key2'])
+    ```
     '''
 
     kw_args = dict((k, (v, )) for k, v in keys.items())
