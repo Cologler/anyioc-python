@@ -16,13 +16,17 @@ from ._utils import get_module_name
 def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                **kw_args: Dict[str, Union[Tuple[Any], Tuple[Any, Any]]]):
     '''
-    return a decorator that use to convert a callable to `(ioc) => any` signature.
+    return a decorator that use to wrap a callable with signature `(ioc) => any`.
 
-    each arguments must be a tuple, each tuple can contains 1 or 2 elements.
-    the 1st element is the key for get service from ioc container;
-    the 2rd element will be the default value if provide.
+    for each item in `pos_args` and each value in `kw_args`:
 
-    Example:
+    - must be a tuple, with 1 or 2 elements;
+    - element 1 is the key for get service from `ServiceProvider` container;
+    - element 2 is the default value if provide,
+      otherwise will use `ServiceProvider.__getitem__()` to get service;
+    -
+
+    ### Example:
 
     ``` py
     @injectable(a=('key1', 1), b=('key2'))
@@ -30,7 +34,7 @@ def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
         return a + b
     ```
 
-    equals:
+    is equals:
 
     ``` py
     def wrapper(ioc):
