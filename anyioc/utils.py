@@ -86,7 +86,7 @@ def inject_by_key_selector(selector: Callable[[Parameter], Any]):
         for param in params:
             ioc_key = selector(param)
             val = (ioc_key, ) if param.default is Parameter.empty else (ioc_key, param.default)
-            if param.kind == Parameter.POSITIONAL_OR_KEYWORD:
+            if param.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD):
                 pos_args.append(val)
             elif param.kind == Parameter.KEYWORD_ONLY:
                 kw_args[param.name] = val
