@@ -37,8 +37,10 @@ def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
     is equals:
 
     ``` py
-    def wrapper(ioc):
-        return func(a=ioc.get('key1', 1), b=ioc['key2'])
+    def func(ioc):
+        def _func(a, b):
+            return a + b
+        return _func(a=ioc.get('key1', 1), b=ioc['key2'])
     ```
     '''
     for tup in list(pos_args) + list(kw_args.values()):
