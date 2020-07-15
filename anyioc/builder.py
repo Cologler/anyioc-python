@@ -77,7 +77,7 @@ class ServiceProviderBuilder:
         if factory is None:
             return decorator
         else:
-            decorator(factory)
+            return decorator(factory)
 
     def singleton(self, key=None, factory=None, *, inject_by=None):
         '''
