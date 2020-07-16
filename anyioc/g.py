@@ -6,9 +6,11 @@
 # ----------
 
 import importlib
+import importlib.util
 import functools
 import inspect
 import threading
+import logging
 
 from .ioc import ServiceProvider
 from .utils import inject_by_name
@@ -22,6 +24,12 @@ dispose_at_exit(ioc)
 _module_scoped_providers = {}
 _module_scoped_lock = threading.RLock()
 
+def _is_module_exists(module_name: str) -> bool:
+    try:
+        return importlib.util.find_spec(module_name) is not None
+    except ModuleNotFoundError:
+        return False
+
 def _get_module_provider(module_name: str):
     'get or create module provider'
     provider = _module_scoped_providers.get(module_name)
@@ -34,11 +42,9 @@ def _get_module_provider(module_name: str):
                 _module_scoped_providers[module_name] = provider
 
                 # auto init ioc
-                try:
-                    init_ioc = importlib.import_module(module_name + '.init_ioc')
-                except ImportError:
-                    init_ioc = None
-                if init_ioc is not None:
+                initioc_module_name = module_name + '.init_ioc'
+                if _is_module_exists(initioc_module_name):
+                    init_ioc = importlib.import_module(initioc_module_name)
                     conf_ioc = getattr(init_ioc, 'conf_ioc', None)
                     if conf_ioc is not None:
                         conf_ioc(provider)
