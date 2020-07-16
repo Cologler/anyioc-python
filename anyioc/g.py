@@ -10,7 +10,6 @@ import importlib.util
 import functools
 import inspect
 import threading
-import logging
 
 from .ioc import ServiceProvider
 from .utils import inject_by_name
