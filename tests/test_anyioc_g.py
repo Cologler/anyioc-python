@@ -5,6 +5,8 @@
 #
 # ----------
 
+from pytest import raises
+
 from anyioc.g import (
     ServiceProvider,
     ioc,
@@ -47,3 +49,11 @@ def test_scoped_provider_is_provider_root():
 def test_get_module_provider_auto_conf_ioc():
     provider = get_module_provider('module1')
     assert provider['name'] == '6c660c7f-ff95-46cf-9d24-a92a9489913c'
+
+def test_get_module_provider_args_must_be_string():
+    with raises(TypeError):
+        get_module_provider(object())
+
+def test_get_namespace_provider_args_must_be_string():
+    with raises(TypeError):
+        get_namespace_provider(object())
