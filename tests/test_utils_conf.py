@@ -43,7 +43,8 @@ def test_load_conf_with_services_dict():
             ),
             'fqufe': dict(
                 factory=f'{__name__}:A',
-                inject_by='anno'
+                inject_by='anno',
+                lifetime='singleton'
             ),
             'fjndau': dict(
                 factory=dict(module=__name__, name='A'),

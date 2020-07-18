@@ -141,12 +141,15 @@ class _ConfLoader:
                 raise BadConfError(f'<{path}/factory> is not a callable.')
 
         # lifetime
-        lifetime = service_conf.pop('lifetime', 'transient')
-        if not isinstance(lifetime, str) or lifetime not in LifeTime.__members__:
-            one_of = ', '.join(LifeTime.__members__)
-            raise BadConfError(
-                f'value of <{path}/lifetime> ({lifetime!r}) is not one of ({one_of}).')
-        lifetime = LifeTime.__members__[lifetime]
+        lifetime = service_conf.pop('lifetime', LifeTime.transient)
+        if isinstance(lifetime, LifeTime):
+            pass
+        else:
+            if not isinstance(lifetime, str) or lifetime not in LifeTime.__members__:
+                one_of = ', '.join(LifeTime.__members__)
+                raise BadConfError(
+                    f'value of <{path}/lifetime> ({lifetime!r}) is not one of ({one_of}).')
+            lifetime = LifeTime.__members__[lifetime]
 
         # inject_by
         inject_by = service_conf.pop('inject_by', None)
