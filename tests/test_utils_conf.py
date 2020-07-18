@@ -7,7 +7,7 @@
 
 from pytest import raises
 
-from anyioc import ServiceProvider
+from anyioc import ServiceProvider, LifeTime
 from anyioc.utils_conf import BadConfError, load_conf
 
 def from_conf(conf: dict):
@@ -48,7 +48,8 @@ def test_load_conf_with_services_dict():
             ),
             'fjndau': dict(
                 factory=dict(module=__name__, name='A'),
-                enter=True
+                enter=True,
+                lifetime=LifeTime.scoped
             )
         }
     })
