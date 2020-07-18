@@ -6,3 +6,4 @@
 # ----------
 
 from .ioc import IServiceProvider, ServiceProvider, ServiceNotFoundError
+from .ioc_service_info import LifeTime
