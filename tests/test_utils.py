@@ -15,15 +15,15 @@ from anyioc.utils import (
 
 def test_inject_by_name():
     class SomeClass:
-        def __init__(self, name_1, name_2):
-            self.value = (name_1, name_2)
+        def __init__(self, name_1, name_2, *, name_3=77):
+            self.value = (name_1, name_2, name_3)
 
     provider = ServiceProvider()
     provider.register_transient('name_1', lambda _: 15)
     provider.register_transient('name_2', lambda _: 18)
     provider.register_transient('some_class', inject_by_name(SomeClass))
     instance = provider.get('some_class')
-    assert instance.value == (15, 18)
+    assert instance.value == (15, 18, 77)
 
 def test_inject_by_name_with_error():
     class SomeClass:
