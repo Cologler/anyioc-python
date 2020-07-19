@@ -163,7 +163,7 @@ class _ConfLoader:
                     if not isinstance(name, str):
                         raise BadConfError(
                             f'key of <{path}/inject_by> must be str.')
-                inject_by = inject_by_keys(**inject_by.copy())
+                inject_by = inject_by_keys(**inject_by)
             else:
                 raise BadConfError(f'<{path}/inject_by> is not either str or dict.')
             factory = inject_by(factory)
