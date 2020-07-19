@@ -46,7 +46,6 @@ def _ensure_items_of_list_has_field(path: str, l: list, field: str):
         if field not in v:
             raise BadConfError(f'<{p}> miss {field!r} field.')
 
-
 def _convert_dict_to_list(path: str, d: dict) -> list:
     '''
     convert dict to list. put the keys of dict into item of list.
@@ -65,6 +64,18 @@ def _convert_dict_to_list(path: str, d: dict) -> list:
         rv.append(v)
     return rv
 
+def _factory_getattr_from_module(path: str, mod, fullname: str):
+    names = fullname.split('.')
+    assert names
+    if not all(n for n in names):
+        raise BadConfError(f'name of <{path}/factory> contain empty part.')
+    try:
+        attr = mod
+        for name in names:
+            attr = getattr(attr, name)
+        return attr
+    except AttributeError:
+        raise BadConfError(f'<{path}/factory>: no such attr {fullname!r} on module {mod.__name__!r}.')
 
 class _ConfLoader:
     def __init__(self, provider: ServiceProvider):
@@ -117,26 +128,28 @@ class _ConfLoader:
                 if len(parts) != 2:
                     raise BadConfError(
                         f'value of <{path}/factory> should be a `module-name:callable-name` like str.')
-                fac_mod_name, fac_func_name = parts
+                factory_module_name, factory_name = parts
             elif isinstance(factory, dict):
                 factory = factory.copy()
-                fac_mod_name = factory.pop('module', None)
-                if not isinstance(fac_mod_name, str):
+                factory_module_name = factory.pop('module', None)
+                if not isinstance(factory_module_name, str):
                     raise BadConfError(f'value of <{path}/factory/module> should be a str.')
-                fac_func_name = factory.pop('name', None)
-                if not isinstance(fac_func_name, str):
+                factory_name = factory.pop('name', None)
+                if not isinstance(factory_name, str):
                     raise BadConfError(f'value of <{path}/factory/name> should be a str.')
             else:
                 raise BadConfError(f'value of <{path}/factory> is not either str or dict.')
 
+            if not factory_module_name:
+                raise BadConfError(f'value of <{path}/factory/module> is empty.')
+            if not factory_name:
+                raise BadConfError(f'value of <{path}/factory/name> is empty.')
+
             try:
-                mod = import_module(fac_mod_name)
+                mod = import_module(factory_module_name)
             except ImportError:
-                raise BadConfError(f'<{path}/factory> required a unable import module `{fac_mod_name}`.')
-            try:
-                factory = getattr(mod, fac_func_name)
-            except AttributeError:
-                raise BadConfError(f'<{path}/factory>: no such attr {fac_func_name!r} on module {fac_mod_name!r}.')
+                raise BadConfError(f'<{path}/factory> required a unable import module `{factory_module_name}`.')
+            factory = _factory_getattr_from_module(path, mod, factory_name)
             if not callable(factory):
                 raise BadConfError(f'<{path}/factory> is not a callable.')
 
