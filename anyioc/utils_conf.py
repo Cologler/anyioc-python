@@ -19,17 +19,14 @@ class BadConfError(Exception):
     '''
 
 def _iter_list_with_path(path: str, l: list):
+    'yield a (path, item) tuple from dict.'
     for i, v in enumerate(l):
         yield f'{path}[{i!r}]', v
 
 def _iter_dict_with_path(path: str, d: dict):
+    'yield a (path, key, value) tuple from dict.'
     for k, v in d.items():
-        yield f'{path}[{k!r}]', v
-
-def _iter_convlist_with_path(path: str, l: list):
-    for v in l:
-        k = v['key']
-        yield f'{path}[{k!r}]', v
+        yield f'{path}[{k!r}]', k, v
 
 def _ensure_items_of_list_are_dict(path: str, l: list):
     for p, v in _iter_list_with_path(path, l):
@@ -37,7 +34,7 @@ def _ensure_items_of_list_are_dict(path: str, l: list):
             raise BadConfError(f'<{p}> must be a dict.')
 
 def _ensure_values_of_dict_are_dict(path: str, d: dict):
-    for p, v in _iter_dict_with_path(path, d):
+    for p, k, v in _iter_dict_with_path(path, d):
         if not isinstance(v, dict):
             raise BadConfError(f'<{p}> must be a dict.')
 
@@ -45,24 +42,6 @@ def _ensure_items_of_list_has_field(path: str, l: list, field: str):
     for p, v in _iter_list_with_path(path, l):
         if field not in v:
             raise BadConfError(f'<{p}> miss {field!r} field.')
-
-def _convert_dict_to_list(path: str, d: dict) -> list:
-    '''
-    convert dict to list. put the keys of dict into item of list.
-    '''
-    rv = []
-    for k, v in d.items():
-        if 'key' in v:
-            if v['key'] != k:
-                e = v['key']
-                raise BadConfError(f'<{path}[{k!r}]> already contains another key: {e!r}.')
-            else:
-                pass
-        else:
-            v = v.copy() # ensure we did not modify the origin dict
-            v['key'] = k
-        rv.append(v)
-    return rv
 
 def _factory_getattr_from_module(path: str, mod, fullname: str):
     names = fullname.split('.')
@@ -97,22 +76,21 @@ class _ConfLoader:
 
         if isinstance(services, dict):
             _ensure_values_of_dict_are_dict(path, services)
-            services_list = _convert_dict_to_list(path, services)
-            for p, v in _iter_convlist_with_path(path, services_list):
-                self._on_service_item(p, v)
+            for p, k, v in _iter_dict_with_path(path, services):
+                key = v.get('key', k)
+                if key != k:
+                    raise BadConfError(f'<{p}> already contains another key: {key!r}.')
+                self._on_service_item(p, v, k)
         elif isinstance(services, list):
             _ensure_items_of_list_are_dict(path, services)
             _ensure_items_of_list_has_field(path, services, 'key')
             for p, v in _iter_list_with_path(path, services):
-                self._on_service_item(p, v)
+                self._on_service_item(p, v, v['key'])
         else:
             raise BadConfError(f'<{path}> is not either dict or list.')
 
-    def _on_service_item(self, path: str, service_conf: dict):
+    def _on_service_item(self, path: str, service_conf: dict, key):
         service_conf = service_conf.copy() # ensure we did not modify the origin dict
-
-        # key
-        key = service_conf.pop('key')
 
         # factory
         factory = service_conf.pop('factory', None)
