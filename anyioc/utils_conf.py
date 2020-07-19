@@ -19,7 +19,7 @@ class BadConfError(Exception):
     '''
 
 def _iter_list_with_path(path: str, l: list):
-    'yield a (path, item) tuple from dict.'
+    'yield a (path, item) tuple from list.'
     for i, v in enumerate(l):
         yield f'{path}[{i!r}]', v
 
@@ -28,20 +28,13 @@ def _iter_dict_with_path(path: str, d: dict):
     for k, v in d.items():
         yield f'{path}[{k!r}]', k, v
 
-def _ensure_items_of_list_are_dict(path: str, l: list):
-    for p, v in _iter_list_with_path(path, l):
-        if not isinstance(v, dict):
-            raise BadConfError(f'<{p}> must be a dict.')
-
-def _ensure_values_of_dict_are_dict(path: str, d: dict):
-    for p, k, v in _iter_dict_with_path(path, d):
-        if not isinstance(v, dict):
-            raise BadConfError(f'<{p}> must be a dict.')
-
-def _ensure_items_of_list_has_field(path: str, l: list, field: str):
-    for p, v in _iter_list_with_path(path, l):
-        if field not in v:
-            raise BadConfError(f'<{p}> miss {field!r} field.')
+def _ensure_is_dict(path: str, obj, fields=()):
+    if not isinstance(obj, dict):
+        raise BadConfError(f'<{path}> must be a dict.')
+    if fields:
+        for field in fields:
+            if field not in obj:
+                raise BadConfError(f'<{path}> miss {field!r} field.')
 
 def _factory_getattr_from_module(path: str, mod, fullname: str):
     names = fullname.split('.')
@@ -75,16 +68,15 @@ class _ConfLoader:
             return
 
         if isinstance(services, dict):
-            _ensure_values_of_dict_are_dict(path, services)
             for p, k, v in _iter_dict_with_path(path, services):
+                _ensure_is_dict(p, v)
                 key = v.get('key', k)
                 if key != k:
                     raise BadConfError(f'<{p}> already contains another key: {key!r}.')
                 self._on_service_item(p, v, k)
         elif isinstance(services, list):
-            _ensure_items_of_list_are_dict(path, services)
-            _ensure_items_of_list_has_field(path, services, 'key')
             for p, v in _iter_list_with_path(path, services):
+                _ensure_is_dict(p, v, ('key', ))
                 self._on_service_item(p, v, v['key'])
         else:
             raise BadConfError(f'<{path}> is not either dict or list.')
@@ -191,12 +183,9 @@ class _ConfLoader:
                 self.provider.register_value(k, v)
         elif isinstance(values, list):
             fields = ('key', 'value')
-            _ensure_items_of_list_are_dict(path, values)
-            for f in fields:
-                _ensure_items_of_list_has_field(path, values, f)
             for p, conf in _iter_list_with_path(path, values):
-                conf = conf.copy() # ensure we did not modify the origin dict
-                values = [conf.pop(f) for f in fields]
+                _ensure_is_dict(p, conf, fields)
+                values = [conf[f] for f in fields]
                 self.provider.register_value(*values)
         else:
             raise BadConfError(f'<{path}> is not either dict or list.')
@@ -212,12 +201,9 @@ class _ConfLoader:
                 self.provider.register_group(k, v)
         elif isinstance(groups, list):
             fields = ('key', 'keys')
-            _ensure_items_of_list_are_dict(path, groups)
-            for f in fields:
-                _ensure_items_of_list_has_field(path, groups, f)
             for p, conf in _iter_list_with_path(path, groups):
-                conf = conf.copy() # ensure we did not modify the origin dict
-                k, gk = [conf.pop(f) for f in fields]
+                _ensure_is_dict(p, conf, fields)
+                k, gk = [conf[f] for f in fields]
                 if not isinstance(gk, list):
                     raise BadConfError(f'<{p}/keys> is not a list.')
                 self.provider.register_group(k, gk)
@@ -234,12 +220,9 @@ class _ConfLoader:
                 self.provider.register_bind(k, v)
         elif isinstance(binds, list):
             fields = ('key', 'target')
-            _ensure_items_of_list_are_dict(path, binds)
-            for f in fields:
-                _ensure_items_of_list_has_field(path, binds, f)
             for p, conf in _iter_list_with_path(path, binds):
-                conf = conf.copy() # ensure we did not modify the origin dict
-                values = [conf.pop(f) for f in fields]
+                _ensure_is_dict(p, conf, fields)
+                values = [conf[f] for f in fields]
                 self.provider.register_bind(*values)
         else:
             raise BadConfError(f'<{path}> is not either dict or list.')
