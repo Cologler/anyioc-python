@@ -68,14 +68,14 @@ def _factory_getattr_from_module(path: str, mod, fullname: str):
     names = fullname.split('.')
     assert names
     if not all(n for n in names):
-        raise BadConfError(f'name of <{path}/factory> contain empty part.')
+        raise BadConfError(f'name of <{path}> contain empty part.')
     try:
         attr = mod
         for name in names:
             attr = getattr(attr, name)
         return attr
     except AttributeError:
-        raise BadConfError(f'<{path}/factory>: no such attr {fullname!r} on module {mod.__name__!r}.')
+        raise BadConfError(f'<{path}>: no such attr {fullname!r} on module {mod.__name__!r}.')
 
 class _ConfLoader:
     def __init__(self, provider: ServiceProvider):
@@ -149,7 +149,7 @@ class _ConfLoader:
                 mod = import_module(factory_module_name)
             except ImportError:
                 raise BadConfError(f'<{path}/factory> required a unable import module `{factory_module_name}`.')
-            factory = _factory_getattr_from_module(path, mod, factory_name)
+            factory = _factory_getattr_from_module(f'{path}/factory', mod, factory_name)
             if not callable(factory):
                 raise BadConfError(f'<{path}/factory> is not a callable.')
 
