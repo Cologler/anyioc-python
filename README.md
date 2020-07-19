@@ -136,4 +136,4 @@ There are other builtin resolvers:
 
 **`IServiceInfoResolver` only work when service was missing.**
 
-Read full [documentation](/wiki).
+Read full [documentation](../../wiki).
