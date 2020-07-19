@@ -237,12 +237,17 @@ def test_load_conf_with_values_list():
                 'key': 'obj-pytest.raises',
                 'value': 'pytest:raises',
                 'ref': True,
+            }, {
+                'key': 'obj-sp',
+                'value': 'anyioc:ServiceProvider',
+                'ref': True,
             }
         ]
     })
     assert provider['k'] == 'v'
     assert provider['mod-pytest'] is pytest
     assert provider['obj-pytest.raises'] == raises
+    assert provider['obj-sp'] is ServiceProvider
 
 def test_load_conf_with_binds_dict():
     provider = from_conf({
