@@ -5,6 +5,7 @@
 #
 # ----------
 
+import pytest
 from pytest import raises
 
 from anyioc import ServiceProvider, LifeTime
@@ -224,12 +225,24 @@ def test_load_conf_with_values_dict():
 
 def test_load_conf_with_values_list():
     provider = from_conf({
-        'values': [{
-            'key': 'k',
-            'value': 'v'
-        }]
+        'values': [
+            {
+                'key': 'k',
+                'value': 'v'
+            }, {
+                'key': 'mod-pytest',
+                'value': 'pytest',
+                'ref': True,
+            }, {
+                'key': 'obj-pytest.raises',
+                'value': 'pytest:raises',
+                'ref': True,
+            }
+        ]
     })
     assert provider['k'] == 'v'
+    assert provider['mod-pytest'] is pytest
+    assert provider['obj-pytest.raises'] == raises
 
 def test_load_conf_with_binds_dict():
     provider = from_conf({

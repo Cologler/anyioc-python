@@ -49,40 +49,66 @@ def _getattr_from_module(path: str, mod, fullname: str):
     except AttributeError:
         raise BadConfError(f'<{path}>: no such attr {fullname!r} on module {mod.__name__!r}.')
 
-def _load_object(path: str, conf):
+def _load_object(path: str, conf, allow_module=False):
+    '''
+    load a object from runtime.
+
+    if `aallow_module` is `True`, that mean allow the return object to be a module.
+    '''
+    module_name = None
+    object_name = None
+
     if isinstance(conf, str):
         conf: str
         # parse like console_scripts
         parts = conf.split(':')
-        if len(parts) != 2:
-            raise BadConfError(
-                f'<{path}> should be a `module-name:callable-name` like str.')
-        module_name, object_name = parts
+        if allow_module:
+            if len(parts) > 2:
+                raise BadConfError(
+                    f'<{path}> should be a `module-name[:callable-name]` like str.')
+            module_name, object_name = (parts + [None, None])[:2]
+        else:
+            if len(parts) != 2:
+                raise BadConfError(
+                    f'<{path}> should be a `module-name:callable-name` like str.')
+            module_name, object_name = parts
+            if not object_name:
+                raise BadConfError(f'name part of <{path}/name> is empty.')
         if not module_name:
-            raise BadConfError(f'module part of <{path}/module> is emptry.')
-        if not object_name:
-            raise BadConfError(f'name part of <{path}/name> is emptry.')
+            raise BadConfError(f'module part of <{path}/module> is empty.')
+
     elif isinstance(conf, dict):
         conf: dict
-        module_name = conf.get('module', None)
-        object_name = conf.get('name', None)
+        module_name = conf.get('module', module_name)
+        object_name = conf.get('name', object_name)
         if not isinstance(module_name, str):
             raise BadConfError(f'<{path}/module> is not a str.')
         if not module_name:
-            raise BadConfError(f'<{path}/module> is emptry.')
-        if not isinstance(object_name, str):
-            raise BadConfError(f'<{path}/name> is not a str.')
-        if not object_name:
-            raise BadConfError(f'<{path}/name> is emptry.')
+            raise BadConfError(f'<{path}/module> is empty.')
+        if not allow_module:
+            if not isinstance(object_name, str):
+                raise BadConfError(f'<{path}/name> is not a str.')
+            if not object_name:
+                raise BadConfError(f'<{path}/name> is empty.')
+
     else:
         raise BadConfError(f'<{path}> is not either str or dict.')
 
     try:
-        mod = import_module(module_name)
+        rv = import_module(module_name)
     except ImportError:
         raise BadConfError(f'<{path}>: unable import module {module_name!r}.')
 
-    return _getattr_from_module(path, mod, object_name)
+    if object_name:
+        name_parts = object_name.split('.')
+        if not all(n for n in name_parts):
+            raise BadConfError(f'<{path}> contain empty part.')
+        try:
+            for name in name_parts:
+                rv = getattr(rv, name)
+        except AttributeError:
+            raise BadConfError(f'<{path}>: no such attr {object_name!r} on module {module_name!r}.')
+    return rv
 
 class _ConfLoader:
     def __init__(self, provider: ServiceProvider):
@@ -188,13 +214,19 @@ class _ConfLoader:
             for k, v in values.items():
                 self.provider.register_value(k, v)
         elif isinstance(values, list):
-            fields = ('key', 'value')
-            for p, conf in _iter_list_with_path(path, values):
-                _ensure_is_dict(p, conf, fields)
-                values = [conf[f] for f in fields]
-                self.provider.register_value(*values)
+            for p, c in _iter_list_with_path(path, values):
+                self._on_value_item(p, c)
         else:
             raise BadConfError(f'<{path}> is not either dict or list.')
+
+    def _on_value_item(self, path: str, conf: dict):
+        fields = ('key', 'value')
+        _ensure_is_dict(path, conf, fields)
+        key, value = [conf[f] for f in fields]
+        if conf.get('ref', False):
+            # mean value is a ref from code
+            value = _load_object(f'{path}/value', value, allow_module=True)
+        self.provider.register_value(key, value)
 
     def _on_groups(self, path: str, groups):
         if not groups:
