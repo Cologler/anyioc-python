@@ -96,44 +96,4 @@ provider = get_namespace_provider()
 assert provider is get_module_provider('your_package')
 ```
 
-### Predefined keys
-
-There are some predefined string keys you can use direct, but you still can overwrite it:
-
-- `ioc` - get current scoped `ServiceProvider` instance.
-- `provider` - alias of `ioc`
-- `service_provider` - alias of `ioc`
-
-And predefined types:
-
-- `ServiceProvider` - alias of `ioc`
-- `IServiceProvider` - alias of `ioc`
-
-### IServiceInfoResolver
-
-By default, you can get a service after you register it;
-
-If you want to dynamic get it without register, you can do that by use `IServiceInfoResolver`:
-
-``` py
-from anyioc import ServiceProvider
-from anyioc.symbols import Symbols
-from anyioc.ioc_resolver import ImportServiceInfoResolver
-
-import sys
-provider = ServiceProvider()
-resolver = ImportServiceInfoResolver().cache() # use `.cache()` can cache the results and prevent resolve again.
-provider[Symbols.missing_resolver].append(resolver)
-assert sys is provider['sys']
-```
-
-There are other builtin resolvers:
-
-- `ImportServiceInfoResolver` - import module by name from a `str` key
-- `TypesServiceInfoResolver` - create instance by type from a `type` key
-- `TypeNameServiceInfoResolver` - create instance by type name from a `str` key
-- `TypingServiceInfoResolver` - get services tuple by keys from a `typing.Tuple` key.
-
-**`IServiceInfoResolver` only work when service was missing.**
-
 Read full [documentation](../../wiki).
