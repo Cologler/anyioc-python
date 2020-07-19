@@ -36,7 +36,7 @@ def _ensure_is_dict(path: str, obj, fields=()):
             if field not in obj:
                 raise BadConfError(f'<{path}> miss {field!r} field.')
 
-def _factory_getattr_from_module(path: str, mod, fullname: str):
+def _getattr_from_module(path: str, mod, fullname: str):
     names = fullname.split('.')
     assert names
     if not all(n for n in names):
@@ -48,6 +48,41 @@ def _factory_getattr_from_module(path: str, mod, fullname: str):
         return attr
     except AttributeError:
         raise BadConfError(f'<{path}>: no such attr {fullname!r} on module {mod.__name__!r}.')
+
+def _load_object(path: str, conf):
+    if isinstance(conf, str):
+        conf: str
+        # parse like console_scripts
+        parts = conf.split(':')
+        if len(parts) != 2:
+            raise BadConfError(
+                f'<{path}> should be a `module-name:callable-name` like str.')
+        module_name, object_name = parts
+        if not module_name:
+            raise BadConfError(f'module part of <{path}/module> is emptry.')
+        if not object_name:
+            raise BadConfError(f'name part of <{path}/name> is emptry.')
+    elif isinstance(conf, dict):
+        conf: dict
+        module_name = conf.get('module', None)
+        object_name = conf.get('name', None)
+        if not isinstance(module_name, str):
+            raise BadConfError(f'<{path}/module> is not a str.')
+        if not module_name:
+            raise BadConfError(f'<{path}/module> is emptry.')
+        if not isinstance(object_name, str):
+            raise BadConfError(f'<{path}/name> is not a str.')
+        if not object_name:
+            raise BadConfError(f'<{path}/name> is emptry.')
+    else:
+        raise BadConfError(f'<{path}> is not either str or dict.')
+
+    try:
+        mod = import_module(module_name)
+    except ImportError:
+        raise BadConfError(f'<{path}>: unable import module {module_name!r}.')
+
+    return _getattr_from_module(path, mod, object_name)
 
 class _ConfLoader:
     def __init__(self, provider: ServiceProvider):
@@ -82,49 +117,20 @@ class _ConfLoader:
             raise BadConfError(f'<{path}> is not either dict or list.')
 
     def _on_service_item(self, path: str, service_conf: dict, key):
-        service_conf = service_conf.copy() # ensure we did not modify the origin dict
-
         # factory
-        factory = service_conf.pop('factory', None)
+        factory = service_conf.get('factory', None)
         if factory is None:
             raise BadConfError(f'<{path}/factory> is null, which is required.')
         elif callable(factory):
             # conf was create in python process instead read from a conf file
             pass
         else:
-            if isinstance(factory, str):
-                # parse like console_scripts
-                parts = factory.split(':')
-                if len(parts) != 2:
-                    raise BadConfError(
-                        f'value of <{path}/factory> should be a `module-name:callable-name` like str.')
-                factory_module_name, factory_name = parts
-            elif isinstance(factory, dict):
-                factory = factory.copy()
-                factory_module_name = factory.pop('module', None)
-                if not isinstance(factory_module_name, str):
-                    raise BadConfError(f'value of <{path}/factory/module> should be a str.')
-                factory_name = factory.pop('name', None)
-                if not isinstance(factory_name, str):
-                    raise BadConfError(f'value of <{path}/factory/name> should be a str.')
-            else:
-                raise BadConfError(f'value of <{path}/factory> is not either str or dict.')
-
-            if not factory_module_name:
-                raise BadConfError(f'value of <{path}/factory/module> is empty.')
-            if not factory_name:
-                raise BadConfError(f'value of <{path}/factory/name> is empty.')
-
-            try:
-                mod = import_module(factory_module_name)
-            except ImportError:
-                raise BadConfError(f'<{path}/factory> required a unable import module `{factory_module_name}`.')
-            factory = _factory_getattr_from_module(f'{path}/factory', mod, factory_name)
+            factory = _load_object(f'{path}/factory', factory)
             if not callable(factory):
                 raise BadConfError(f'<{path}/factory> is not a callable.')
 
         # lifetime
-        lifetime = service_conf.pop('lifetime', LifeTime.transient)
+        lifetime = service_conf.get('lifetime', LifeTime.transient)
         if isinstance(lifetime, LifeTime):
             pass
         else:
@@ -135,7 +141,7 @@ class _ConfLoader:
             lifetime = LifeTime.__members__[lifetime]
 
         # inject_by
-        inject_by = service_conf.pop('inject_by', None)
+        inject_by = service_conf.get('inject_by', None)
         if inject_by is not None:
             if callable(inject_by):
                 # conf was create in python process instead read from a conf file
@@ -163,7 +169,7 @@ class _ConfLoader:
             factory = inject_by(factory)
 
         # enter
-        enter = bool(service_conf.pop('enter', False))
+        enter = bool(service_conf.get('enter', False))
 
         # register
         def service_factory(ioc: ServiceProvider):

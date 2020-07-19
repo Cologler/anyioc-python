@@ -119,7 +119,7 @@ def test_services_when_factory_is_a_random_str():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "value of </services['fjndau']/factory> should be a `module-name:callable-name` like str."
+    assert excinfo.value.args[0] == "</services['fjndau']/factory> should be a `module-name:callable-name` like str."
 
 def test_services_when_factory_module_is_not_a_str():
     with raises(BadConfError) as excinfo:
@@ -130,7 +130,7 @@ def test_services_when_factory_module_is_not_a_str():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "value of </services['fjndau']/factory/module> should be a str."
+    assert excinfo.value.args[0] == "</services['fjndau']/factory/module> is not a str."
 
 def test_services_when_factory_name_is_not_a_str():
     with raises(BadConfError) as excinfo:
@@ -141,7 +141,7 @@ def test_services_when_factory_name_is_not_a_str():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "value of </services['fjndau']/factory/name> should be a str."
+    assert excinfo.value.args[0] == "</services['fjndau']/factory/name> is not a str."
 
 def test_services_when_factory_is_not_a_str():
     with raises(BadConfError) as excinfo:
@@ -152,7 +152,7 @@ def test_services_when_factory_is_not_a_str():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "value of </services['fjndau']/factory> is not either str or dict."
+    assert excinfo.value.args[0] == "</services['fjndau']/factory> is not either str or dict."
 
 def test_services_when_factory_module_unable_import():
     with raises(BadConfError) as excinfo:
@@ -163,7 +163,7 @@ def test_services_when_factory_module_unable_import():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "</services['fjndau']/factory> required a unable import module `djashfiaushfuia`."
+    assert excinfo.value.args[0] == "</services['fjndau']/factory>: unable import module 'djashfiaushfuia'."
 
 def test_services_when_factory_module_has_no_such_attr():
     with raises(BadConfError) as excinfo:
