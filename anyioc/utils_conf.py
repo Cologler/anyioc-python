@@ -19,52 +19,96 @@ class BadConfError(Exception):
     '''
 
 def _iter_list_with_path(path: str, l: list):
+    'yield a (path, item) tuple from list.'
     for i, v in enumerate(l):
         yield f'{path}[{i!r}]', v
 
 def _iter_dict_with_path(path: str, d: dict):
+    'yield a (path, key, value) tuple from dict.'
     for k, v in d.items():
-        yield f'{path}[{k!r}]', v
+        yield f'{path}[{k!r}]', k, v
 
-def _iter_convlist_with_path(path: str, l: list):
-    for v in l:
-        k = v['key']
-        yield f'{path}[{k!r}]', v
+def _ensure_is_dict(path: str, obj, fields=()):
+    if not isinstance(obj, dict):
+        raise BadConfError(f'<{path}> must be a dict.')
+    if fields:
+        for field in fields:
+            if field not in obj:
+                raise BadConfError(f'<{path}> miss {field!r} field.')
 
-def _ensure_items_of_list_are_dict(path: str, l: list):
-    for p, v in _iter_list_with_path(path, l):
-        if not isinstance(v, dict):
-            raise BadConfError(f'<{p}> must be a dict.')
+def _getattr_from_module(path: str, mod, fullname: str):
+    names = fullname.split('.')
+    assert names
+    if not all(n for n in names):
+        raise BadConfError(f'name of <{path}> contain empty part.')
+    try:
+        attr = mod
+        for name in names:
+            attr = getattr(attr, name)
+        return attr
+    except AttributeError:
+        raise BadConfError(f'<{path}>: no such attr {fullname!r} on module {mod.__name__!r}.')
 
-def _ensure_values_of_dict_are_dict(path: str, d: dict):
-    for p, v in _iter_dict_with_path(path, d):
-        if not isinstance(v, dict):
-            raise BadConfError(f'<{p}> must be a dict.')
-
-def _ensure_items_of_list_has_field(path: str, l: list, field: str):
-    for p, v in _iter_list_with_path(path, l):
-        if field not in v:
-            raise BadConfError(f'<{p}> miss {field!r} field.')
-
-
-def _convert_dict_to_list(path: str, d: dict) -> list:
+def _load_object(path: str, conf, allow_module=False):
     '''
-    convert dict to list. put the keys of dict into item of list.
+    load a object from runtime.
+
+    if `aallow_module` is `True`, that mean allow the return object to be a module.
     '''
-    rv = []
-    for k, v in d.items():
-        if 'key' in v:
-            if v['key'] != k:
-                e = v['key']
-                raise BadConfError(f'<{path}[{k!r}]> already contains another key: {e!r}.')
-            else:
-                pass
+    module_name = None
+    object_name = None
+
+    if isinstance(conf, str):
+        conf: str
+        # parse like console_scripts
+        parts = conf.split(':')
+        if allow_module:
+            if len(parts) > 2:
+                raise BadConfError(
+                    f'<{path}> should be a `module-name[:callable-name]` like str.')
+            module_name, object_name = (parts + [None, None])[:2]
         else:
-            v = v.copy() # ensure we did not modify the origin dict
-            v['key'] = k
-        rv.append(v)
-    return rv
+            if len(parts) != 2:
+                raise BadConfError(
+                    f'<{path}> should be a `module-name:callable-name` like str.')
+            module_name, object_name = parts
+            if not object_name:
+                raise BadConfError(f'name part of <{path}/name> is empty.')
+        if not module_name:
+            raise BadConfError(f'module part of <{path}/module> is empty.')
 
+    elif isinstance(conf, dict):
+        conf: dict
+        module_name = conf.get('module', module_name)
+        object_name = conf.get('name', object_name)
+        if not isinstance(module_name, str):
+            raise BadConfError(f'<{path}/module> is not a str.')
+        if not module_name:
+            raise BadConfError(f'<{path}/module> is empty.')
+        if not allow_module:
+            if not isinstance(object_name, str):
+                raise BadConfError(f'<{path}/name> is not a str.')
+            if not object_name:
+                raise BadConfError(f'<{path}/name> is empty.')
+
+    else:
+        raise BadConfError(f'<{path}> is not either str or dict.')
+
+    try:
+        rv = import_module(module_name)
+    except ImportError:
+        raise BadConfError(f'<{path}>: unable import module {module_name!r}.')
+
+    if object_name:
+        name_parts = object_name.split('.')
+        if not all(n for n in name_parts):
+            raise BadConfError(f'<{path}> contain empty part.')
+        try:
+            for name in name_parts:
+                rv = getattr(rv, name)
+        except AttributeError:
+            raise BadConfError(f'<{path}>: no such attr {object_name!r} on module {module_name!r}.')
+    return rv
 
 class _ConfLoader:
     def __init__(self, provider: ServiceProvider):
@@ -85,63 +129,34 @@ class _ConfLoader:
             return
 
         if isinstance(services, dict):
-            _ensure_values_of_dict_are_dict(path, services)
-            services_list = _convert_dict_to_list(path, services)
-            for p, v in _iter_convlist_with_path(path, services_list):
-                self._on_service_item(p, v)
+            for p, k, v in _iter_dict_with_path(path, services):
+                _ensure_is_dict(p, v)
+                key = v.get('key', k)
+                if key != k:
+                    raise BadConfError(f'<{p}> already contains another key: {key!r}.')
+                self._on_service_item(p, v, k)
         elif isinstance(services, list):
-            _ensure_items_of_list_are_dict(path, services)
-            _ensure_items_of_list_has_field(path, services, 'key')
             for p, v in _iter_list_with_path(path, services):
-                self._on_service_item(p, v)
+                _ensure_is_dict(p, v, ('key', ))
+                self._on_service_item(p, v, v['key'])
         else:
             raise BadConfError(f'<{path}> is not either dict or list.')
 
-    def _on_service_item(self, path: str, service_conf: dict):
-        service_conf = service_conf.copy() # ensure we did not modify the origin dict
-
-        # key
-        key = service_conf.pop('key')
-
+    def _on_service_item(self, path: str, service_conf: dict, key):
         # factory
-        factory = service_conf.pop('factory', None)
+        factory = service_conf.get('factory', None)
         if factory is None:
             raise BadConfError(f'<{path}/factory> is null, which is required.')
         elif callable(factory):
             # conf was create in python process instead read from a conf file
             pass
         else:
-            if isinstance(factory, str):
-                # parse like console_scripts
-                parts = factory.split(':')
-                if len(parts) != 2:
-                    raise BadConfError(
-                        f'value of <{path}/factory> should be a `module-name:callable-name` like str.')
-                fac_mod_name, fac_func_name = parts
-            elif isinstance(factory, dict):
-                factory = factory.copy()
-                fac_mod_name = factory.pop('module', None)
-                if not isinstance(fac_mod_name, str):
-                    raise BadConfError(f'value of <{path}/factory/module> should be a str.')
-                fac_func_name = factory.pop('name', None)
-                if not isinstance(fac_func_name, str):
-                    raise BadConfError(f'value of <{path}/factory/name> should be a str.')
-            else:
-                raise BadConfError(f'value of <{path}/factory> is not either str or dict.')
-
-            try:
-                mod = import_module(fac_mod_name)
-            except ImportError:
-                raise BadConfError(f'<{path}/factory> required a unable import module `{fac_mod_name}`.')
-            try:
-                factory = getattr(mod, fac_func_name)
-            except AttributeError:
-                raise BadConfError(f'<{path}/factory>: no such attr {fac_func_name!r} on module {fac_mod_name!r}.')
+            factory = _load_object(f'{path}/factory', factory)
             if not callable(factory):
                 raise BadConfError(f'<{path}/factory> is not a callable.')
 
         # lifetime
-        lifetime = service_conf.pop('lifetime', LifeTime.transient)
+        lifetime = service_conf.get('lifetime', LifeTime.transient)
         if isinstance(lifetime, LifeTime):
             pass
         else:
@@ -152,7 +167,7 @@ class _ConfLoader:
             lifetime = LifeTime.__members__[lifetime]
 
         # inject_by
-        inject_by = service_conf.pop('inject_by', None)
+        inject_by = service_conf.get('inject_by', None)
         if inject_by is not None:
             if callable(inject_by):
                 # conf was create in python process instead read from a conf file
@@ -174,13 +189,13 @@ class _ConfLoader:
                     if not isinstance(name, str):
                         raise BadConfError(
                             f'key of <{path}/inject_by> must be str.')
-                inject_by = inject_by_keys(**inject_by.copy())
+                inject_by = inject_by_keys(**inject_by)
             else:
                 raise BadConfError(f'<{path}/inject_by> is not either str or dict.')
             factory = inject_by(factory)
 
         # enter
-        enter = bool(service_conf.pop('enter', False))
+        enter = bool(service_conf.get('enter', False))
 
         # register
         def service_factory(ioc: ServiceProvider):
@@ -199,16 +214,19 @@ class _ConfLoader:
             for k, v in values.items():
                 self.provider.register_value(k, v)
         elif isinstance(values, list):
-            fields = ('key', 'value')
-            _ensure_items_of_list_are_dict(path, values)
-            for f in fields:
-                _ensure_items_of_list_has_field(path, values, f)
-            for p, conf in _iter_list_with_path(path, values):
-                conf = conf.copy() # ensure we did not modify the origin dict
-                values = [conf.pop(f) for f in fields]
-                self.provider.register_value(*values)
+            for p, c in _iter_list_with_path(path, values):
+                self._on_value_item(p, c)
         else:
             raise BadConfError(f'<{path}> is not either dict or list.')
+
+    def _on_value_item(self, path: str, conf: dict):
+        fields = ('key', 'value')
+        _ensure_is_dict(path, conf, fields)
+        key, value = [conf[f] for f in fields]
+        if conf.get('ref', False):
+            # mean value is a ref from code
+            value = _load_object(f'{path}/value', value, allow_module=True)
+        self.provider.register_value(key, value)
 
     def _on_groups(self, path: str, groups):
         if not groups:
@@ -221,12 +239,9 @@ class _ConfLoader:
                 self.provider.register_group(k, v)
         elif isinstance(groups, list):
             fields = ('key', 'keys')
-            _ensure_items_of_list_are_dict(path, groups)
-            for f in fields:
-                _ensure_items_of_list_has_field(path, groups, f)
             for p, conf in _iter_list_with_path(path, groups):
-                conf = conf.copy() # ensure we did not modify the origin dict
-                k, gk = [conf.pop(f) for f in fields]
+                _ensure_is_dict(p, conf, fields)
+                k, gk = [conf[f] for f in fields]
                 if not isinstance(gk, list):
                     raise BadConfError(f'<{p}/keys> is not a list.')
                 self.provider.register_group(k, gk)
@@ -243,12 +258,9 @@ class _ConfLoader:
                 self.provider.register_bind(k, v)
         elif isinstance(binds, list):
             fields = ('key', 'target')
-            _ensure_items_of_list_are_dict(path, binds)
-            for f in fields:
-                _ensure_items_of_list_has_field(path, binds, f)
             for p, conf in _iter_list_with_path(path, binds):
-                conf = conf.copy() # ensure we did not modify the origin dict
-                values = [conf.pop(f) for f in fields]
+                _ensure_is_dict(p, conf, fields)
+                values = [conf[f] for f in fields]
                 self.provider.register_bind(*values)
         else:
             raise BadConfError(f'<{path}> is not either dict or list.')

@@ -5,6 +5,7 @@
 #
 # ----------
 
+import pytest
 from pytest import raises
 
 from anyioc import ServiceProvider, LifeTime
@@ -119,7 +120,7 @@ def test_services_when_factory_is_a_random_str():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "value of </services['fjndau']/factory> should be a `module-name:callable-name` like str."
+    assert excinfo.value.args[0] == "</services['fjndau']/factory> should be a `module-name:callable-name` like str."
 
 def test_services_when_factory_module_is_not_a_str():
     with raises(BadConfError) as excinfo:
@@ -130,7 +131,7 @@ def test_services_when_factory_module_is_not_a_str():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "value of </services['fjndau']/factory/module> should be a str."
+    assert excinfo.value.args[0] == "</services['fjndau']/factory/module> is not a str."
 
 def test_services_when_factory_name_is_not_a_str():
     with raises(BadConfError) as excinfo:
@@ -141,7 +142,7 @@ def test_services_when_factory_name_is_not_a_str():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "value of </services['fjndau']/factory/name> should be a str."
+    assert excinfo.value.args[0] == "</services['fjndau']/factory/name> is not a str."
 
 def test_services_when_factory_is_not_a_str():
     with raises(BadConfError) as excinfo:
@@ -152,7 +153,7 @@ def test_services_when_factory_is_not_a_str():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "value of </services['fjndau']/factory> is not either str or dict."
+    assert excinfo.value.args[0] == "</services['fjndau']/factory> is not either str or dict."
 
 def test_services_when_factory_module_unable_import():
     with raises(BadConfError) as excinfo:
@@ -163,7 +164,7 @@ def test_services_when_factory_module_unable_import():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "</services['fjndau']/factory> required a unable import module `djashfiaushfuia`."
+    assert excinfo.value.args[0] == "</services['fjndau']/factory>: unable import module 'djashfiaushfuia'."
 
 def test_services_when_factory_module_has_no_such_attr():
     with raises(BadConfError) as excinfo:
@@ -224,12 +225,29 @@ def test_load_conf_with_values_dict():
 
 def test_load_conf_with_values_list():
     provider = from_conf({
-        'values': [{
-            'key': 'k',
-            'value': 'v'
-        }]
+        'values': [
+            {
+                'key': 'k',
+                'value': 'v'
+            }, {
+                'key': 'mod-pytest',
+                'value': 'pytest',
+                'ref': True,
+            }, {
+                'key': 'obj-pytest.raises',
+                'value': 'pytest:raises',
+                'ref': True,
+            }, {
+                'key': 'obj-sp',
+                'value': 'anyioc:ServiceProvider',
+                'ref': True,
+            }
+        ]
     })
     assert provider['k'] == 'v'
+    assert provider['mod-pytest'] is pytest
+    assert provider['obj-pytest.raises'] == raises
+    assert provider['obj-sp'] is ServiceProvider
 
 def test_load_conf_with_binds_dict():
     provider = from_conf({
