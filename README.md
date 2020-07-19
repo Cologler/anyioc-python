@@ -16,9 +16,7 @@ value = provider.get('the key')
 assert value == 102
 ```
 
-## Details
-
-### Register and resolve
+## Register and resolve
 
 By default, you can use following methods to register services:
 
@@ -37,12 +35,5 @@ And use following methods to resolve services:
 - `ServiceProvider.get_many(key)`
 
 *`get` return `None` if the service was not found, but `__getitem__` will raise a `ServiceNotFoundError`.*
-
-### Thread safety
-
-- Root `ServiceProvider` is thread-safe.
-- Scoped `ServiceProvider` is **NOT** thread-safe.
-- Singleton service is thread-safe.
-- Value service is thread-safe.
 
 Read full [documentation](https://github.com/Cologler/anyioc-python/wiki).
