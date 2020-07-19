@@ -135,3 +135,5 @@ There are other builtin resolvers:
 - `TypingServiceInfoResolver` - get services tuple by keys from a `typing.Tuple` key.
 
 **`IServiceInfoResolver` only work when service was missing.**
+
+Read full [documentation](/wiki).
