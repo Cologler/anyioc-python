@@ -75,9 +75,9 @@ def get_module_provider(module_name: str=None) -> ServiceProvider:
 
 def get_pkgroot_provider(pkgroot: str=None) -> ServiceProvider:
     '''
-    get the pkgroot scoped singleton `ServiceProvider`.
+    get the package root scoped singleton `ServiceProvider`.
 
-    if `pkgroot` is `None`, use caller pkgroot.
+    if `pkgroot` is `None`, use caller package root.
 
     for example, `get_pkgroot_provider('A.B.C.D')` is equals `get_module_provider('A')`
     '''
