@@ -11,8 +11,10 @@ from inspect import signature, Parameter
 from typing import Any
 from threading import RLock
 import inspect
+import contextlib
 
 from .symbols import Symbols
+from .utils import update_wrapper
 
 
 class LifeTime(Enum):
@@ -37,14 +39,16 @@ class ServiceInfo(IServiceInfo):
         # for not transient
         '_lock',
         # for singleton
-        '_cache_value', '_service_provider'
+        '_cache_value', '_service_provider',
+        # options
+        '_options',
     )
 
     def __init__(self, service_provider, key, factory, lifetime):
 
         sign = signature(factory)
         if not sign.parameters:
-            self._factory = lambda _: factory()
+            self._factory = update_wrapper(lambda _: factory(), factory)
         elif len(sign.parameters) == 1:
             arg_0 = list(sign.parameters.values())[0]
             if arg_0.kind != Parameter.POSITIONAL_OR_KEYWORD:
@@ -57,6 +61,7 @@ class ServiceInfo(IServiceInfo):
         self._lifetime = lifetime
         self._cache_value = None
         self._service_provider = service_provider
+        self._options: dict = service_provider[Symbols.provider_options]
 
         if self._lifetime != LifeTime.transient:
             self._lock = RLock()
@@ -90,6 +95,7 @@ class ServiceInfo(IServiceInfo):
                 return cache[self]
             except KeyError:
                 value = self._factory(provider)
+                self._handle_created(provider, value)
                 cache[self] = value
                 return value
 
@@ -98,7 +104,15 @@ class ServiceInfo(IServiceInfo):
             with self._lock:
                 if self._cache_value is None:
                     self._cache_value = (self._factory(self._service_provider), )
+                    self._handle_created(self._service_provider, self._cache_value[0])
         return self._cache_value[0]
+
+    def _handle_created(self, service_provider, service):
+        if self._options['auto_enter']:
+            wrapped = getattr(self._factory, '__anyioc_wrapped__', self._factory)
+            if isinstance(wrapped, type) and hasattr(wrapped, '__enter__') and hasattr(wrapped, '__exit__'):
+                service_provider.enter(service)
+        return service
 
 
 class ProviderServiceInfo(IServiceInfo):

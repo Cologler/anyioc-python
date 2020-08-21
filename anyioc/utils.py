@@ -12,6 +12,11 @@ from inspect import signature, Parameter
 
 from ._utils import get_module_name
 
+def update_wrapper(wrapper, wrapped):
+    ' update wrapper with internal attributes. '
+    wrapper.__anyioc_wrapped__ = getattr(wrapped, '__anyioc_wrapped__', wrapped)
+    return wrapper
+
 
 def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                **kw_args: Dict[str, Union[Tuple[Any], Tuple[Any, Any]]]):
@@ -66,7 +71,7 @@ def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                     key, default = item
                     kwargs[name] = ioc.get(key, default)
             return func(*args, **kwargs)
-        return new_func
+        return update_wrapper(new_func, func)
 
     return decorator
 

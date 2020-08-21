@@ -46,3 +46,6 @@ class Symbols:
 
     # get frame info of caller
     caller_frame = _Symbol('caller_frame')
+
+    # the options for the `ServiceProvider`, value is a dict like object.
+    provider_options = _Symbol('provider_options')
