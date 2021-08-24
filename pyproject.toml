@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "anyioc"
 version = "0.0.0"
-description = ""
+description = "Another simple ioc framework for python"
 authors = [ "Cologler <skyoflw@gmail.com>" ]
 license = "MIT"
 readme = "README.md"
