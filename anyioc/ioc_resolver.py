@@ -174,11 +174,22 @@ class TypingServiceInfoResolver(IServiceInfoResolver):
     to use this, you need to install `type_info` module from pypi.
     '''
 
-    def get(self, provider, key):
-        from type_info import get_type_info
+    get_type_info = None
 
+    def __init__(self) -> None:
+        super().__init__()
+        if self.get_type_info is None:
+            try:
+                from type_info import get_type_info
+            except ModuleNotFoundError:
+                raise ImportError(
+                    'You need to install `type_info` module from pypi'
+                )
+            type(self).get_type_info = staticmethod(get_type_info)
+
+    def get(self, provider, key):
         try:
-            type_info = get_type_info(key)
+            type_info = self.get_type_info(key)
         except TypeError:
             type_info = None
 
