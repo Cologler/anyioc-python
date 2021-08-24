@@ -78,7 +78,9 @@ class ServiceInfo(IServiceInfo):
 
     def get(self, provider):
         if self._lifetime is LifeTime.transient:
-            return self._factory(provider)
+            service = self._factory(provider)
+            self._handle_created(provider, service)
+            return service
 
         if self._lifetime is LifeTime.scoped:
             return self._from_scoped(provider)
