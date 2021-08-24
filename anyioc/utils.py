@@ -257,12 +257,28 @@ def get_logger(ioc):
     ```
     '''
     import logging
-    import inspect
     from .symbols import Symbols
 
     fr = ioc[Symbols.caller_frame]
     name = get_module_name(fr)
     return logging.getLogger(name)
+
+
+class Releaser:
+    '''
+    A helper class to wrap a function as a exitable object.
+    The `callback` will be call when the context manager exit.
+    '''
+    __slots__ = '_callback'
+
+    def __init__(self, callback) -> None:
+        self._callback = callback
+
+    def __enter__(self):
+        return None
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._callback()
 
 # keep old func names:
 
