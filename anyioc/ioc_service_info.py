@@ -78,9 +78,7 @@ class ServiceInfo(IServiceInfo):
 
     def get(self, provider):
         if self._lifetime is LifeTime.transient:
-            service = self._factory(provider)
-            self._handle_created(provider, service)
-            return service
+            return self._create(provider)
 
         if self._lifetime is LifeTime.scoped:
             return self._from_scoped(provider)
@@ -100,24 +98,27 @@ class ServiceInfo(IServiceInfo):
             try:
                 return cache[self]
             except KeyError:
-                value = self._factory(provider)
-                self._handle_created(provider, value)
-                cache[self] = value
-                return value
+                service = self._create(provider)
+                cache[self] = service
+                return service
 
     def _from_singleton(self):
         if self._cache_value is None:
             with self._lock:
                 if self._cache_value is None:
-                    self._cache_value = (self._factory(self._service_provider), )
-                    self._handle_created(self._service_provider, self._cache_value[0])
+                    self._cache_value = (self._create(self._service_provider), )
         return self._cache_value[0]
 
-    def _handle_created(self, service_provider, service):
+    def _create(self, provider):
+        '''
+        return the finally service instance.
+        '''
+
+        service = self._factory(provider)
         if self._options['auto_enter']:
             wrapped = getattr(self._factory, '__anyioc_wrapped__', self._factory)
             if isinstance(wrapped, type) and hasattr(wrapped, '__enter__') and hasattr(wrapped, '__exit__'):
-                service_provider.enter(service)
+                service = provider.enter(service)
         return service
 
 
