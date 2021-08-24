@@ -12,6 +12,11 @@ from inspect import signature, Parameter
 
 from ._utils import get_module_name
 
+def update_wrapper(wrapper, wrapped):
+    ' update wrapper with internal attributes. '
+    wrapper.__anyioc_wrapped__ = getattr(wrapped, '__anyioc_wrapped__', wrapped)
+    return wrapper
+
 
 def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                **kw_args: Dict[str, Union[Tuple[Any], Tuple[Any, Any]]]):
@@ -66,7 +71,7 @@ def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                     key, default = item
                     kwargs[name] = ioc.get(key, default)
             return func(*args, **kwargs)
-        return new_func
+        return update_wrapper(new_func, func)
 
     return decorator
 
@@ -252,12 +257,28 @@ def get_logger(ioc):
     ```
     '''
     import logging
-    import inspect
     from .symbols import Symbols
 
     fr = ioc[Symbols.caller_frame]
     name = get_module_name(fr)
     return logging.getLogger(name)
+
+
+class Releaser:
+    '''
+    A helper class to wrap a function as a exitable object.
+    The `callback` will be call when the context manager exit.
+    '''
+    __slots__ = '_callback'
+
+    def __init__(self, callback) -> None:
+        self._callback = callback
+
+    def __enter__(self):
+        return None
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._callback()
 
 # keep old func names:
 

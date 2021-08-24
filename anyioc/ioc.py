@@ -9,6 +9,7 @@ from abc import abstractmethod
 from typing import Any, List
 from contextlib import ExitStack, nullcontext
 from threading import RLock
+from types import MappingProxyType
 
 from .err import ServiceNotFoundError
 from .symbols import Symbols
@@ -245,7 +246,7 @@ class ServiceProvider(ScopedServiceProvider):
     the default impl for `IServiceProvider`.
     '''
 
-    def __init__(self):
+    def __init__(self, auto_enter=False):
         super().__init__(ServicesMap())
         provider_service_info = ProviderServiceInfo()
         self._services[Symbols.provider] = provider_service_info
@@ -254,9 +255,17 @@ class ServiceProvider(ScopedServiceProvider):
         self._services[Symbols.cache] = GetAttrServiceInfo('_scoped_cache')
         self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
         self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
+
         # service alias
         self._services['ioc'] = provider_service_info
         self._services['provider'] = provider_service_info
         self._services['service_provider'] = provider_service_info
         self._services[ServiceProvider] = provider_service_info
         self._services[IServiceProvider] = provider_service_info
+
+        # options
+        self.register_value(Symbols.provider_options, MappingProxyType(
+            dict(
+                auto_enter=auto_enter
+            )
+        ))

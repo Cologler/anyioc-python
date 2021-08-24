@@ -10,7 +10,7 @@ from pytest import raises
 from anyioc.g import (
     ServiceProvider,
     ioc,
-    get_module_provider, get_namespace_provider
+    get_module_provider, get_pkgroot_provider
 )
 from anyioc.symbols import Symbols
 
@@ -25,25 +25,25 @@ def test_get_module_provider():
     assert get_module_provider('A') is get_module_provider('A')
     assert get_module_provider() is get_module_provider(__name__)
 
-    # diff for `get_module_provider` and `get_namespace_provider`
+    # diff for `get_module_provider` and `get_pkgroot_provider`
     assert get_module_provider('A.B') is not get_module_provider('A.C')
 
     assert isinstance(get_module_provider(), ServiceProvider)
 
-def test_get_namespace_provider():
-    assert get_namespace_provider('A') is not get_namespace_provider('B')
-    assert get_namespace_provider('A') is get_namespace_provider('A')
-    assert get_namespace_provider() is get_namespace_provider(__name__)
+def test_get_pkgroot_provider():
+    assert get_pkgroot_provider('A') is not get_pkgroot_provider('B')
+    assert get_pkgroot_provider('A') is get_pkgroot_provider('A')
+    assert get_pkgroot_provider() is get_pkgroot_provider(__name__)
 
-    # diff for `get_module_provider` and `get_namespace_provider`
-    assert get_namespace_provider('A.B.C') is get_namespace_provider('A.C.E')
+    # diff for `get_module_provider` and `get_pkgroot_provider`
+    assert get_pkgroot_provider('A.B.C') is get_pkgroot_provider('A.C.E')
 
-    assert get_namespace_provider('A.B.C') is get_module_provider('A')
+    assert get_pkgroot_provider('A.B.C') is get_module_provider('A')
 
-    assert isinstance(get_namespace_provider(), ServiceProvider)
+    assert isinstance(get_pkgroot_provider(), ServiceProvider)
 
 def test_scoped_provider_is_provider_root():
-    provider = get_namespace_provider('a.b')
+    provider = get_pkgroot_provider('a.b')
     assert provider[Symbols.provider_root] is provider
 
 def test_get_module_provider_auto_conf_ioc():
@@ -54,6 +54,6 @@ def test_get_module_provider_args_must_be_string():
     with raises(TypeError):
         get_module_provider(object())
 
-def test_get_namespace_provider_args_must_be_string():
+def test_get_pkgroot_provider_args_must_be_string():
     with raises(TypeError):
-        get_namespace_provider(object())
+        get_pkgroot_provider(object())

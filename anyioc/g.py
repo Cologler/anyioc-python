@@ -73,19 +73,23 @@ def get_module_provider(module_name: str=None) -> ServiceProvider:
 
     return _get_module_provider(module_name)
 
-def get_namespace_provider(namespace: str=None) -> ServiceProvider:
+def get_pkgroot_provider(pkgroot: str=None) -> ServiceProvider:
     '''
-    get the namespace scoped singleton `ServiceProvider`.
+    get the package root scoped singleton `ServiceProvider`.
 
-    if `namespace` is `None`, use caller namespace.
+    if `pkgroot` is `None`, use caller package root.
 
-    for example, `get_namespace_provider('A.B.C.D')` is equals `get_module_provider('A')`
+    for example, `get_pkgroot_provider('A.B.C.D')` is equals `get_module_provider('A')`
     '''
-    if namespace is None:
-        namespace = _get_caller_module_name()
+    if pkgroot is None:
+        pkgroot = _get_caller_module_name()
 
-    if not isinstance(namespace, str):
+    if not isinstance(pkgroot, str):
         raise TypeError
 
-    namespace = namespace.partition('.')[0]
-    return _get_module_provider(namespace)
+    pkgroot = pkgroot.partition('.')[0]
+    return _get_module_provider(pkgroot)
+
+# keep old func names:
+
+get_namespace_provider = get_pkgroot_provider

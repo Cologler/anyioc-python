@@ -11,8 +11,10 @@ from inspect import signature, Parameter
 from typing import Any
 from threading import RLock
 import inspect
+import contextlib
 
 from .symbols import Symbols
+from .utils import update_wrapper
 
 
 class LifeTime(Enum):
@@ -37,19 +39,25 @@ class ServiceInfo(IServiceInfo):
         # for not transient
         '_lock',
         # for singleton
-        '_cache_value', '_service_provider'
+        '_cache_value', '_service_provider',
+        # options
+        '_options',
     )
 
     def __init__(self, service_provider, key, factory, lifetime):
 
         sign = signature(factory)
         if not sign.parameters:
-            self._factory = lambda _: factory()
+            self._factory = update_wrapper(lambda _: factory(), factory)
         elif len(sign.parameters) == 1:
             arg_0 = list(sign.parameters.values())[0]
-            if arg_0.kind != Parameter.POSITIONAL_OR_KEYWORD:
-                raise TypeError('1st parameter of factory must be a positional parameter.')
-            self._factory = factory
+            if arg_0.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD):
+                self._factory = factory
+            elif arg_0.kind == Parameter.KEYWORD_ONLY:
+                arg_0_name = arg_0.name
+                self._factory = update_wrapper(lambda _arg: factory(**{arg_0_name: _arg}), factory)
+            else:
+                raise ValueError(f'unsupported factory signature: {sign}')
         else:
             raise TypeError('factory has too many parameters.')
 
@@ -57,6 +65,7 @@ class ServiceInfo(IServiceInfo):
         self._lifetime = lifetime
         self._cache_value = None
         self._service_provider = service_provider
+        self._options: dict = service_provider[Symbols.provider_options]
 
         if self._lifetime != LifeTime.transient:
             self._lock = RLock()
@@ -69,7 +78,7 @@ class ServiceInfo(IServiceInfo):
 
     def get(self, provider):
         if self._lifetime is LifeTime.transient:
-            return self._factory(provider)
+            return self._create(provider)
 
         if self._lifetime is LifeTime.scoped:
             return self._from_scoped(provider)
@@ -89,16 +98,28 @@ class ServiceInfo(IServiceInfo):
             try:
                 return cache[self]
             except KeyError:
-                value = self._factory(provider)
-                cache[self] = value
-                return value
+                service = self._create(provider)
+                cache[self] = service
+                return service
 
     def _from_singleton(self):
         if self._cache_value is None:
             with self._lock:
                 if self._cache_value is None:
-                    self._cache_value = (self._factory(self._service_provider), )
+                    self._cache_value = (self._create(self._service_provider), )
         return self._cache_value[0]
+
+    def _create(self, provider):
+        '''
+        return the finally service instance.
+        '''
+
+        service = self._factory(provider)
+        if self._options['auto_enter']:
+            wrapped = getattr(self._factory, '__anyioc_wrapped__', self._factory)
+            if isinstance(wrapped, type) and hasattr(wrapped, '__enter__') and hasattr(wrapped, '__exit__'):
+                service = provider.enter(service)
+        return service
 
 
 class ProviderServiceInfo(IServiceInfo):

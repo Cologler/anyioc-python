@@ -18,7 +18,7 @@ inject_by_table = {
 
 class ServiceProviderBuilder:
     '''
-    provide decorator api for `ServiceProvider`.
+    a decorator api helper class for `ServiceProvider`.
     '''
     __slots__ = ('_provider')
 
@@ -30,23 +30,20 @@ class ServiceProviderBuilder:
 
     def register(self, lifetime: LifeTime, key=None, factory=None, *, inject_by=None):
         '''
-        register a service factory by key.
+        Register a service factory by `key` with `lifetime`,
+        can be use as decorator if the `factory` set `None`.
 
-        `factory` accept a function which require one or zero parameter.
-        if the count of parameter is 1, pass a `IServiceProvider` as the argument.
+        If the `key` is `None`, use the `factory` as key. This is helpful to use a `type` as factory.
+        Special, if the `key` is a `list`, use each item in it as key;
 
-        - if `key` is `None`, use `factory` as key;
-        - if `key` is a list, use each item in it as key;
-
-        this function can use like a decorator if `factory` is `None`.
-
-        `inject_by`: you can pass a function to convert `factory` signature to `ioc => any`;
-        there are some `inject_by_*` helper functions in `anyioc.utils`.
+        By default, the parameter `factory` accept a callable like `() -> Any` or `(ioc) -> Any`,
+        but you can pass a `inject_by` function to wrap the `factory` to `(ioc) -> Any`.
+        `anyioc` include some useful `inject_by_*` helper functions in `anyioc.utils`.
 
         returns:
 
-        - decorator return the factory.
-        - non-decorator always return None
+        - decorator mode return the factory.
+        - non-decorator mode always return None
         '''
 
         if isinstance(inject_by, str):
@@ -81,67 +78,25 @@ class ServiceProviderBuilder:
 
     def singleton(self, key=None, factory=None, *, inject_by=None):
         '''
-        register a service factory by key.
+        Call `register()` with `LifeTime.singleton`.
 
-        `factory` accept a function which require one or zero parameter.
-        if the count of parameter is 1, pass a `IServiceProvider` as the argument.
-
-        - if `key` is `None`, use `factory` as key;
-        - if `key` is a list, use each item in it as key;
-
-        this function can use like a decorator if `factory` is `None`.
-
-        `inject_by`: you can pass a function to convert `factory` signature to `ioc => any`;
-        there are some `inject_by_*` helper functions in `anyioc.utils`.
-
-        returns:
-
-        - decorator return the factory.
-        - non-decorator always return None
+        See `register()` for more details.
         '''
         return self.register(LifeTime.singleton, key, factory, inject_by=inject_by)
 
     def scoped(self, key=None, factory=None, *, inject_by=None):
         '''
-        register a service factory by key.
+        Call `register()` with `LifeTime.scoped`.
 
-        `factory` accept a function which require one or zero parameter.
-        if the count of parameter is 1, pass a `IServiceProvider` as the argument.
-
-        - if `key` is `None`, use `factory` as key;
-        - if `key` is a list, use each item in it as key;
-
-        this function can use like a decorator if `factory` is `None`.
-
-        `inject_by`: you can pass a function to convert `factory` signature to `ioc => any`;
-        there are some `inject_by_*` helper functions in `anyioc.utils`.
-
-        returns:
-
-        - decorator return the factory.
-        - non-decorator always return None
+        See `register()` for more details.
         '''
         return self.register(LifeTime.scoped, key, factory, inject_by=inject_by)
 
     def transient(self, key=None, factory=None, *, inject_by=None):
         '''
-        register a service factory by key.
+        Call `register()` with `LifeTime.transient`.
 
-        `factory` accept a function which require one or zero parameter.
-        if the count of parameter is 1, pass a `IServiceProvider` as the argument.
-
-        - if `key` is `None`, use `factory` as key;
-        - if `key` is a list, use each item in it as key;
-
-        this function can use like a decorator if `factory` is `None`.
-
-        `inject_by`: you can pass a function to convert `factory` signature to `ioc => any`;
-        there are some `inject_by_*` helper functions in `anyioc.utils`.
-
-        returns:
-
-        - decorator return the factory.
-        - non-decorator always return None
+        See `register()` for more details.
         '''
         return self.register(LifeTime.transient, key, factory, inject_by=inject_by)
 

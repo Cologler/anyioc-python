@@ -144,3 +144,21 @@ def test_get_many_from_multilevel():
     provider4.register_transient('a', lambda ioc: 41)
 
     assert [31, 30, 21, 20, 11, 10] == provider3.get_many('a')
+
+def test_options_auto_enter():
+    provider = ServiceProvider(auto_enter=True)
+
+    class ContextManager:
+        value = 0
+        def __enter__(self):
+            self.value = 1
+            return self
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self.value = 2
+
+    provider.register_scoped('mgr', ContextManager)
+    with provider.scope() as scoped_provider:
+        mgr = scoped_provider['mgr']
+        assert mgr.value == 1
+    assert mgr.value == 2

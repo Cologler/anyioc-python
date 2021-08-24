@@ -1,19 +1,25 @@
 language: python
 dist: xenial
-sudo: true
 python:
   - '3.7'
   - '3.8'
+  - '3.9'
+
+before_install:
+  - pip install poetry poetry-dynamic-versioning
 install:
-  - pipenv install --dev --skip-lock
+  - poetry install
+
 script:
-  - python -m pytest --cov=anyioc
-  - python setup.py print_attrs
-deploy:
-  provider: pypi
-  user: $PYPI_USER
-  password: $PYPI_PW
-  distributions: "sdist bdist_wheel"
-  skip_existing: true
-  on:
-    tags: true
+  - python -m pytest --cov=anyioc --cov-report=term --cov-report=html
+
+jobs:
+  include:
+    - stage: deploy
+      python: 3.9
+      deploy:
+        provider: script
+        script: poetry publish --build -u __token__ -p $PYPI_TOKEN
+        skip_cleanup: true
+        on:
+          tags: true
