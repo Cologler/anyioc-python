@@ -51,9 +51,13 @@ class ServiceInfo(IServiceInfo):
             self._factory = update_wrapper(lambda _: factory(), factory)
         elif len(sign.parameters) == 1:
             arg_0 = list(sign.parameters.values())[0]
-            if arg_0.kind != Parameter.POSITIONAL_OR_KEYWORD:
-                raise TypeError('1st parameter of factory must be a positional parameter.')
-            self._factory = factory
+            if arg_0.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD):
+                self._factory = factory
+            elif arg_0.kind == Parameter.KEYWORD_ONLY:
+                arg_0_name = arg_0.name
+                self._factory = update_wrapper(lambda _arg: factory(**{arg_0_name: _arg}), factory)
+            else:
+                raise ValueError(f'unsupported factory signature: {sign}')
         else:
             raise TypeError('factory has too many parameters.')
 

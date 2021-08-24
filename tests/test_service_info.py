@@ -5,12 +5,33 @@
 #
 # ----------
 
+from anyioc import ServiceProvider
 from anyioc.ioc_service_info import (
+    LifeTime,
     ServiceInfo,
     ProviderServiceInfo,
     GroupedServiceInfo,
     BindedServiceInfo,
 )
+
+def test_service_info():
+    other_kwargs = {
+        'service_provider': ServiceProvider(),
+        'key': 'test-key',
+        'lifetime': LifeTime.transient,
+    }
+
+    # without parameters
+    si = ServiceInfo(factory=lambda: 15, **other_kwargs)
+    assert si.get(other_kwargs['service_provider']) == 15
+
+    # with one parameter
+    si = ServiceInfo(factory=lambda _: 15, **other_kwargs)
+    assert si.get(other_kwargs['service_provider']) == 15
+
+    # with one keyword parameter
+    si = ServiceInfo(factory=lambda *, sr2fe: 15, **other_kwargs)
+    assert si.get(other_kwargs['service_provider']) == 15
 
 def test_provider_service_info():
     src = {}
