@@ -1,7 +1,7 @@
 # anyioc
 
 ![GitHub](https://img.shields.io/github/license/Cologler/anyioc-python.svg)
-[![Build Status](https://app.travis-ci.com/Cologler/anyioc-python.svg?branch=master)](https://app.travis-ci.com/Cologler/anyioc-python)
+[![CI](https://github.com/Cologler/anyioc-python/actions/workflows/main.yml/badge.svg)](https://github.com/Cologler/anyioc-python/actions/workflows/main.yml)
 [![PyPI](https://img.shields.io/pypi/v/anyioc.svg)](https://pypi.org/project/anyioc/)
 
 Another simple ioc framework for python.
