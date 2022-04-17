@@ -10,6 +10,7 @@ from typing import Any, List
 from contextlib import ExitStack, nullcontext
 from threading import RLock
 from types import MappingProxyType
+from logging import getLogger
 
 from .err import ServiceNotFoundError
 from .symbols import Symbols
@@ -26,6 +27,8 @@ from .ioc_service_info import (
     BindedServiceInfo,
     CallerFrameServiceInfo
 )
+
+_logger = getLogger(__name__)
 
 
 class IServiceProvider:
@@ -86,6 +89,7 @@ class ScopedServiceProvider(IServiceProvider):
         return self._services.get_many(key)
 
     def __getitem__(self, key):
+        _logger.debug('get service by key: %r', key)
         service_info = self._get_service_info(key)
         try:
             return service_info.get(self)
@@ -118,6 +122,7 @@ class ScopedServiceProvider(IServiceProvider):
         assert provider.get_many('a') == [2, 1] # rev order
         ```
         '''
+        _logger.debug('get services by key: %r', key)
         service_infos = self._get_service_info_list(key)
         try:
             return [si.get(self) for si in service_infos]
@@ -150,6 +155,7 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         if not isinstance(service_info, IServiceInfo):
             raise TypeError('service_info must be instance of IServiceInfo.')
+        _logger.debug('register %r with key %r', service_info, key)
         self._services[key] = service_info
 
     def register(self, key, factory, lifetime):
@@ -264,7 +270,7 @@ class ServiceProvider(ScopedServiceProvider):
         self._services[IServiceProvider] = provider_service_info
 
         # options
-        self.register_value(Symbols.provider_options, MappingProxyType(
+        self._services[Symbols.provider_options] = ValueServiceInfo(MappingProxyType(
             dict(
                 auto_enter=auto_enter
             )

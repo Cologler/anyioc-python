@@ -11,7 +11,6 @@ from inspect import signature, Parameter
 from typing import Any
 from threading import RLock
 import inspect
-import contextlib
 
 from .symbols import Symbols
 from .utils import update_wrapper
@@ -35,7 +34,7 @@ class ServiceInfo(IServiceInfo):
     '''generic `IServiceInfo`.'''
 
     __slots__ = (
-        '_key', '_lifetime', '_factory',
+        '_key', '_lifetime', '_factory', '_factory_origin',
         # for not transient
         '_lock',
         # for singleton
@@ -45,6 +44,7 @@ class ServiceInfo(IServiceInfo):
     )
 
     def __init__(self, service_provider, key, factory, lifetime):
+        self._factory_origin = factory
 
         sign = signature(factory)
         if not sign.parameters:
@@ -75,6 +75,9 @@ class ServiceInfo(IServiceInfo):
         if self._lifetime == LifeTime.singleton:
             # service_provider is required when lifetime == singleton
             assert self._service_provider is not None
+
+    def __repr__(self) -> str:
+        return f'<Service: {self._lifetime}, {self._factory_origin!r}>'
 
     def get(self, provider):
         if self._lifetime is LifeTime.transient:
@@ -127,6 +130,9 @@ class ProviderServiceInfo(IServiceInfo):
 
     __slots__ = ()
 
+    def __repr__(self) -> str:
+        return f'<Provider>'
+
     def get(self, provider):
         return provider
 
@@ -140,6 +146,9 @@ class GetAttrServiceInfo(IServiceInfo):
         super().__init__()
         self._attr_info = attr_info
 
+    def __repr__(self) -> str:
+        return f'<GetAttr: {self._attr_info[0]!r}>'
+
     def get(self, provider):
         return getattr(provider, *self._attr_info)
 
@@ -151,6 +160,9 @@ class ValueServiceInfo(IServiceInfo):
 
     def __init__(self, value):
         self._value = value
+
+    def __repr__(self) -> str:
+        return f'<Value: {self._value!r}>'
 
     def get(self, provider):
         return self._value
@@ -175,6 +187,9 @@ class BindedServiceInfo(IServiceInfo):
 
     def __init__(self, target_key):
         self._target_key = target_key
+
+    def __repr__(self) -> str:
+        return f'<Binded: {self._target_key!r}>'
 
     def get(self, provider):
         return provider[self._target_key]
