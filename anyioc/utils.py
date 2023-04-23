@@ -8,13 +8,10 @@
 from typing import List, Tuple, Union, Any, Dict, Callable
 from inspect import signature, Parameter
 
-from ._utils import get_module_name
-
-def update_wrapper(wrapper, wrapped):
-    ' update wrapper with internal attributes. '
-    wrapper.__anyioc_wrapped__ = getattr(wrapped, '__anyioc_wrapped__', wrapped)
-    return wrapper
-
+from ._utils import (
+    get_module_name as _get_module_name,
+    update_wrapper as _update_wrapper
+)
 
 def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                **kw_args: Dict[str, Union[Tuple[Any], Tuple[Any, Any]]]):
@@ -69,7 +66,7 @@ def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
                     key, default = item
                     kwargs[name] = ioc.get(key, default)
             return func(*args, **kwargs)
-        return update_wrapper(new_func, func)
+        return _update_wrapper(new_func, func)
 
     return decorator
 
@@ -258,7 +255,7 @@ def get_logger(ioc):
     from .symbols import Symbols
 
     fr = ioc[Symbols.caller_frame]
-    name = get_module_name(fr)
+    name = _get_module_name(fr)
     return logging.getLogger(name)
 
 

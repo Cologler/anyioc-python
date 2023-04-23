@@ -7,13 +7,12 @@
 
 from abc import abstractmethod, ABC
 from enum import Enum
-from inspect import signature, Parameter
 from typing import Any
 from threading import RLock
 import inspect
 
 from .symbols import Symbols
-from .utils import update_wrapper
+from ._utils import wrap_signature as _wrap_signature
 
 
 class LifeTime(Enum):
@@ -45,21 +44,7 @@ class ServiceInfo(IServiceInfo):
 
     def __init__(self, service_provider, key, factory, lifetime):
         self._factory_origin = factory
-
-        sign = signature(factory)
-        if not sign.parameters:
-            self._factory = update_wrapper(lambda _: factory(), factory)
-        elif len(sign.parameters) == 1:
-            arg_0 = list(sign.parameters.values())[0]
-            if arg_0.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD):
-                self._factory = factory
-            elif arg_0.kind == Parameter.KEYWORD_ONLY:
-                arg_0_name = arg_0.name
-                self._factory = update_wrapper(lambda _arg: factory(**{arg_0_name: _arg}), factory)
-            else:
-                raise ValueError(f'unsupported factory signature: {sign}')
-        else:
-            raise TypeError('factory has too many parameters.')
+        self._factory = _wrap_signature(factory)
 
         self._key = key
         self._lifetime = lifetime

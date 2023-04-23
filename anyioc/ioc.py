@@ -27,6 +27,7 @@ from .ioc_service_info import (
     BindedServiceInfo,
     CallerFrameServiceInfo
 )
+from ._utils import wrap_signature as _wrap_signature
 
 _logger = getLogger(__name__)
 
@@ -285,6 +286,7 @@ class ServiceProvider(ScopedServiceProvider):
         ))
 
     def add_init_hook(self, func):
+        func = _wrap_signature(func)
         if self.__init_hooks is not None:
             with self._lock:
                 if self.__init_hooks is not None:
