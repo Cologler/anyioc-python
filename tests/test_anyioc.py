@@ -160,3 +160,62 @@ def test_options_auto_enter():
         mgr = scoped_provider['mgr']
         assert mgr.value == 1
     assert mgr.value == 2
+
+def test_add_init_hook():
+    provider = ServiceProvider()
+    provider.add_init_hook(lambda _: None)
+
+def test_add_init_hook_after_init():
+    provider = ServiceProvider()
+    provider.register_value('a', 1)
+    provider.get('a')
+    with raises(RuntimeError):
+        provider.add_init_hook(lambda _: None)
+
+def test_call_init_hook():
+    provider = ServiceProvider()
+
+    counter = 0
+    def callback(_):
+        nonlocal counter
+        assert counter == 0
+        counter += 1
+    provider.add_init_hook(callback)
+
+    def test_func():
+        assert counter == 1
+        return counter + 2
+
+    provider.register_transient('a', test_func)
+
+    assert provider['a'] == 3
+    assert provider['a'] == 3
+    assert provider['a'] == 3
+    assert provider['a'] == 3
+
+def test_call_init_hook_when_raise():
+    provider = ServiceProvider()
+
+    class Exc(Exception):
+        pass
+
+    counter = 0
+
+    def callback(_):
+        nonlocal counter
+        assert counter == 0
+        counter += 1
+        raise Exc
+
+    provider.add_init_hook(callback)
+
+    provider.register_value('a', 0)
+
+    with raises(Exc):
+        provider['a']
+
+    with raises(Exc):
+        provider['a']
+
+    with raises(Exc):
+        provider['a']
