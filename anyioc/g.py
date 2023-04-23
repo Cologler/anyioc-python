@@ -31,6 +31,16 @@ def _is_module_exists(module_name: str) -> bool:
 
 def _get_module_provider(module_name: str):
     'get or create module provider'
+
+    def init_hook(provider):
+        # auto init ioc
+        initioc_module_name = module_name + '.init_ioc'
+        if _is_module_exists(initioc_module_name):
+            init_ioc = importlib.import_module(initioc_module_name)
+            conf_ioc = getattr(init_ioc, 'conf_ioc', None)
+            if conf_ioc is not None:
+                conf_ioc(provider)
+
     provider = _module_scoped_providers.get(module_name)
     if provider is None:
         with _module_scoped_lock:
@@ -39,14 +49,8 @@ def _get_module_provider(module_name: str):
                 provider = ServiceProvider()
                 dispose_at_exit(provider)
                 _module_scoped_providers[module_name] = provider
+                provider.add_init_hook(init_hook)
 
-                # auto init ioc
-                initioc_module_name = module_name + '.init_ioc'
-                if _is_module_exists(initioc_module_name):
-                    init_ioc = importlib.import_module(initioc_module_name)
-                    conf_ioc = getattr(init_ioc, 'conf_ioc', None)
-                    if conf_ioc is not None:
-                        conf_ioc(provider)
     return provider
 
 def _get_caller_module_name():

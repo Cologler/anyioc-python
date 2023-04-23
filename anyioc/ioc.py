@@ -6,7 +6,7 @@
 # ----------
 
 from abc import abstractmethod
-from typing import Any, List
+from typing import Any, List, Optional
 from contextlib import ExitStack, nullcontext
 from threading import RLock
 from types import MappingProxyType
@@ -64,11 +64,13 @@ class IServiceProvider:
 
 class ScopedServiceProvider(IServiceProvider):
 
-    def __init__(self, services: ServicesMap, parent=None):
+    def __init__(self, services: ServicesMap, parent: 'ScopedServiceProvider'=None):
         super().__init__()
         self._services = services
         self._exit_stack = None
         self._scoped_cache = {}
+        self._root: ServiceProvider = parent._root if parent else self
+        assert self._root is not None
         self._parent = parent
         self.__class__ = ServiceProvider # hack
         if parent is None: # root provider
@@ -90,6 +92,7 @@ class ScopedServiceProvider(IServiceProvider):
 
     def __getitem__(self, key):
         _logger.debug('get service by key: %r', key)
+        self._root._ensure_init_hooks_called()
         service_info = self._get_service_info(key)
         try:
             return service_info.get(self)
@@ -100,6 +103,7 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         get a service by key.
         '''
+        self._root._ensure_init_hooks_called()
         try:
             return self[key]
         except ServiceNotFoundError as err:
@@ -123,6 +127,7 @@ class ScopedServiceProvider(IServiceProvider):
         ```
         '''
         _logger.debug('get services by key: %r', key)
+        self._root._ensure_init_hooks_called()
         service_infos = self._get_service_info_list(key)
         try:
             return [si.get(self) for si in service_infos]
@@ -262,6 +267,8 @@ class ServiceProvider(ScopedServiceProvider):
         self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
         self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
 
+        self.__init_hooks = []
+
         # service alias
         self._services['ioc'] = provider_service_info
         self._services['provider'] = provider_service_info
@@ -275,3 +282,17 @@ class ServiceProvider(ScopedServiceProvider):
                 auto_enter=auto_enter
             )
         ))
+
+    def add_init_hook(self, func):
+        if self.__init_hooks is None:
+            raise RuntimeError('Cannot add init hook after initialized.')
+        self.__init_hooks.append(func)
+
+    def _ensure_init_hooks_called(self):
+        if self.__init_hooks is not None:
+            with self._lock:
+                if self.__init_hooks is not None:
+                    _logger.debug('call init hooks')
+                    for func in self.__init_hooks:
+                        func(self)
+                    self.__init_hooks = None
