@@ -285,9 +285,12 @@ class ServiceProvider(ScopedServiceProvider):
         ))
 
     def add_init_hook(self, func):
-        if self.__init_hooks is None:
-            raise RuntimeError('Cannot add init hook after initialized.')
-        self.__init_hooks.append(func)
+        if self.__init_hooks is not None:
+            with self._lock:
+                if self.__init_hooks is not None:
+                    self.__init_hooks.append(func)
+                    return
+        raise RuntimeError('Cannot add init hook after initialized.')
 
     def _ensure_init_hooks_called(self):
         if self.__init_hooks is not None or self.__init_exc is not None:
@@ -299,8 +302,8 @@ class ServiceProvider(ScopedServiceProvider):
                     hooks = self.__init_hooks
                     self.__init_hooks = None
                     try:
-                        while hooks:
-                            hooks.pop(0)(self)
+                        for func in hooks:
+                            func(self)
                     except Exception as e:
                         self.__init_exc = e
                         raise
