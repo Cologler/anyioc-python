@@ -5,9 +5,7 @@
 #
 # ----------
 
-import sys
 from typing import List, Tuple, Union, Any, Dict, Callable
-import inspect
 from inspect import signature, Parameter
 
 from ._utils import get_module_name

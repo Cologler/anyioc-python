@@ -18,7 +18,7 @@ class BadConfError(Exception):
     raise when the conf dict was incorrect.
     '''
 
-def _iter_list_with_path(path: str, l: list):
+def _iter_list_with_path(path: str, l: list):  # noqa: E741
     'yield a (path, item) tuple from list.'
     for i, v in enumerate(l):
         yield f'{path}[{i!r}]', v
@@ -184,7 +184,6 @@ class _ConfLoader:
                         f'value of <{path}/inject_by> ({inject_by!r}) is not one of ({one_of}).')
                 inject_by = inject_by_decorator
             elif isinstance(inject_by, dict):
-                keys = {}
                 for name in inject_by:
                     if not isinstance(name, str):
                         raise BadConfError(
