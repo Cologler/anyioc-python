@@ -268,6 +268,7 @@ class ServiceProvider(ScopedServiceProvider):
         self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
 
         self.__init_hooks = []
+        self.__init_exc = None
 
         # service alias
         self._services['ioc'] = provider_service_info
@@ -289,10 +290,17 @@ class ServiceProvider(ScopedServiceProvider):
         self.__init_hooks.append(func)
 
     def _ensure_init_hooks_called(self):
-        if self.__init_hooks is not None:
+        if self.__init_hooks is not None or self.__init_exc is not None:
             with self._lock:
+                if self.__init_exc is not None:
+                    raise self.__init_exc
                 if self.__init_hooks is not None:
                     _logger.debug('call init hooks')
-                    for func in self.__init_hooks:
-                        func(self)
+                    hooks = self.__init_hooks
                     self.__init_hooks = None
+                    try:
+                        while hooks:
+                            hooks.pop(0)(self)
+                    except Exception as e:
+                        self.__init_exc = e
+                        raise
