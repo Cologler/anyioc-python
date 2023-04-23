@@ -6,7 +6,6 @@
 # ----------
 
 import inspect
-from pytest import raises
 
 from anyioc import ServiceProvider
 from anyioc.symbols import Symbols

@@ -160,7 +160,7 @@ def test_services_when_factory_module_unable_import():
         from_conf(dict(
             services={
                 'fjndau': dict(
-                    factory=f'djashfiaushfuia:not_callable'
+                    factory='djashfiaushfuia:not_callable'
                 )
             }
         ))
@@ -175,7 +175,8 @@ def test_services_when_factory_module_has_no_such_attr():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "</services['fjndau']/factory>: no such attr 'djashfiaushfuia' on module 'test_utils_conf'."
+    assert excinfo.value.args[0] == \
+        "</services['fjndau']/factory>: no such attr 'djashfiaushfuia' on module 'test_utils_conf'."
 
 
 not_callable = object()
@@ -201,7 +202,8 @@ def test_services_when_inject_by_is_invaild():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "value of </services['fjndau']/inject_by> ('dsadsa') is not one of (anno, inject_by_anno, name, inject_by_name)."
+    assert excinfo.value.args[0] == \
+        "value of </services['fjndau']/inject_by> ('dsadsa') is not one of (anno, inject_by_anno, name, inject_by_name)."  # noqa: E501
 
 def test_services_when_lifetime_is_invaild():
     with raises(BadConfError) as excinfo:
@@ -213,7 +215,8 @@ def test_services_when_lifetime_is_invaild():
                 )
             }
         ))
-    assert excinfo.value.args[0] == "value of </services['fjndau']/lifetime> ('fett') is not one of (transient, scoped, singleton)."
+    assert excinfo.value.args[0] == \
+        "value of </services['fjndau']/lifetime> ('fett') is not one of (transient, scoped, singleton)."
 
 def test_load_conf_with_values_dict():
     provider = from_conf({

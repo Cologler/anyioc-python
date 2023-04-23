@@ -6,7 +6,7 @@
 # ----------
 
 from abc import abstractmethod
-from typing import Any, List, Optional
+from typing import Any, List
 from contextlib import ExitStack, nullcontext
 from threading import RLock
 from types import MappingProxyType

@@ -5,7 +5,7 @@
 #
 # ----------
 
-from typing import Dict, List, Any, Iterable
+from typing import Dict, List, Any
 
 class ServicesMap:
     def __init__(self, *maps):

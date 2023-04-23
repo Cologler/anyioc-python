@@ -5,8 +5,6 @@
 #
 # ----------
 
-import itertools
-
 from pytest import raises
 
 from anyioc import ServiceProvider, ServiceNotFoundError

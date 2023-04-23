@@ -12,7 +12,6 @@ from anyioc.symbols import Symbols
 from anyioc.ioc_resolver import (
     ImportServiceInfoResolver,
     TypesServiceInfoResolver,
-    TypeNameServiceInfoResolver,
 )
 from anyioc.utils import inject_by_name
 
@@ -88,7 +87,7 @@ def test_chain_resolver():
 
 def test_():
     from anyioc.ioc_resolver import TypingServiceInfoResolver
-    from typing import Tuple, List
+    from typing import Tuple
 
     class TestClass:
         pass

@@ -9,16 +9,9 @@ from pytest import raises
 
 from anyioc.g import (
     ServiceProvider,
-    ioc,
     get_module_provider, get_pkgroot_provider
 )
 from anyioc.symbols import Symbols
-
-from tests.assert_utils import (
-    assert_value_singleton,
-    assert_value_scoped,
-    assert_value_transient
-)
 
 def test_get_module_provider():
     assert get_module_provider('A') is not get_module_provider('B')

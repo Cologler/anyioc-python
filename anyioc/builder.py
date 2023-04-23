@@ -6,7 +6,7 @@
 # ----------
 
 from .ioc import ScopedServiceProvider, LifeTime
-from .symbols import Symbols, _Symbol
+from .symbols import _Symbol
 from .utils import inject_by_anno, inject_by_name
 
 inject_by_table = {
@@ -119,8 +119,6 @@ class ServiceProviderBuilder:
 
         the return instance can also use like a unique key.
         '''
-        from .utils import make_group
-
         group = Group(self._provider)
         self._provider.register_group(group, group)
         self._on_key_added(group)

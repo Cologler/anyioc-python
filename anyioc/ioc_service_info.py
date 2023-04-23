@@ -131,7 +131,7 @@ class ProviderServiceInfo(IServiceInfo):
     __slots__ = ()
 
     def __repr__(self) -> str:
-        return f'<Provider>'
+        return '<Provider>'
 
     def get(self, provider):
         return provider
