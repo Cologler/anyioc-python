@@ -215,19 +215,7 @@ files = [
     {file = "tomli-2.0.1.tar.gz", hash = "sha256:de526c12914f0c550d15924c62d72abc48d6fe7364aa87328337a31007fe8a4f"},
 ]
 
-[[package]]
-name = "type-info"
-version = "0.0.2"
-description = ""
-category = "dev"
-optional = false
-python-versions = "*"
-files = [
-    {file = "type_info-0.0.2-py3-none-any.whl", hash = "sha256:a660da6ec78bdacdda06825780b77fea7f72caf0c24c37395649f4e413e1a345"},
-    {file = "type_info-0.0.2.tar.gz", hash = "sha256:f259be3ac8f8337ab939b4f8b60070dba14a76a35b06e1655a029a277924364f"},
-]
-
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.8"
-content-hash = "65c5f0031ee9e786efbe6a3d73770481ba9206243def02dddac991a3245770db"
+content-hash = "ca593728ea0e7315b041c442565e1abd6fe8a7cd129aeae3816e6290e7f2cd2d"

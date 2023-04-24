@@ -84,20 +84,3 @@ def test_chain_resolver():
     assert provider[CLASS].name == 'some-name'
     with raises(ServiceNotFoundError):
         _ = provider['unknown-some-wtf-module']
-
-def test_():
-    from anyioc.ioc_resolver import TypingServiceInfoResolver
-    from typing import Tuple
-
-    class TestClass:
-        pass
-
-    provider = ServiceProvider()
-    provider.register_transient(TestClass, TestClass)
-    provider.register_value(int, 15)
-    provider[Symbols.missing_resolver].append(TypingServiceInfoResolver())
-
-    ret = provider[Tuple[TestClass, int]]
-    assert isinstance(ret, tuple)
-    assert isinstance(ret[0], TestClass)
-    assert ret[1] == 15
