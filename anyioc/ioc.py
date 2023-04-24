@@ -104,7 +104,6 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         get a service by key.
         '''
-        self._root._ensure_init_hooks_called()
         try:
             return self[key]
         except ServiceNotFoundError as err:
