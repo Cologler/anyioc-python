@@ -5,7 +5,6 @@
 #
 # ----------
 
-import typing
 from typing import List
 from threading import RLock
 from contextlib import nullcontext
