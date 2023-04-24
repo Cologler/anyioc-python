@@ -6,7 +6,7 @@
 # ----------
 
 from abc import abstractmethod
-from typing import Any, List
+from typing import Any, List, TypeVar, ContextManager
 from contextlib import ExitStack, nullcontext
 from threading import RLock
 from types import MappingProxyType
@@ -28,6 +28,8 @@ from .ioc_service_info import (
     CallerFrameServiceInfo
 )
 from ._utils import wrap_signature as _wrap_signature
+
+_T = TypeVar("_T")
 
 _logger = getLogger(__name__)
 
@@ -134,7 +136,7 @@ class ScopedServiceProvider(IServiceProvider):
         except ServiceNotFoundError as err:
             raise ServiceNotFoundError(key, *err.resolve_chain)
 
-    def enter(self, context):
+    def enter(self, context: ContextManager[_T]):
         '''
         enter the context.
 
@@ -239,9 +241,8 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         create a scoped service provider.
         '''
-        sp = ScopedServiceProvider(self._services.scope(), self)
-        self.enter(sp)
-        return sp
+        ssp = ScopedServiceProvider(self._services.scope(), self)
+        return self.enter(ssp)
 
     @property
     def builder(self):
