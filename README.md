@@ -1,7 +1,7 @@
 # anyioc
 
 ![GitHub](https://img.shields.io/github/license/Cologler/anyioc-python.svg)
-[![CI](https://github.com/Cologler/anyioc-python/actions/workflows/main.yml/badge.svg)](https://github.com/Cologler/anyioc-python/actions/workflows/main.yml)
+[![Testing](https://github.com/Cologler/anyioc-python/actions/workflows/testing.yml/badge.svg)](https://github.com/Cologler/anyioc-python/actions/workflows/testing.yml)
 [![PyPI](https://img.shields.io/pypi/v/anyioc.svg)](https://pypi.org/project/anyioc/)
 ![GitHub code size in bytes](https://img.shields.io/github/languages/code-size/Cologler/anyioc-python)
 
