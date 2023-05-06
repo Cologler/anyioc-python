@@ -42,12 +42,17 @@ def wrap_signature(func):
     '''
 
     sign = inspect.signature(func)
+    params = list(sign.parameters.values())
+    if len(params) > 1:
+        params = [p for p in params if p.kind != inspect.Parameter.VAR_KEYWORD]
+    if len(params) > 1:
+        params = [p for p in params if p.kind != inspect.Parameter.VAR_POSITIONAL]
 
-    if not sign.parameters:
+    if not params:
         return update_wrapper(lambda _: func(), func)
 
-    elif len(sign.parameters) == 1:
-        arg_0, = tuple(sign.parameters.values())
+    elif len(params) == 1:
+        arg_0, = params
 
         if arg_0.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
             # does not need to wrap.
@@ -55,7 +60,13 @@ def wrap_signature(func):
 
         elif arg_0.kind == inspect.Parameter.KEYWORD_ONLY:
             arg_0_name = arg_0.name
-            return update_wrapper(lambda _arg: func(**{arg_0_name: _arg}), func)
+            return update_wrapper(lambda sp: func(**{arg_0_name: sp}), func)
+
+        elif arg_0.kind == inspect.Parameter.VAR_POSITIONAL:
+            return update_wrapper(lambda sp: func(sp), func)
+
+        elif arg_0.kind == inspect.Parameter.VAR_KEYWORD:
+            return update_wrapper(lambda sp: func(**{'provider': sp}), func)
 
         else:
             raise ValueError(f'unsupported factory signature: {sign}')

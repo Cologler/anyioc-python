@@ -5,7 +5,7 @@
 #
 # ----------
 
-from .ioc import ScopedServiceProvider, LifeTime
+from .ioc import ServiceProvider, LifeTime
 from .symbols import _Symbol
 from .utils import inject_by_anno, inject_by_name
 
@@ -22,7 +22,7 @@ class ServiceProviderBuilder:
     '''
     __slots__ = ('_provider')
 
-    def __init__(self, provider: ScopedServiceProvider):
+    def __init__(self, provider: ServiceProvider):
         self._provider = provider
 
     def _on_key_added(self, key):
@@ -133,7 +133,7 @@ class Group(ServiceProviderBuilder):
     '''
     __slots__ = ('_group_keys_list', )
 
-    def __init__(self, provider: ScopedServiceProvider):
+    def __init__(self, provider: ServiceProvider):
         super().__init__(provider)
         self._group_keys_list = []
 

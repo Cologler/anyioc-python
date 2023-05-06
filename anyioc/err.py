@@ -5,7 +5,7 @@
 #
 # ----------
 
-class ServiceNotFoundError(Exception):
+class ServiceNotFoundError(LookupError):
     '''
     raise when a service is unable to resolve.
     '''

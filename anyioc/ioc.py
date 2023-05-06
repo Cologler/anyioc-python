@@ -6,7 +6,7 @@
 # ----------
 
 from abc import abstractmethod
-from typing import Any, List, TypeVar, ContextManager, Callable
+from typing import Any, List, TypeVar, ContextManager, Callable, Iterable
 from contextlib import ExitStack, nullcontext
 from threading import RLock
 from types import MappingProxyType
@@ -65,21 +65,85 @@ class IServiceProvider:
         raise NotImplementedError
 
 
-class ScopedServiceProvider(IServiceProvider):
+class ServiceProvider(IServiceProvider):
+    def __init__(self, auto_enter=False, *,
+                # internal uses:
+                _services: ServicesMap=None, _parent: 'ServiceProvider'=None
+            ):
 
-    def __init__(self, services: ServicesMap, parent: 'ScopedServiceProvider'=None):
-        super().__init__()
-        self._services = services
         self._exit_stack = None
         self._scoped_cache = {}
-        self._root: ServiceProvider = parent._root if parent else self
-        assert self._root is not None
-        self._parent = parent
-        self.__class__ = ServiceProvider # hack
-        if parent is None: # root provider
-            self._lock = RLock()
-        else:
+        self._parent = _parent
+
+        assert (_parent is None) is (_services is None)
+
+        if _parent is not None:
+            # scope provider
+            assert auto_enter is False, 'must be default value'
+            self._services = _services
+            self._root: ServiceProvider = _parent._root
             self._lock = nullcontext()
+
+        else:
+            # root provider
+            self._services = ServicesMap()
+            self._root: ServiceProvider = self
+            self._lock = RLock()
+
+            provider_service_info = ProviderServiceInfo()
+            self._services[Symbols.provider] = provider_service_info
+            self._services[Symbols.provider_root] = ValueServiceInfo(self)
+            self._services[Symbols.provider_parent] = GetAttrServiceInfo('_parent')
+            self._services[Symbols.cache] = GetAttrServiceInfo('_scoped_cache')
+            self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
+            self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
+
+            self.__init_hooks = []
+            self.__init_exc = None
+
+            # service alias
+            self._services['ioc'] = provider_service_info
+            self._services['provider'] = provider_service_info
+            self._services['service_provider'] = provider_service_info
+            self._services[ServiceProvider] = provider_service_info
+            self._services[IServiceProvider] = provider_service_info
+
+            # options
+            self._services[Symbols.provider_options] = ValueServiceInfo(MappingProxyType(
+                dict(
+                    auto_enter=auto_enter
+                )
+            ))
+
+        assert self._root is not None
+
+    def add_init_hook(self, func: Callable):
+        func = _wrap_signature(func)
+        if self.__init_hooks is not None:
+            with self._lock:
+                if self.__init_hooks is not None:
+                    self.__init_hooks.append(func)
+                    return
+        raise RuntimeError('Cannot add init hook after initialized.')
+
+    def __ensure_init_hooks_called(self):
+        if self.__init_hooks is not None or self.__init_exc is not None:
+            with self._lock:
+                if self.__init_exc is not None:
+                    raise self.__init_exc
+                if self.__init_hooks is not None:
+                    _logger.debug('call init hooks')
+                    hooks = self.__init_hooks
+                    self.__init_hooks = None
+
+                    self._services.replace(Symbols.at_init, ValueServiceInfo(True))
+                    try:
+                        for func in hooks:
+                            func(self)
+                    except Exception as e:
+                        self.__init_exc = e
+                        raise
+                    self._services.replace(Symbols.at_init, ValueServiceInfo(False))
 
     def _get_service_info(self, key) -> IServiceInfo:
         try:
@@ -90,12 +154,9 @@ class ScopedServiceProvider(IServiceProvider):
         resolver: IServiceInfoResolver = self._services[Symbols.missing_resolver].get(self)
         return resolver.get(self, key)
 
-    def _get_service_info_list(self, key) -> List[IServiceInfo]:
-        return self._services.get_many(key)
-
     def __getitem__(self, key):
         _logger.debug('get service by key: %r', key)
-        self._root._ensure_init_hooks_called()
+        self._root.__ensure_init_hooks_called()
         service_info = self._get_service_info(key)
         try:
             return service_info.get(self)
@@ -129,8 +190,8 @@ class ScopedServiceProvider(IServiceProvider):
         ```
         '''
         _logger.debug('get services by key: %r', key)
-        self._root._ensure_init_hooks_called()
-        service_infos = self._get_service_info_list(key)
+        self._root.__ensure_init_hooks_called()
+        service_infos: Iterable[IServiceInfo] = self._services.get_many(key)
         try:
             return [si.get(self) for si in service_infos]
         except ServiceNotFoundError as err:
@@ -241,7 +302,7 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         create a scoped service provider.
         '''
-        ssp = ScopedServiceProvider(self._services.scope(), self)
+        ssp = ServiceProvider(_services=self._services.scope(), _parent=self)
         return self.enter(ssp)
 
     @property
@@ -251,64 +312,3 @@ class ScopedServiceProvider(IServiceProvider):
         '''
         from .builder import ServiceProviderBuilder
         return ServiceProviderBuilder(self)
-
-
-class ServiceProvider(ScopedServiceProvider):
-    '''
-    the default impl for `IServiceProvider`.
-    '''
-
-    def __init__(self, auto_enter=False):
-        super().__init__(ServicesMap())
-        provider_service_info = ProviderServiceInfo()
-        self._services[Symbols.provider] = provider_service_info
-        self._services[Symbols.provider_root] = ValueServiceInfo(self)
-        self._services[Symbols.provider_parent] = GetAttrServiceInfo('_parent')
-        self._services[Symbols.cache] = GetAttrServiceInfo('_scoped_cache')
-        self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
-        self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
-
-        self.__init_hooks = []
-        self.__init_exc = None
-
-        # service alias
-        self._services['ioc'] = provider_service_info
-        self._services['provider'] = provider_service_info
-        self._services['service_provider'] = provider_service_info
-        self._services[ServiceProvider] = provider_service_info
-        self._services[IServiceProvider] = provider_service_info
-
-        # options
-        self._services[Symbols.provider_options] = ValueServiceInfo(MappingProxyType(
-            dict(
-                auto_enter=auto_enter
-            )
-        ))
-
-    def add_init_hook(self, func: Callable):
-        func = _wrap_signature(func)
-        if self.__init_hooks is not None:
-            with self._lock:
-                if self.__init_hooks is not None:
-                    self.__init_hooks.append(func)
-                    return
-        raise RuntimeError('Cannot add init hook after initialized.')
-
-    def _ensure_init_hooks_called(self):
-        if self.__init_hooks is not None or self.__init_exc is not None:
-            with self._lock:
-                if self.__init_exc is not None:
-                    raise self.__init_exc
-                if self.__init_hooks is not None:
-                    _logger.debug('call init hooks')
-                    hooks = self.__init_hooks
-                    self.__init_hooks = None
-
-                    self._services.replace(Symbols.at_init, ValueServiceInfo(True))
-                    try:
-                        for func in hooks:
-                            func(self)
-                    except Exception as e:
-                        self.__init_exc = e
-                        raise
-                    self._services.replace(Symbols.at_init, ValueServiceInfo(False))
