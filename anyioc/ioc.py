@@ -6,7 +6,7 @@
 # ----------
 
 from abc import abstractmethod
-from typing import Any, List, TypeVar, ContextManager
+from typing import Any, List, TypeVar, ContextManager, Callable
 from contextlib import ExitStack, nullcontext
 from threading import RLock
 from types import MappingProxyType
@@ -285,7 +285,7 @@ class ServiceProvider(ScopedServiceProvider):
             )
         ))
 
-    def add_init_hook(self, func):
+    def add_init_hook(self, func: Callable):
         func = _wrap_signature(func)
         if self.__init_hooks is not None:
             with self._lock:
@@ -303,9 +303,12 @@ class ServiceProvider(ScopedServiceProvider):
                     _logger.debug('call init hooks')
                     hooks = self.__init_hooks
                     self.__init_hooks = None
+
+                    self._services.replace(Symbols.at_init, ValueServiceInfo(True))
                     try:
                         for func in hooks:
                             func(self)
                     except Exception as e:
                         self.__init_exc = e
                         raise
+                    self._services.replace(Symbols.at_init, ValueServiceInfo(False))
