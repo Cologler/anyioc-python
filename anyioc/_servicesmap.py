@@ -39,3 +39,9 @@ class ServicesMap:
 
     def scope(self):
         return self.__class__({}, *self.maps)
+
+    def replace(self, key, *values):
+        '''
+        Replace a service info instead of appending.
+        '''
+        self.maps[0][key] = list(values)

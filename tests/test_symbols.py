@@ -64,3 +64,22 @@ def test_symbol_cache_get_many():
     providers = _create_scopes(ServiceProvider())
     for provider in providers:
         assert len(provider.get_many(Symbols.cache)) == 1
+
+def test_symbol_at_init():
+    provider = ServiceProvider()
+    assert provider[Symbols.at_init] is False
+    assert len(provider.get_many(Symbols.at_init)) == 1
+
+def test_symbol_at_init_with_init_hooks():
+    provider = ServiceProvider()
+
+    @provider.add_init_hook
+    def init_hook(sp):
+        provider.register_value('a', 1)
+        assert provider[Symbols.at_init] is True
+
+    assert provider[Symbols.at_init] is False
+    assert provider['a'] == 1
+    assert provider[Symbols.at_init] is False
+
+    assert len(provider.get_many(Symbols.at_init)) == 1

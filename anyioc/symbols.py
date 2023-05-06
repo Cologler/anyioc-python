@@ -49,3 +49,6 @@ class Symbols:
 
     # the options for the `ServiceProvider`, value is a dict like object.
     provider_options = _Symbol('provider_options')
+
+    # is current stage of the `IServiceProvider` is initializing
+    at_init = _Symbol('at_init')
