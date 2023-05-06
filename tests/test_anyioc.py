@@ -161,28 +161,47 @@ def test_options_auto_enter():
         assert mgr.value == 1
     assert mgr.value == 2
 
-def test_add_init_hook():
+def test_add_init_hook_should_raises_error_after_initialized():
     provider = ServiceProvider()
-    provider.add_init_hook(lambda _: None)
 
-def test_add_init_hook_after_init():
-    provider = ServiceProvider()
     provider.register_value('a', 1)
-    provider.get('a')
+    assert provider['a'] == 1
+
     with raises(RuntimeError):
         provider.add_init_hook(lambda _: None)
 
-def test_call_init_hook():
+def test_call_init_hook_default():
+    provider = ServiceProvider()
+
+    @provider.add_init_hook
+    def init_hook(sp):
+        sp.register_value('a', 1)
+
+    assert provider['a'] == 1
+
+def test_call_init_hook_with_recursion():
+    provider = ServiceProvider()
+
+    provider.register_value('a', 1)
+
+    @provider.add_init_hook
+    def init_hook(sp):
+        sp.register_value('b', sp['a'] + 10)
+
+    assert provider['b'] == 11
+
+def test_call_init_hook_only_once():
     provider = ServiceProvider()
 
     counter = 0
-    def callback(_):
+    def init_hook(_):
         nonlocal counter
         assert counter == 0
         counter += 1
-    provider.add_init_hook(callback)
+    provider.add_init_hook(init_hook)
 
     def test_func():
+        nonlocal counter
         assert counter == 1
         return counter + 2
 
@@ -193,7 +212,7 @@ def test_call_init_hook():
     assert provider['a'] == 3
     assert provider['a'] == 3
 
-def test_call_init_hook_when_raise():
+def test_call_init_hook_when_raises_errors():
     provider = ServiceProvider()
 
     class Exc(Exception):
@@ -201,13 +220,13 @@ def test_call_init_hook_when_raise():
 
     counter = 0
 
-    def callback(_):
+    def init_hook(_):
         nonlocal counter
         assert counter == 0
         counter += 1
         raise Exc
 
-    provider.add_init_hook(callback)
+    provider.add_init_hook(init_hook)
 
     provider.register_value('a', 0)
 
@@ -219,3 +238,5 @@ def test_call_init_hook_when_raise():
 
     with raises(Exc):
         provider['a']
+
+    assert counter == 1
