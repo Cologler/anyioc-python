@@ -136,14 +136,15 @@ class ServiceProvider(IServiceProvider):
                     hooks = self.__init_hooks
                     self.__init_hooks = None
 
-                    self._services.replace(Symbols.at_init, ValueServiceInfo(True))
+                    disposable = self._services.add(Symbols.at_init, ValueServiceInfo(True))
                     try:
                         for func in hooks:
                             func(self)
                     except Exception as e:
                         self.__init_exc = e
                         raise
-                    self._services.replace(Symbols.at_init, ValueServiceInfo(False))
+                    disposable()
+                    self._services.add(Symbols.at_init, ValueServiceInfo(False))
 
     def _get_service_info(self, key) -> IServiceInfo:
         try:
@@ -224,7 +225,7 @@ class ServiceProvider(IServiceProvider):
         if not isinstance(service_info, IServiceInfo):
             raise TypeError('service_info must be instance of IServiceInfo.')
         _logger.debug('register %r with key %r', service_info, key)
-        self._services[key] = service_info
+        return self._services.add(key, service_info)
 
     def register(self, key, factory, lifetime):
         '''
