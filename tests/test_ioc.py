@@ -39,12 +39,18 @@ def test_resolve_group():
     group_keys.append('float')
     assert provider['any'] == ('name', 1, 1.1)
 
-def test_resolve_value():
+def test_value():
     provider = ServiceProvider()
+
     provider.register_value('k', 'value')
     assert provider['k'] == 'value'
 
-def test_register_bind():
+    with provider.register_value('k', 'context_value'):
+        assert provider['k'] == 'context_value'
+
+    assert provider['k'] == 'value'
+
+def test_bind():
     provider = ServiceProvider()
     provider.register_value('k', 'value')
     provider.register_bind('b', 'k')
@@ -75,5 +81,5 @@ def test_predefined_keys():
 def test_types():
     # since scoped is scoped[ServiceProvider]
     provider = ServiceProvider()
-    with provider.scope() as scoped:
-        assert isinstance(scoped, ServiceProvider)
+    with provider.scope() as scope:
+        assert isinstance(scope, ServiceProvider)
