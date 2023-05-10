@@ -5,14 +5,14 @@
 #
 # ----------
 
-from abc import abstractmethod, ABC
-from enum import Enum
-from typing import Any
-from threading import RLock
 import inspect
+from abc import ABC, abstractmethod
+from enum import Enum
+from threading import RLock
+from typing import Any
 
-from .symbols import Symbols
 from ._utils import wrap_signature as _wrap_signature
+from .symbols import Symbols
 
 
 class LifeTime(Enum):
@@ -42,7 +42,15 @@ class ServiceInfo(IServiceInfo):
         '_options',
     )
 
+    _not_allowed_keys = frozenset([
+        Symbols.provider_options,
+        Symbols.cache,
+    ])
+
     def __init__(self, service_provider, key, factory, lifetime):
+        if key in self._not_allowed_keys:
+            raise ValueError(f'key {key!r} is not allowed')
+
         self._factory_origin = factory
         self._factory = _wrap_signature(factory)
 

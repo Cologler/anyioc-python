@@ -38,7 +38,7 @@ class Symbols:
     # the parent of current `IServiceProvider`
     provider_parent = _Symbol('provider_parent')
 
-    # the cache dict from `IServiceProvider`
+    # the cache dict to store scoped instances
     cache = _Symbol('cache')
 
     # the missing resolver from `IServiceProvider`

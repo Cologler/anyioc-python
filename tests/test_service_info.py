@@ -5,14 +5,18 @@
 #
 # ----------
 
+import pytest
+
 from anyioc import ServiceProvider
 from anyioc.ioc_service_info import (
-    LifeTime,
-    ServiceInfo,
-    ProviderServiceInfo,
-    GroupedServiceInfo,
     BindedServiceInfo,
+    GroupedServiceInfo,
+    LifeTime,
+    ProviderServiceInfo,
+    ServiceInfo
 )
+from anyioc.symbols import Symbols
+
 
 def test_service_info():
     other_kwargs = {
@@ -32,6 +36,15 @@ def test_service_info():
     # with one keyword parameter
     si = ServiceInfo(factory=lambda *, sr2fe: 15, **other_kwargs)
     assert si.get(other_kwargs['service_provider']) == 15
+
+@pytest.mark.parametrize('key', [
+    Symbols.cache,
+    Symbols.provider_options
+])
+def test_service_info_not_allowed_keys(key):
+    service_provider = ServiceProvider()
+    with pytest.raises(ValueError):
+        ServiceInfo(service_provider, key, lambda: None, LifeTime.transient)
 
 def test_provider_service_info():
     src = {}
