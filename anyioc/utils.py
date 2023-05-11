@@ -49,22 +49,18 @@ def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
         if len(tup) not in (1, 2):
             raise ValueError('tuple should contains 1 or 2 elements')
 
+    def load_service(ioc, load_info):
+        if len(load_info) == 1:
+            return ioc[load_info[0]]
+        elif len(load_info) == 2:
+            return ioc.get(load_info[0], load_info[1])
+        else:
+            raise NotImplementedError
+
     def decorator(func):
         def new_func(ioc):
-            args = []
-            for item in pos_args:
-                if len(item) == 1:
-                    args.append(ioc[item[0]])
-                else:
-                    key, default = item
-                    args.append(ioc.get(key, default))
-            kwargs = {}
-            for name, item in kw_args.items():
-                if len(item) == 1:
-                    kwargs[name] = ioc[item[0]]
-                else:
-                    key, default = item
-                    kwargs[name] = ioc.get(key, default)
+            args = [load_service(ioc, item) for item in pos_args]
+            kwargs = dict((name, load_service(ioc, item)) for name, item in kw_args.items())
             return func(*args, **kwargs)
         return _update_wrapper(new_func, func)
 
