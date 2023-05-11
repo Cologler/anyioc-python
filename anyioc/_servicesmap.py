@@ -16,6 +16,22 @@ def unwrap(wrapped: Wrapped):
     return wrapped[1]
 
 
+class Disposable():
+    __slots__ = ('dispose',)
+
+    def __init__(self, dispose) -> None:
+        self.dispose = dispose
+
+    def __call__(self):
+        return self.dispose()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self.dispose()
+
+
 class ServicesMap:
     def __init__(self, *maps):
         self.maps: List[Dict[Any, List[Wrapped]]] = list(maps) or [{}]
@@ -28,7 +44,13 @@ class ServicesMap:
             yield from (unwrap(x) for x in reversed(mapping.get(key, [])))
 
     def __setitem__(self, key, value):
-        self.add(key, value)
+        self.__add(key, value, create_disposable=False)
+
+    def add(self, key, value) -> Disposable:
+        '''
+        Unlike `__setitem__`, `add` will create a disposable for remove the added value.
+        '''
+        return self.__add(key, value, create_disposable=True)
 
     def __getitem__(self, key):
         'get item or raise `KeyError`` if not found'
@@ -48,30 +70,15 @@ class ServicesMap:
     def scope(self):
         return self.__class__({}, *self.maps)
 
-    def add(self, key, value):
+    def __add(self, key, value, *, create_disposable):
         wrapped_value = wrap(value) # ensure dispose the right value
         self.maps[0].setdefault(key, []).append(wrapped_value)
 
-        def dispose():
-            try:
-                self.maps[0][key].remove(wrapped_value)
-            except ValueError:
-                raise RuntimeError('Cannot call dispose again')
+        if create_disposable:
+            def dispose():
+                try:
+                    self.maps[0][key].remove(wrapped_value)
+                except ValueError:
+                    raise RuntimeError('Cannot call dispose again')
 
-        return Disposable(dispose)
-
-
-class Disposable():
-    __slots__ = ('dispose',)
-
-    def __init__(self, dispose) -> None:
-        self.dispose = dispose
-
-    def __call__(self):
-        return self.dispose()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        return self.dispose()
+            return Disposable(dispose)

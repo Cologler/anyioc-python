@@ -144,7 +144,7 @@ class ServiceProvider(IServiceProvider):
                         self.__init_exc = e
                         raise
                     disposable()
-                    self._services.add(Symbols.at_init, ValueServiceInfo(False))
+                    self._services[Symbols.at_init] = ValueServiceInfo(False)
 
     def _get_service_info(self, key) -> IServiceInfo:
         try:
