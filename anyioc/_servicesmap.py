@@ -20,7 +20,7 @@ class ServicesMap:
     def __init__(self, *maps):
         self.maps: List[Dict[Any, List[Wrapped]]] = list(maps) or [{}]
 
-    def resolve(self, key):
+    def _resolve_key(self, key):
         '''
         resolve values with reversed order.
         '''
@@ -32,19 +32,18 @@ class ServicesMap:
 
     def __getitem__(self, key):
         'get item or raise `KeyError`` if not found'
-        for value in self.resolve(key):
+        for value in self._resolve_key(key):
             return value
         raise KeyError(key)
 
     def get(self, key, default=None):
         'get item or `default` if not found'
-        for value in self.resolve(key):
+        for value in self._resolve_key(key):
             return value
         return default
 
     def get_many(self, key):
-        'get items as list'
-        return list(self.resolve(key))
+        return self._resolve_key(key)
 
     def scope(self):
         return self.__class__({}, *self.maps)

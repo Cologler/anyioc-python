@@ -6,7 +6,7 @@
 # ----------
 
 from abc import abstractmethod
-from typing import Any, List, TypeVar, ContextManager, Callable, Iterable
+from typing import Any, List, TypeVar, ContextManager, Callable, Iterator
 from contextlib import ExitStack, nullcontext
 from threading import RLock
 from types import MappingProxyType
@@ -192,7 +192,7 @@ class ServiceProvider(IServiceProvider):
         '''
         _logger.debug('get services by key: %r', key)
         self._root.__ensure_init_hooks_called()
-        service_infos: Iterable[IServiceInfo] = self._services.get_many(key)
+        service_infos: Iterator[IServiceInfo] = self._services.get_many(key)
         try:
             return [si.get(self) for si in service_infos]
         except ServiceNotFoundError as err:
