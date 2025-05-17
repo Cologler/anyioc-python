@@ -95,7 +95,9 @@ class CacheServiceInfoResolver(IServiceInfoResolver):
             self._cache[key] = service_info
             return service_info
 
-    def cache(self):
+    def cache(self, *, sync=False):
+        if sync and isinstance(self._lock, nullcontext):
+            return CacheServiceInfoResolver(self, sync=sync)
         return self
 
 

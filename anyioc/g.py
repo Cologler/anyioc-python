@@ -9,9 +9,10 @@ import importlib
 import importlib.util
 import inspect
 import threading
+from typing import Optional
 
+from ._utils import dispose_at_exit, get_module_name
 from .ioc import ServiceProvider
-from ._utils import get_module_name, dispose_at_exit
 
 ioc = ServiceProvider()
 dispose_at_exit(ioc)
@@ -55,7 +56,7 @@ def _get_caller_module_name():
     fr = inspect.getouterframes(inspect.currentframe())[2]
     return get_module_name(fr)
 
-def get_module_provider(module_name: str=None) -> ServiceProvider:
+def get_module_provider(module_name: Optional[str]=None) -> ServiceProvider:
     '''
     get the module scoped singleton `ServiceProvider`.
 
@@ -75,7 +76,7 @@ def get_module_provider(module_name: str=None) -> ServiceProvider:
 
     return _get_module_provider(module_name)
 
-def get_pkgroot_provider(pkgroot: str=None) -> ServiceProvider:
+def get_pkgroot_provider(pkgroot: Optional[str]=None) -> ServiceProvider:
     '''
     get the package root scoped singleton `ServiceProvider`.
 

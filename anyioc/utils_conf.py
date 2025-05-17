@@ -59,7 +59,6 @@ def _load_object(path: str, conf, allow_module=False):
     object_name = None
 
     if isinstance(conf, str):
-        conf: str
         # parse like console_scripts
         parts = conf.split(':')
         if allow_module:
@@ -78,7 +77,6 @@ def _load_object(path: str, conf, allow_module=False):
             raise BadConfError(f'module part of <{path}/module> is empty.')
 
     elif isinstance(conf, dict):
-        conf: dict
         module_name = conf.get('module', module_name)
         object_name = conf.get('name', object_name)
         if not isinstance(module_name, str):
@@ -200,7 +198,7 @@ class _ConfLoader:
         def service_factory(ioc: ServiceProvider):
             obj = factory(ioc)
             if enter:
-                ioc.enter(obj)
+                ioc.enter(obj) # type: ignore
             return obj
 
         self.provider.register(key, service_factory, lifetime)

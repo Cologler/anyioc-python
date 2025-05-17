@@ -7,12 +7,15 @@
 
 import inspect
 from abc import ABC, abstractmethod
+from contextlib import nullcontext
 from enum import Enum
 from threading import RLock
-from typing import Any
+from typing import Any, Tuple, overload
 
 from ._utils import wrap_signature as _wrap_signature
 from .symbols import Symbols
+
+_NULL_CONTEXT = nullcontext()
 
 
 class LifeTime(Enum):
@@ -63,7 +66,7 @@ class ServiceInfo(IServiceInfo):
         if self._lifetime != LifeTime.transient:
             self._lock = RLock()
         else:
-            self._lock = None
+            self._lock = _NULL_CONTEXT
 
         if self._lifetime == LifeTime.singleton:
             # service_provider is required when lifetime == singleton
@@ -102,7 +105,8 @@ class ServiceInfo(IServiceInfo):
         if self._cache_value is None:
             with self._lock:
                 if self._cache_value is None:
-                    self._cache_value = (self._create(self._service_provider), )
+                    self._cache_value = (
+                        self._create(self._service_provider), )
         return self._cache_value[0]
 
     def _create(self, provider):
@@ -112,7 +116,8 @@ class ServiceInfo(IServiceInfo):
 
         service = self._factory(provider)
         if self._options['auto_enter']:
-            wrapped = getattr(self._factory, '__anyioc_wrapped__', self._factory)
+            wrapped = getattr(
+                self._factory, '__anyioc_wrapped__', self._factory)
             if isinstance(wrapped, type) and hasattr(wrapped, '__enter__') and hasattr(wrapped, '__exit__'):
                 service = provider.enter(service)
         return service
@@ -135,7 +140,11 @@ class GetAttrServiceInfo(IServiceInfo):
 
     __slots__ = ('_attr_info')
 
-    def __init__(self, *attr_info: tuple):
+    @overload
+    def __init__(self, *attr_info: Tuple[str]) -> None: ...
+    @overload
+    def __init__(self, *attr_info: Tuple[str, Any]) -> None: ...
+    def __init__(self, *attr_info: Any):
         super().__init__()
         self._attr_info = attr_info
 
@@ -193,7 +202,7 @@ class CallerFrameServiceInfo(IServiceInfo):
 
     __slots__ = ()
 
-    def get(self, _):
+    def get(self, provider):
         frs = inspect.getouterframes(inspect.currentframe())
         for fr in frs[2:]:
             mo = inspect.getmodule(fr.frame)

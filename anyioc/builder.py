@@ -120,7 +120,7 @@ class ServiceProviderBuilder:
         the return instance can also use like a unique key.
         '''
         group = Group(self._provider)
-        self._provider.register_group(group, group)
+        self._provider.register_group(group, group.group_keys_list)
         self._on_key_added(group)
         for k in keys:
             self._provider.register_bind(k, group)
@@ -143,3 +143,10 @@ class Group(ServiceProviderBuilder):
     def _on_key_added(self, key):
         self._group_keys_list.append(key)
         super()._on_key_added(key)
+
+    @property
+    def group_keys_list(self):
+        '''
+        get the group keys.
+        '''
+        return self._group_keys_list

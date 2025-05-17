@@ -6,28 +6,28 @@
 # ----------
 
 from abc import abstractmethod
-from typing import Any, List, TypeVar, ContextManager, Callable, Iterable
 from contextlib import ExitStack, nullcontext
+from logging import getLogger
 from threading import RLock
 from types import MappingProxyType
-from logging import getLogger
+from typing import Any, Callable, ContextManager, Iterable, List, Optional, TypeVar
 
-from .err import ServiceNotFoundError
-from .symbols import Symbols
 from ._servicesmap import ServicesMap
+from ._utils import wrap_signature as _wrap_signature
+from .err import ServiceNotFoundError
 from .ioc_resolver import IServiceInfoResolver, ServiceInfoChainResolver
 from .ioc_service_info import (
-    LifeTime,
-    IServiceInfo,
-    ServiceInfo,
-    ProviderServiceInfo,
-    GetAttrServiceInfo,
-    ValueServiceInfo,
-    GroupedServiceInfo,
     BindedServiceInfo,
-    CallerFrameServiceInfo
+    CallerFrameServiceInfo,
+    GetAttrServiceInfo,
+    GroupedServiceInfo,
+    IServiceInfo,
+    LifeTime,
+    ProviderServiceInfo,
+    ServiceInfo,
+    ValueServiceInfo,
 )
-from ._utils import wrap_signature as _wrap_signature
+from .symbols import Symbols
 
 _T = TypeVar("_T")
 
@@ -68,7 +68,8 @@ class IServiceProvider:
 class ServiceProvider(IServiceProvider):
     def __init__(self, auto_enter=False, *,
                 # internal uses:
-                _services: ServicesMap=None, _parent: 'ServiceProvider'=None
+                _services: Optional[ServicesMap]=None,
+                _parent: Optional['ServiceProvider']=None
             ):
 
         self._exit_stack = None
@@ -78,6 +79,7 @@ class ServiceProvider(IServiceProvider):
         assert (_parent is None) is (_services is None)
 
         if _parent is not None:
+            assert _services is not None
             # scope provider
             assert auto_enter is False, 'must be default value'
             self._services = _services
