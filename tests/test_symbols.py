@@ -35,14 +35,16 @@ def test_typed_symbol():
 def test_symbol_caller_frame():
     provider = ServiceProvider()
     fr = provider[Symbols.caller_frame]
+    assert isinstance(fr, inspect.FrameInfo)
     mo = inspect.getmodule(fr.frame)
     assert mo is not None
     assert mo.__name__ == 'test_symbols'
 
 def test_symbol_caller_frame_from_deep():
     provider = ServiceProvider()
-    def get_name(ioc):
+    def get_name(ioc: ServiceProvider):
         fr = ioc[Symbols.caller_frame]
+        assert isinstance(fr, inspect.FrameInfo)
         mo = inspect.getmodule(fr.frame)
         assert mo is not None
         return mo.__name__
