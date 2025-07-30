@@ -11,7 +11,7 @@ from anyioc import ServiceProvider
 from anyioc.annotations import InjectBy
 
 
-def test_inject_by_key():
+def test_inject_class_by_annotated_injectby():
     key = 'the_int_key'
     val = 444
 
@@ -26,15 +26,69 @@ def test_inject_by_key():
     a: A = sp[A]
     assert a.val == val
 
-def test_inject_by_key_with_default():
+def test_inject_class_by_annotated_injectby_with_default():
     key = 'the_int_key'
+    val = 444
 
     class A:
-        def __init__(self, x: Annotated[int, InjectBy(key, 555)]) -> None:
+        def __init__(self, x: Annotated[int, InjectBy(key, val)]) -> None:
             self.val = x
 
     sp = ServiceProvider()
     sp.register_singleton(A, A)
 
     a: A = sp[A]
-    assert a.val == 555
+    assert a.val == val
+
+
+def test_inject_func_by_annotated_injectby():
+    key = 'the_int_key'
+    val = 444
+
+    def func(x: Annotated[int, InjectBy(key)]):
+        return x
+
+    sp = ServiceProvider()
+    sp.register_value(key, val)
+    sp.register_singleton(func, func)
+
+    assert sp[func] == val
+
+def test_inject_func_by_annotated_injectby_with_default():
+    key = 'the_int_key'
+    val = 444
+
+    def func(x: Annotated[int, InjectBy(key, val)]):
+        return x
+
+    sp = ServiceProvider()
+    sp.register_singleton(func, func)
+
+    assert sp[func] == val
+
+def test_inject_class_by_typed():
+    val = 444
+
+    class A:
+        def __init__(self, x: int) -> None:
+            self.val = x
+
+    sp = ServiceProvider()
+    sp.register_value(int, val)
+    sp.register_singleton(A, A)
+
+    a: A = sp[A]
+    assert a.val == val
+
+def test_inject_class_by_typed_with_default():
+    val = 444
+
+    class A:
+        def __init__(self, x: int = val) -> None:
+            self.val = x
+
+    sp = ServiceProvider()
+    sp.register_singleton(A, A)
+
+    a: A = sp[A]
+    assert a.val == val

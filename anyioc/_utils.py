@@ -57,11 +57,18 @@ def wrap_signature(func):
     def get_injectby(param: Parameter):
         if param.kind in (Parameter.VAR_KEYWORD, Parameter.VAR_POSITIONAL):
             return None
-        if param.annotation is not Parameter.empty and get_origin(param.annotation) is Annotated:
-            metadatas = get_args(param.annotation)[1:]
-            injectbys = [x for x in metadatas if isinstance(x, InjectBy)]
-            if injectbys:
-                return injectbys[0]
+        if param.annotation is not Parameter.empty:
+            if get_origin(param.annotation) is Annotated:
+                metadatas = get_args(param.annotation)[1:]
+                injectbys = [x for x in metadatas if isinstance(x, InjectBy)]
+                if injectbys:
+                    return injectbys[0]
+            else:
+                # create InjectBy for type annotation
+                if param.default is Parameter.empty:
+                    return InjectBy(param.annotation)
+                else:
+                    return InjectBy(param.annotation, param.default)
 
     params_with_injectby = [(p, get_injectby(p)) for p in params]
 
