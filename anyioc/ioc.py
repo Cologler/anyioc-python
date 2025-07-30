@@ -15,7 +15,7 @@ from typing import Any, Callable, ContextManager, Iterable, Optional, overload, 
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as _wrap_signature
 from .err import ServiceNotFoundError
-from .ioc_resolver import IServiceInfoResolver, ServiceInfoChainResolver
+from .ioc_resolver import ServiceInfoChainResolver
 from .ioc_service_info import (
     BindedServiceInfo,
     CallerFrameServiceInfo,
@@ -167,9 +167,8 @@ class ServiceProvider(IServiceProvider):
         except KeyError:
             pass
         # load missing resolver and resolve service info.
-        resolver: IServiceInfoResolver = self._services[Symbols.missing_resolver].get(self)
+        resolver = self._services[Symbols.missing_resolver].get(self)
         return resolver.get(self, key)
-
 
     @overload
     def __getitem__[T](self, key: TypedSymbol[T]) -> T: ...

@@ -27,11 +27,11 @@ class LifeTime(Enum):
     singleton = 2
 
 
-class IServiceInfo(ABC):
+class IServiceInfo[T](ABC):
     __slots__ = ()
 
     @abstractmethod
-    def get(self, provider) -> Any:
+    def get(self, provider) -> T:
         raise NotImplementedError
 
 

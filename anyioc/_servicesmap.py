@@ -5,16 +5,17 @@
 #
 # ----------
 
-from typing import Any
+from typing import Any, overload
 
-from .symbols import _Symbol
+from .ioc_service_info import IServiceInfo
+from .symbols import TypedSymbol, _Symbol
 
 
 class ServicesMap:
     def __init__(self, *maps):
-        self.maps: list[dict[Any, list[tuple[_Symbol, Any]]]] = list(maps) or [{}]
+        self.maps: list[dict[Any, list[tuple[_Symbol, IServiceInfo]]]] = list(maps) or [{}]
 
-    def resolve(self, key):
+    def resolve(self, key: Any):
         '''
         Resolve values with reversed order.
         '''
@@ -24,12 +25,20 @@ class ServicesMap:
     def __setitem__(self, key, value):
         self.add(key, value)
 
+    @overload
+    def __getitem__[T](self, key: TypedSymbol[T]) -> IServiceInfo[T]: ...
+    @overload
+    def __getitem__(self, key): ...
     def __getitem__(self, key):
         'get item or raise `KeyError`` if not found'
         for value in self.resolve(key):
             return value
         raise KeyError(key)
 
+    @overload
+    def get[T, TD](self, key: TypedSymbol[T], default: TD=None) -> IServiceInfo[T] | TD: ...
+    @overload
+    def get(self, key, default=None): ...
     def get(self, key, default=None):
         'get item or `default` if not found'
         for value in self.resolve(key):

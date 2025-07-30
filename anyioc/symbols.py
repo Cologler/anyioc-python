@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, ForwardRef, Type, get_args
 
 if TYPE_CHECKING:
     from . import ioc  # noqa: F401
+    from . import ioc_resolver  # noqa: F401
     from ._internal import ProviderOptions  # noqa: F401
 
 
@@ -87,7 +88,7 @@ class Symbols:
     cache = TypedSymbol[dict]('cache')
 
     # the missing resolver from `IServiceProvider`
-    missing_resolver = _Symbol('missing_resolver')
+    missing_resolver = TypedSymbol['ioc_resolver.ServiceInfoChainResolver']('missing_resolver')
 
     # get frame info of caller
     caller_frame = _Symbol('caller_frame')
