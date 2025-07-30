@@ -377,11 +377,3 @@ class ServiceProvider(IServiceProvider):
             _use_lock=use_lock,
         )
         return self.enter(ssp)
-
-    @property
-    def builder(self):
-        '''
-        get a new `ServiceProviderBuilder` wrapper for this `ServiceProvider`.
-        '''
-        from .builder import ServiceProviderBuilder
-        return ServiceProviderBuilder(self)

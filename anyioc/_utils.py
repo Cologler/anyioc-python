@@ -135,11 +135,11 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable
     else:
         raise TypeError('factory has too many parameters.')
 
-def create_adapter(
-        func: Callable,
+def create_adapter[R](
+        func: Callable[..., R],
         p_params: Iterable[tuple[Any] | tuple[Any, Any] | InjectBy],
         k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | InjectBy]
-    ):
+    ) -> Callable[['ioc.IServiceProvider'], R]:
 
     def to_injectby(arg: tuple[Any] | tuple[Any, Any] | InjectBy):
         if isinstance(arg, tuple):

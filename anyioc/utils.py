@@ -7,14 +7,13 @@
 
 import logging
 from inspect import Parameter, signature
-from typing import TYPE_CHECKING, Any, Callable
+from typing import Any, Callable, Literal, overload
 
 from ._utils import create_adapter as _create_adapter
 from ._utils import get_module_name as _get_module_name
+from .annotations import InjectBy
+from .ioc import IServiceProvider
 from .symbols import Symbols
-
-if TYPE_CHECKING:
-    from . import ioc  # noqa: F401
 
 
 def injectable(
@@ -54,7 +53,7 @@ def injectable(
         if len(tup) not in (1, 2):
             raise ValueError('tuple should contains 1 or 2 elements')
 
-    def decorator(func):
+    def decorator[R](func: Callable[..., R]):
         return _create_adapter(func, p_params, k_params)
 
     return decorator
@@ -74,22 +73,26 @@ def inject_by_key_selector(selector: Callable[[Parameter], Any]):
     if not callable(selector):
         raise TypeError
 
-    def decorator(func):
+    def decorator[**P, R](func: Callable[P, R], /):
         sign = signature(func)
         params = [p for p in sign.parameters.values()]
-        pos_args = []
-        kw_args = {}
+        p_params: list[InjectBy] = []
+        k_params: dict[str, InjectBy] = {}
         for param in params:
             ioc_key = selector(param)
             val = (ioc_key, ) if param.default is Parameter.empty else (ioc_key, param.default)
-            if param.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD):
-                pos_args.append(val)
-            elif param.kind == Parameter.KEYWORD_ONLY:
-                kw_args[param.name] = val
-        return injectable(*pos_args, **kw_args)(func)
+            if param.kind is Parameter.POSITIONAL_ONLY:
+                p_params.append(InjectBy(*val))
+            elif param.kind in (Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY):
+                k_params[param.name] = InjectBy(*val)
+        return _create_adapter(func, p_params, k_params)
 
     return decorator
 
+@overload
+def inject_by_name[**P, R](func: Literal[None] = None) -> Callable[[Callable[P, R]], Callable[[IServiceProvider], R]]: ...
+@overload
+def inject_by_name[**P, R](func: Callable[P, R] | None) -> Callable[[IServiceProvider], R]: ...
 def inject_by_name(func=None):
     '''
     wrap a callable with signature `(ioc) => any` for inject arguments by parameter name.
@@ -117,6 +120,12 @@ def inject_by_name(func=None):
 
     return decorator if func is None else decorator(func)
 
+@overload
+def inject_by_anno[**P, R](func: Literal[None] = None, *, use_name_if_empty: bool = False) \
+    -> Callable[[Callable[P, R]], Callable[[IServiceProvider], R]]: ...
+@overload
+def inject_by_anno[**P, R](func: Callable[P, R] | None, *, use_name_if_empty: bool = False) \
+    -> Callable[[IServiceProvider], R]: ...
 def inject_by_anno(func=None, *, use_name_if_empty: bool = False):
     '''
     wrap a callable with signature `(ioc) => any` for inject arguments by parameter annotation.
@@ -144,7 +153,7 @@ def inject_by_anno(func=None, *, use_name_if_empty: bool = False):
         return _func(a=ioc[int], b=ioc.get(str, 'x'))
     ```
     '''
-    def decorator(func):
+    def decorator(func, /):
         def selector(param: Parameter):
             anno = param.annotation
             if anno is Parameter.empty:
@@ -244,13 +253,13 @@ def get_logger(ioc):
     name = _get_module_name(fr)
     return logging.getLogger(name)
 
-def is_root(provider: 'ioc.IServiceProvider'):
+def is_root(provider: IServiceProvider):
     '''
     Test is the IServiceProvider is the root provider or not.
     '''
     return provider[Symbols.provider_root] is provider
 
-def get_scope_depth(provider: 'ioc.IServiceProvider'):
+def get_scope_depth(provider: IServiceProvider):
     '''
     Get the depth of scopes.
 
