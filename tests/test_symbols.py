@@ -7,8 +7,30 @@
 
 import inspect
 
+from pytest import raises
+
 from anyioc import ServiceProvider
-from anyioc.symbols import Symbols
+from anyioc.symbols import Symbols, TypedSymbol, _Symbol
+
+
+def test_symbol_str():
+    assert str(_Symbol('test')) == "Symbol(test)"
+    assert repr(_Symbol('test')) == "Symbol('test')"
+
+    assert str(TypedSymbol[int]('test')) == "TypedSymbol[int](test)"
+    assert repr(TypedSymbol[int]('test')) == "TypedSymbol[int]('test')"
+
+    assert str(TypedSymbol['int']('test')) == "TypedSymbol[int](test)"
+    assert repr(TypedSymbol['int']('test')) == "TypedSymbol[ForwardRef('int')]('test')"
+
+def test_symbols_has_no_vars():
+    assert not hasattr(_Symbol(), '__dict__')
+    assert not hasattr(TypedSymbol(), '__dict__')
+
+def test_typed_symbol():
+    assert TypedSymbol[int]('test').get_type() is int
+    with raises(TypeError):
+        assert TypedSymbol('test').get_type()
 
 def test_symbol_caller_frame():
     provider = ServiceProvider()

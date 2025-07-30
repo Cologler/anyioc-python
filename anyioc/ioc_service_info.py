@@ -10,10 +10,13 @@ from abc import ABC, abstractmethod
 from contextlib import nullcontext
 from enum import Enum
 from threading import RLock
-from typing import Any, Tuple, overload
+from typing import TYPE_CHECKING, Any, Tuple, overload
 
 from ._utils import wrap_signature as _wrap_signature
 from .symbols import Symbols
+
+if TYPE_CHECKING:
+    from . import ioc
 
 _NULL_CONTEXT = nullcontext()
 
@@ -50,7 +53,7 @@ class ServiceInfo(IServiceInfo):
         Symbols.cache,
     ])
 
-    def __init__(self, service_provider, key, factory, lifetime):
+    def __init__(self, service_provider: 'ioc.ServiceProvider', key, factory, lifetime):
         if key in self._not_allowed_keys:
             raise ValueError(f'key {key!r} is not allowed')
 
@@ -61,7 +64,7 @@ class ServiceInfo(IServiceInfo):
         self._lifetime = lifetime
         self._cache_value = None
         self._service_provider = service_provider
-        self._options: dict = service_provider[Symbols.provider_options]
+        self._options = service_provider[Symbols.provider_options]
 
         if self._lifetime != LifeTime.transient:
             self._lock = RLock()
@@ -75,7 +78,7 @@ class ServiceInfo(IServiceInfo):
     def __repr__(self) -> str:
         return f'<Service: {self._lifetime}, {self._factory_origin!r}>'
 
-    def get(self, provider):
+    def get(self, provider: 'ioc.ServiceProvider'):
         if self._lifetime is LifeTime.transient:
             return self._create(provider)
 
@@ -87,8 +90,8 @@ class ServiceInfo(IServiceInfo):
 
         raise NotImplementedError(f'what is {self._lifetime}?')
 
-    def _from_scoped(self, provider):
-        cache: dict = provider[Symbols.cache]
+    def _from_scoped(self, provider: 'ioc.ServiceProvider'):
+        cache = provider[Symbols.cache]
         try:
             return cache[self]
         except KeyError:
@@ -109,7 +112,7 @@ class ServiceInfo(IServiceInfo):
                         self._create(self._service_provider), )
         return self._cache_value[0]
 
-    def _create(self, provider):
+    def _create(self, provider: 'ioc.ServiceProvider'):
         '''
         return the finally service instance.
         '''

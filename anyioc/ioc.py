@@ -10,7 +10,7 @@ from contextlib import ExitStack, nullcontext
 from logging import getLogger
 from threading import RLock
 from types import MappingProxyType
-from typing import Any, Callable, ContextManager, Iterable, List, Optional, TypeVar
+from typing import Any, Callable, ContextManager, Iterable, List, Optional, TypeVar, overload, override
 
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as _wrap_signature
@@ -27,7 +27,7 @@ from .ioc_service_info import (
     ServiceInfo,
     ValueServiceInfo,
 )
-from .symbols import Symbols
+from .symbols import Symbols, TypedSymbol
 
 _T = TypeVar("_T")
 
@@ -38,6 +38,11 @@ class IServiceProvider:
     '''
     the base interface for `ServiceProvider`.
     '''
+
+    @overload
+    def __getitem__[T](self, key: TypedSymbol[T]) -> T: ...
+    @overload
+    def __getitem__[T](self, key: Any) -> Any: ...
 
     @abstractmethod
     def __getitem__(self, key):
@@ -157,6 +162,12 @@ class ServiceProvider(IServiceProvider):
         resolver: IServiceInfoResolver = self._services[Symbols.missing_resolver].get(self)
         return resolver.get(self, key)
 
+    @overload
+    def __getitem__[T](self, key: TypedSymbol[T]) -> T: ...
+    @overload
+    def __getitem__[T](self, key: Any) -> Any: ...
+
+    @override
     def __getitem__(self, key):
         _logger.debug('get service by key: %r', key)
         self._root.__ensure_init_hooks_called()
