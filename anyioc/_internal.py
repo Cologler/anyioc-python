@@ -8,7 +8,7 @@
 from collections.abc import MutableMapping
 from contextlib import AbstractContextManager, nullcontext
 from threading import RLock
-from typing import Any, Protocol, TypedDict, runtime_checkable
+from typing import Any, Callable, Protocol, TypedDict, runtime_checkable
 
 from typing_extensions import ReadOnly
 
@@ -25,10 +25,10 @@ class ProviderOptions(TypedDict):
     auto_enter: ReadOnly[bool]
 
 
-class LockedMapping(MutableMapping):
+class LockedMapping[TK, TV](MutableMapping[TK, TV]):
     def __init__(self, use_lock: bool) -> None:
         super().__init__()
-        self._dict: dict[Any, Any] = dict()
+        self._dict: dict[TK, TV] = dict()
         # The lock may be acquired multiple times,
         # as it is used to prevent repeated calls.
         self._lock = RLock() if use_lock else _NULL_CONTEXT
@@ -56,3 +56,23 @@ class LockedMapping(MutableMapping):
     def __delitem__(self, key) -> None:
         with self._lock:
             del self._dict[key]
+
+
+class Disposable:
+    __slots__ = ('dispose',)
+
+    def __init__(self, dispose: Callable[[], None]) -> None:
+        self.dispose = dispose
+
+    def __call__(self):
+        if dispose := self.dispose:
+            self.dispose = None
+            dispose()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if dispose := self.dispose:
+            self.dispose = None
+            dispose()

@@ -8,8 +8,9 @@
 from contextlib import nullcontext
 from logging import getLogger
 from threading import Lock
-from typing import Any, Callable, overload
+from typing import Any, overload
 
+from ._internal import Disposable
 from .ioc_service_info import IServiceInfo
 from .symbols import TypedSymbol, _Symbol
 
@@ -82,23 +83,3 @@ class ServicesMap:
 
     def scope(self, use_lock: bool=False):
         return self.__class__({}, *self.maps, use_lock=use_lock)
-
-
-class Disposable():
-    __slots__ = ('dispose',)
-
-    def __init__(self, dispose: Callable[[], None]) -> None:
-        self.dispose = dispose
-
-    def __call__(self):
-        if dispose := self.dispose:
-            self.dispose = None
-            dispose()
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        if dispose := self.dispose:
-            self.dispose = None
-            dispose()

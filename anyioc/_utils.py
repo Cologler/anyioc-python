@@ -14,6 +14,7 @@ from collections.abc import Iterable, Mapping
 from inspect import Parameter
 from typing import TYPE_CHECKING, Annotated, Any, Callable, cast, get_args, get_origin
 
+from ._internal import Disposable
 from .annotations import InjectBy
 from .err import ServiceNotFoundError
 
@@ -39,14 +40,17 @@ def get_frameinfos(*,
 
 def dispose_at_exit(provider):
     '''
-    register `provider.__exit__()` into `atexit` module.
+    Register `provider.__exit__()` into `atexit` module.
 
-    return the `provider` itself.
+    Returns a `Disposable` object to unregister and call `provider.__exit__()`.
     '''
-    @atexit.register
-    def provider_dispose_at_exit():
+    def callback():
         provider.__exit__(*sys.exc_info())
-    return provider
+    def unregister():
+        callback()
+        atexit.unregister(callback)
+    atexit.register(callback)
+    return Disposable(unregister)
 
 def update_wrapper(wrapper, wrapped):
     '''

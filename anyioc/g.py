@@ -9,7 +9,7 @@ import importlib
 import importlib.util
 from typing import Optional
 
-from ._internal import LockedMapping
+from ._internal import Disposable, LockedMapping
 from ._utils import dispose_at_exit, get_frameinfos, get_module_name
 from .ioc import ServiceProvider
 
@@ -18,7 +18,7 @@ dispose_at_exit(ioc)
 
 # scoped global ioc
 
-_module_providers = LockedMapping(use_lock=True)
+_module_providers = LockedMapping[str, tuple[ServiceProvider, Disposable]](use_lock=True)
 
 def _is_module_exists(module_name: str) -> bool:
     try:
@@ -27,7 +27,7 @@ def _is_module_exists(module_name: str) -> bool:
         return False
 
 def _get_module_provider(module_name: str):
-    'get or create module provider'
+    'Get or create module provider'
 
     def init_hook(provider):
         # auto init ioc
@@ -39,14 +39,13 @@ def _get_module_provider(module_name: str):
                 conf_ioc(provider)
 
     with _module_providers.lock:
-        if (provider := _module_providers.get(module_name)) is None:
+        if (value := _module_providers.get(module_name)) is None:
             provider = ServiceProvider()
-            dispose_at_exit(provider)
-            _module_providers[module_name] = provider
+            disposable = dispose_at_exit(provider)
+            value = (provider, disposable)
+            _module_providers[module_name] = value
             provider.add_init_hook(init_hook)
-        return provider
-
-    return provider
+        return value[0]
 
 def get_module_provider(module_name: Optional[str]=None) -> ServiceProvider:
     '''
@@ -89,7 +88,11 @@ def reset():
     '''
     Clear all module (or pkgroot) providers.
     '''
-    _module_providers.clear()
+    with _module_providers.lock:
+        cloned = list(_module_providers.values())
+        _module_providers.clear()
+    for item in cloned:
+        item[1]() # dispose
 
 # keep old func names:
 
