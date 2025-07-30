@@ -47,8 +47,6 @@ def test_servicesmap_with_context_release_ordered():
 
     assert list(srvmap.get_many(key)) == [item1, item2, item1]
     pop_first()
-    with pytest.raises(RuntimeError):
-        pop_first()
     assert list(srvmap.get_many(key)) == [item1, item2]
     pop_last()
     assert list(srvmap.get_many(key)) == [item2]
@@ -65,21 +63,19 @@ def test_servicesmap_with_context_release_ordered_reversed():
 
     assert list(srvmap.get_many(key)) == [item1, item2, item1]
     pop_last()
-    with pytest.raises(RuntimeError):
-        pop_last()
     assert list(srvmap.get_many(key)) == [item2, item1]
     pop_first()
     assert list(srvmap.get_many(key)) == [item2]
 
-def test_servicesmap_with_context_release_twice_should_raise_error():
+def test_servicesmap_with_context_release_multi_times_should_ok():
     srvmap = ServicesMap()
 
     with srvmap.add(1, object()) as disposable:
         pass
-
-    with pytest.raises(RuntimeError):
-        with disposable:
-            pass
+    with disposable:
+        pass
+    with disposable:
+        pass
 
 def test_servicesmap_freeze():
     srvmap = ServicesMap()

@@ -6,13 +6,15 @@
 # ----------
 
 from contextlib import nullcontext
+from logging import getLogger
 from threading import Lock
-from typing import Any, overload
+from typing import Any, Callable, overload
 
 from .ioc_service_info import IServiceInfo
 from .symbols import TypedSymbol, _Symbol
 
 _NULL_CONTEXT = nullcontext()
+_logger = getLogger(__name__)
 
 class ServicesMap:
     def __init__(self, *maps, use_lock: bool=True):
@@ -26,7 +28,7 @@ class ServicesMap:
         '''
         with self._lock:
             for mapping in self.maps:
-                yield from (v for _s, v in reversed(mapping.get(key, [])))
+                yield from (v for _, v in reversed(mapping.get(key, ())))
 
     def add(self, key, value):
 
@@ -42,7 +44,8 @@ class ServicesMap:
                 with self._lock:
                     self.maps[0][key].remove(internal_value)
             except ValueError:
-                raise RuntimeError('Cannot call dispose again')
+                _logger.warning('dispose() is called after the key be removed.')
+                pass
 
         return Disposable(dispose)
 
@@ -84,14 +87,18 @@ class ServicesMap:
 class Disposable():
     __slots__ = ('dispose',)
 
-    def __init__(self, dispose) -> None:
+    def __init__(self, dispose: Callable[[], None]) -> None:
         self.dispose = dispose
 
     def __call__(self):
-        return self.dispose()
+        if dispose := self.dispose:
+            self.dispose = None
+            dispose()
 
     def __enter__(self):
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        return self.dispose()
+        if dispose := self.dispose:
+            self.dispose = None
+            dispose()
