@@ -5,16 +5,17 @@
 #
 # ----------
 
-from typing import List, Tuple, Union, Any, Dict, Callable
-from inspect import signature, Parameter
+from inspect import Parameter, signature
+from typing import Any, Callable
 
-from ._utils import (
-    get_module_name as _get_module_name,
-    update_wrapper as _update_wrapper
-)
+from ._utils import create_adapter as _create_adapter
+from ._utils import get_module_name as _get_module_name
 
-def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
-               **kw_args: Dict[str, Union[Tuple[Any], Tuple[Any, Any]]]):
+
+def injectable(
+        *p_params: tuple[Any] | tuple[Any, Any],
+        **k_params: tuple[Any] | tuple[Any, Any]
+    ):
     '''
     return a decorator that use to wrap a callable with signature `(ioc) => any`.
 
@@ -24,7 +25,6 @@ def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
     - element 1 is the key for get service from `ServiceProvider` container;
     - element 2 is the default value if provide,
       otherwise will use `ServiceProvider.__getitem__()` to get service;
-    -
 
     ### Example:
 
@@ -43,30 +43,14 @@ def injectable(*pos_args: List[Union[Tuple[Any], Tuple[Any, Any]]],
         return _func(a=ioc.get('key1', 1), b=ioc['key2'])
     ```
     '''
-    for tup in list(pos_args) + list(kw_args.values()):
+    for tup in list(p_params) + list(k_params.values()):
         if not isinstance(tup, tuple):
             raise TypeError(f'excepted tuple, got {type(tup)}')
         if len(tup) not in (1, 2):
             raise ValueError('tuple should contains 1 or 2 elements')
 
     def decorator(func):
-        def new_func(ioc):
-            args = []
-            for item in pos_args:
-                if len(item) == 1:
-                    args.append(ioc[item[0]])
-                else:
-                    key, default = item
-                    args.append(ioc.get(key, default))
-            kwargs = {}
-            for name, item in kw_args.items():
-                if len(item) == 1:
-                    kwargs[name] = ioc[item[0]]
-                else:
-                    key, default = item
-                    kwargs[name] = ioc.get(key, default)
-            return func(*args, **kwargs)
-        return _update_wrapper(new_func, func)
+        return _create_adapter(func, p_params, k_params)
 
     return decorator
 
@@ -252,6 +236,7 @@ def get_logger(ioc):
     ```
     '''
     import logging
+
     from .symbols import Symbols
 
     fr = ioc[Symbols.caller_frame]

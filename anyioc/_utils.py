@@ -6,9 +6,12 @@
 # user should not import anything from this file.
 # ----------
 
-import sys
 import atexit
 import inspect
+import sys
+from collections.abc import Iterable, Mapping
+from typing import Any, Callable
+
 
 def get_module_name(fr: inspect.FrameInfo):
     'get module name from frame info'
@@ -73,3 +76,32 @@ def wrap_signature(func):
 
     else:
         raise TypeError('factory has too many parameters.')
+
+def create_adapter(
+        func: Callable,
+        p_params: Iterable[tuple[Any] | tuple[Any, Any]],
+        k_params: Mapping[str, tuple[Any] | tuple[Any, Any]]
+    ):
+
+    for tup in list(p_params) + list(k_params.values()):
+        if not isinstance(tup, tuple):
+            raise TypeError(f'excepted tuple, got {type(tup)}')
+        if len(tup) not in (1, 2):
+            raise ValueError('tuple should contains 1 or 2 elements')
+
+    def wrapper(ioc):
+        p_args = []
+        for item in p_params:
+            if len(item) == 1:
+                p_args.append(ioc[item[0]])
+            else:
+                p_args.append(ioc.get(*item))
+        k_args = {}
+        for name, item in k_params.items():
+            if len(item) == 1:
+                k_args[name] = ioc[item[0]]
+            else:
+                k_args[name] = ioc.get(*item)
+        return func(*p_args, **k_args)
+
+    return update_wrapper(wrapper, func)
