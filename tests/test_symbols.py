@@ -36,6 +36,7 @@ def test_symbol_caller_frame():
     provider = ServiceProvider()
     fr = provider[Symbols.caller_frame]
     mo = inspect.getmodule(fr.frame)
+    assert mo is not None
     assert mo.__name__ == 'test_symbols'
 
 def test_symbol_caller_frame_from_deep():
@@ -43,6 +44,7 @@ def test_symbol_caller_frame_from_deep():
     def get_name(ioc):
         fr = ioc[Symbols.caller_frame]
         mo = inspect.getmodule(fr.frame)
+        assert mo is not None
         return mo.__name__
     provider.register_transient('name', get_name)
     assert provider['name'] == 'test_symbols'
