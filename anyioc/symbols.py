@@ -6,7 +6,7 @@
 # ----------
 
 
-from typing import TYPE_CHECKING, Type, get_args, get_type_hints, ForwardRef
+from typing import TYPE_CHECKING, ForwardRef, Type, get_args
 
 if TYPE_CHECKING:
     from . import ioc

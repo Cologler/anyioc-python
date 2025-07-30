@@ -5,17 +5,18 @@
 #
 # ----------
 
-from typing import Dict, List, Tuple, Any
+from typing import Any
 
 from .symbols import _Symbol
 
+
 class ServicesMap:
     def __init__(self, *maps):
-        self.maps: List[Dict[Any, List[Tuple[_Symbol, Any]]]] = list(maps) or [{}]
+        self.maps: list[dict[Any, list[tuple[_Symbol, Any]]]] = list(maps) or [{}]
 
     def resolve(self, key):
         '''
-        resolve values with reversed order.
+        Resolve values with reversed order.
         '''
         for mapping in self.maps:
             yield from (v for _s, v in reversed(mapping.get(key, [])))

@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from contextlib import nullcontext
 from enum import Enum
 from threading import RLock
-from typing import TYPE_CHECKING, Any, Tuple, overload
+from typing import TYPE_CHECKING, Any, overload
 
 from ._utils import wrap_signature as _wrap_signature
 from .symbols import Symbols
@@ -139,15 +139,17 @@ class ProviderServiceInfo(IServiceInfo):
 
 
 class GetAttrServiceInfo(IServiceInfo):
-    '''getattr from current `ServiceProvider`.'''
+    '''
+    getattr from current `ServiceProvider`.
+    '''
 
-    __slots__ = ('_attr_info')
+    __slots__ = ('_attr_info',)
 
     @overload
-    def __init__(self, *attr_info: Tuple[str]) -> None: ...
+    def __init__(self, attr_name: str, /) -> None: ...
     @overload
-    def __init__(self, *attr_info: Tuple[str, Any]) -> None: ...
-    def __init__(self, *attr_info: Any):
+    def __init__(self, attr_name: str, attr_default: Any, /) -> None: ...
+    def __init__(self, *attr_info):
         super().__init__()
         self._attr_info = attr_info
 

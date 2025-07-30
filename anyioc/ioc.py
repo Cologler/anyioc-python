@@ -10,7 +10,7 @@ from contextlib import ExitStack, nullcontext
 from logging import getLogger
 from threading import RLock
 from types import MappingProxyType
-from typing import Any, Callable, ContextManager, Iterable, List, Optional, TypeVar, overload, override
+from typing import Any, Callable, ContextManager, Iterable, Optional, overload, override
 
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as _wrap_signature
@@ -29,8 +29,6 @@ from .ioc_service_info import (
 )
 from .symbols import Symbols, TypedSymbol
 
-_T = TypeVar("_T")
-
 _logger = getLogger(__name__)
 
 
@@ -42,23 +40,33 @@ class IServiceProvider:
     @overload
     def __getitem__[T](self, key: TypedSymbol[T]) -> T: ...
     @overload
-    def __getitem__[T](self, key: Any) -> Any: ...
-
+    def __getitem__(self, key) -> Any: ...
     @abstractmethod
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Any:
+        '''
+        Get a service by key.
+        '''
         raise NotImplementedError
 
+    @overload
+    def get[T, TD](self, key: TypedSymbol[T], d: TD=None) -> T | TD: ...
+    @overload
+    def get(self, key, d=None) -> Any: ...
     @abstractmethod
     def get(self, key, d=None) -> Any:
         '''
-        get a service by key.
+        Get a service by key with default value.
         '''
         raise NotImplementedError
 
+    @overload
+    def get_many[T](self, key: TypedSymbol[T]) -> list[T]: ...
+    @overload
+    def get_many(self, key) -> list[Any]: ...
     @abstractmethod
-    def get_many(self, key) -> List[Any]:
+    def get_many(self, key) -> list[Any]:
         '''
-        get services by key.
+        Get services by key.
         '''
         raise NotImplementedError
 
@@ -162,13 +170,13 @@ class ServiceProvider(IServiceProvider):
         resolver: IServiceInfoResolver = self._services[Symbols.missing_resolver].get(self)
         return resolver.get(self, key)
 
+
     @overload
     def __getitem__[T](self, key: TypedSymbol[T]) -> T: ...
     @overload
-    def __getitem__[T](self, key: Any) -> Any: ...
-
+    def __getitem__(self, key) -> Any: ...
     @override
-    def __getitem__(self, key):
+    def __getitem__(self, key) -> Any:
         _logger.debug('get service by key: %r', key)
         self._root.__ensure_init_hooks_called()
         service_info = self._get_service_info(key)
@@ -177,9 +185,14 @@ class ServiceProvider(IServiceProvider):
         except ServiceNotFoundError as err:
             raise ServiceNotFoundError(key, *err.resolve_chain)
 
+    @overload
+    def get[T, TD](self, key: TypedSymbol[T], d: TD=None) -> T | TD: ...
+    @overload
+    def get(self, key, d=None) -> Any: ...
+    @override
     def get(self, key, d=None) -> Any:
         '''
-        get a service by key.
+        Get a service by key with default value.
         '''
         try:
             return self[key]
@@ -188,9 +201,14 @@ class ServiceProvider(IServiceProvider):
                 return d
             raise
 
-    def get_many(self, key) -> List[Any]:
+    @overload
+    def get_many[T](self, key: TypedSymbol[T]) -> list[T]: ...
+    @overload
+    def get_many(self, key) -> list[Any]: ...
+    @override
+    def get_many(self, key) -> list[Any]:
         '''
-        get services by key.
+        Get services by key.
 
         ### example
 
@@ -211,7 +229,7 @@ class ServiceProvider(IServiceProvider):
         except ServiceNotFoundError as err:
             raise ServiceNotFoundError(key, *err.resolve_chain)
 
-    def enter(self, context: ContextManager[_T]):
+    def enter[T](self, context: ContextManager[T]):
         '''
         enter the context.
 
