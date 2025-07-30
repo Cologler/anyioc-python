@@ -10,7 +10,10 @@ import atexit
 import inspect
 import sys
 from collections.abc import Iterable, Mapping
-from typing import Any, Callable
+from inspect import Parameter
+from typing import Annotated, Any, Callable, cast, get_args, get_origin
+
+from .annotations import InjectBy
 
 
 def get_module_name(fr: inspect.FrameInfo):
@@ -47,12 +50,35 @@ def wrap_signature(func):
     sign = inspect.signature(func)
     params = list(sign.parameters.values())
     if len(params) > 1:
-        params = [p for p in params if p.kind != inspect.Parameter.VAR_KEYWORD]
+        params = [p for p in params if p.kind != Parameter.VAR_KEYWORD]
     if len(params) > 1:
-        params = [p for p in params if p.kind != inspect.Parameter.VAR_POSITIONAL]
+        params = [p for p in params if p.kind != Parameter.VAR_POSITIONAL]
+
+    def get_injectby(param: Parameter):
+        if param.kind in (Parameter.VAR_KEYWORD, Parameter.VAR_POSITIONAL):
+            return None
+        if param.annotation is not Parameter.empty and get_origin(param.annotation) is Annotated:
+            metadatas = get_args(param.annotation)[1:]
+            injectbys = [x for x in metadatas if isinstance(x, InjectBy)]
+            if injectbys:
+                return injectbys[0]
+
+    params_with_injectby = [(p, get_injectby(p)) for p in params]
 
     if not params:
         return update_wrapper(lambda _: func(), func)
+
+    elif all(p[1] for p in params_with_injectby):
+        # all params are annotated with InjectBy(key=...)
+        return create_adapter(
+            func,
+            p_params=[
+                cast(InjectBy, p[1]) for p in params_with_injectby
+                if p[0].kind == Parameter.POSITIONAL_ONLY],
+            k_params={
+                p[0].name: cast(InjectBy, p[1]) for p in params_with_injectby
+                if p[0].kind != Parameter.POSITIONAL_ONLY}
+        )
 
     elif len(params) == 1:
         arg_0, = params
@@ -79,29 +105,26 @@ def wrap_signature(func):
 
 def create_adapter(
         func: Callable,
-        p_params: Iterable[tuple[Any] | tuple[Any, Any]],
-        k_params: Mapping[str, tuple[Any] | tuple[Any, Any]]
+        p_params: Iterable[tuple[Any] | tuple[Any, Any] | InjectBy],
+        k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | InjectBy]
     ):
 
-    for tup in list(p_params) + list(k_params.values()):
-        if not isinstance(tup, tuple):
-            raise TypeError(f'excepted tuple, got {type(tup)}')
-        if len(tup) not in (1, 2):
-            raise ValueError('tuple should contains 1 or 2 elements')
+    def to_injectby(arg: tuple[Any] | tuple[Any, Any] | InjectBy):
+        if isinstance(arg, tuple):
+            if len(arg) not in (1, 2):
+                raise ValueError('tuple should contains 1 or 2 elements')
+            return InjectBy(*arg)
+        elif isinstance(arg, InjectBy):
+            return arg
+        raise TypeError(f'excepted tuple or InjectBy, got {type(tup)}')
+
+    p_params_i = [to_injectby(v) for v in p_params]
+    k_params_i = {k: to_injectby(v) for k, v in k_params.items()}
 
     def wrapper(ioc):
-        p_args = []
-        for item in p_params:
-            if len(item) == 1:
-                p_args.append(ioc[item[0]])
-            else:
-                p_args.append(ioc.get(*item))
-        k_args = {}
-        for name, item in k_params.items():
-            if len(item) == 1:
-                k_args[name] = ioc[item[0]]
-            else:
-                k_args[name] = ioc.get(*item)
-        return func(*p_args, **k_args)
+        return func(
+            *(v.get_service(ioc) for v in p_params_i),
+            **{k: v.get_service(ioc) for k, v in k_params_i.items()}
+        )
 
     return update_wrapper(wrapper, func)
