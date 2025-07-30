@@ -14,7 +14,7 @@ if TYPE_CHECKING:
         ioc,  # noqa: F401
         ioc_resolver,  # noqa: F401
     )
-    from ._internal import ProviderOptions  # noqa: F401
+    from ._internal import ProviderOptions, ScopedCache  # noqa: F401
 
 
 class _Symbol:
@@ -88,7 +88,7 @@ class Symbols:
     provider_parent = TypedSymbol['ioc.ServiceProvider']('provider_parent')
 
     # the cache dict to store scoped instances
-    cache = TypedSymbol[dict]('cache')
+    cache = TypedSymbol['ScopedCache']('cache')
 
     # the missing resolver from `IServiceProvider`
     missing_resolver = TypedSymbol['ioc_resolver.ServiceInfoChainResolver']('missing_resolver')

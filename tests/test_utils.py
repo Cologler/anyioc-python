@@ -6,15 +6,19 @@
 # ----------
 
 from unittest.mock import MagicMock
+
 from pytest import raises
 
-from anyioc.ioc import ServiceProvider, ServiceNotFoundError
+from anyioc.ioc import ServiceNotFoundError, ServiceProvider
 from anyioc.utils import (
-    inject_by_name, inject_by_anno, inject_by_keys,
-    make_group,
-    get_logger,
     Releaser,
+    get_logger,
+    inject_by_anno,
+    inject_by_keys,
+    inject_by_name,
+    make_group,
 )
+
 
 def test_inject_by_name():
     class SomeClass:

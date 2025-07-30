@@ -7,7 +7,8 @@
 
 from pytest import raises
 
-from anyioc import ServiceProvider, ServiceNotFoundError
+from anyioc import ServiceNotFoundError, ServiceProvider
+
 
 def test_no_value():
     provider = ServiceProvider()
@@ -71,21 +72,22 @@ def test_argument_ioc_at_scoped():
         assert scoped_provider[3] == 'transient'
 
 def test_symbols_types():
-    from anyioc.symbols import Symbols
+    from anyioc._internal import ScopedCache
     from anyioc.ioc import IServiceProvider
     from anyioc.ioc_resolver import IServiceInfoResolver
+    from anyioc.symbols import Symbols
 
     provider = ServiceProvider()
 
     assert isinstance(provider[Symbols.provider], IServiceProvider)
     assert isinstance(provider[Symbols.provider_root], IServiceProvider)
-    assert isinstance(provider[Symbols.cache], dict)
+    assert isinstance(provider[Symbols.cache], ScopedCache)
     assert isinstance(provider[Symbols.missing_resolver], IServiceInfoResolver)
 
     with provider.scope() as scoped_provider:
         assert isinstance(scoped_provider[Symbols.provider], IServiceProvider)
         assert isinstance(scoped_provider[Symbols.provider_root], IServiceProvider)
-        assert isinstance(scoped_provider[Symbols.cache], dict)
+        assert isinstance(scoped_provider[Symbols.cache], ScopedCache)
         assert isinstance(scoped_provider[Symbols.missing_resolver], IServiceInfoResolver)
 
 def test_symbols_values_ref():

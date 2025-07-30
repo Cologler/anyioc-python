@@ -96,7 +96,7 @@ class ServiceInfo(IServiceInfo):
             return cache[self]
         except KeyError:
             pass
-        with self._lock:
+        with cache.lock:
             try:
                 return cache[self]
             except KeyError:

@@ -10,6 +10,7 @@ import inspect
 from pytest import raises
 
 from anyioc import ServiceProvider
+from anyioc._internal import ScopedCache
 from anyioc.symbols import Symbols, TypedSymbol, _Symbol
 
 
@@ -84,7 +85,7 @@ def test_symbol_provider_parent_get_many():
 def test_symbol_cache():
     providers = _create_scopes(ServiceProvider())
     for provider in providers:
-        assert isinstance(provider[Symbols.cache], dict)
+        assert isinstance(provider[Symbols.cache], ScopedCache)
 
 def test_symbol_cache_get_many():
     providers = _create_scopes(ServiceProvider())

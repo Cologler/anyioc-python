@@ -13,6 +13,7 @@ from threading import RLock
 from types import MappingProxyType
 from typing import Any, Callable, ContextManager, Iterable, Optional, overload, override
 
+from ._internal import ScopedCache
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as _wrap_signature
 from .err import ServiceNotFoundError
@@ -100,7 +101,8 @@ class ServiceProvider(IServiceProvider):
             ):
 
         self._exit_stack = None
-        self._scoped_cache = {}
+        self._scoped_cache = ScopedCache(use_lock=_use_lock)
+        self._lock = RLock() if _use_lock else _NULL_CONTEXT
         self._parent = _parent
 
         assert (_parent is None) is (_services is None)
@@ -111,13 +113,12 @@ class ServiceProvider(IServiceProvider):
             assert auto_enter is False, 'must be default value'
             self._services = _services
             self._root: ServiceProvider = _parent._root
-            self._lock = RLock() if _use_lock else _NULL_CONTEXT
 
         else:
+            assert _use_lock, 'root provider must use lock'
             # root provider
             self._services = ServicesMap(use_lock=True)
             self._root: ServiceProvider = self
-            self._lock = RLock() # always use lock
 
             # serviceinfos
             get_current_provicer = ProviderServiceInfo()
