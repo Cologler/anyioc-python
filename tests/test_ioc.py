@@ -66,6 +66,20 @@ def test_resolve():
         return s
     assert provider.resolve(factory) == 'v'
 
+def test_resolve_with_follow():
+    provider = ServiceProvider()
+    provider.register_value(str, 'v')
+    class A:
+        def __init__(self, s: str) -> None:
+            self.s = s
+    class B:
+        def __init__(self, a: A) -> None:
+            self.a = a
+    def factory(x: B):
+        return x
+    b = provider.resolve(factory, follow=True)
+    assert b.a.s == 'v'
+
 def test_enter():
     provider = ServiceProvider()
     callback = MagicMock()

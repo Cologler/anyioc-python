@@ -247,11 +247,11 @@ class ServiceProvider(IServiceProvider):
         except ServiceNotFoundError as err:
             raise ServiceNotFoundError(key, *err.resolve_chain)
 
-    def resolve[R](self, factory: Callable[..., R]) -> R:
+    def resolve[R](self, factory: Callable[..., R], *, follow: bool=False) -> R:
         '''
         Resolve the factory direct without register.
         '''
-        return _wrap_signature(factory)(self)
+        return _wrap_signature(factory, follow=follow)(self)
 
     def enter[T](self, context: AllSupportsContext[T]):
         '''

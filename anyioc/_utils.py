@@ -15,6 +15,7 @@ from inspect import Parameter
 from typing import TYPE_CHECKING, Annotated, Any, Callable, cast, get_args, get_origin
 
 from .annotations import InjectBy
+from .err import ServiceNotFoundError
 
 if TYPE_CHECKING:
     from . import ioc
@@ -54,7 +55,16 @@ def update_wrapper(wrapper, wrapped):
     wrapper.__anyioc_wrapped__ = getattr(wrapped, '__anyioc_wrapped__', wrapped)
     return wrapper
 
-def wrap_signature[R](func: Callable[..., R]) -> Callable[['ioc.ServiceProvider'], R]:
+class FollowedInjectBy(InjectBy):
+    def get_service(self, provider: 'ioc.IServiceProvider'):
+        try:
+            return super().get_service(provider)
+        except ServiceNotFoundError:
+            if callable(self.key):
+                return wrap_signature(self.key, follow=True)(provider)
+            raise
+
+def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable[['ioc.IServiceProvider'], R]:
     '''
     wrap the function to single argument function.
 
@@ -68,7 +78,7 @@ def wrap_signature[R](func: Callable[..., R]) -> Callable[['ioc.ServiceProvider'
     if len(params) > 1:
         params = [p for p in params if p.kind != Parameter.VAR_POSITIONAL]
 
-    def get_injectby(param: Parameter):
+    def get_injectby(param: Parameter) -> InjectBy | None:
         if param.kind in (Parameter.VAR_KEYWORD, Parameter.VAR_POSITIONAL):
             return None
         if param.annotation is not Parameter.empty:
@@ -79,10 +89,11 @@ def wrap_signature[R](func: Callable[..., R]) -> Callable[['ioc.ServiceProvider'
                     return injectbys[0]
             else:
                 # create InjectBy for type annotation
+                InjectByType = FollowedInjectBy if follow else InjectBy
                 if param.default is Parameter.empty:
-                    return InjectBy(param.annotation)
+                    return InjectByType(param.annotation)
                 else:
-                    return InjectBy(param.annotation, param.default)
+                    return InjectByType(param.annotation, param.default)
 
     params_with_injectby = [(p, get_injectby(p)) for p in params]
 
