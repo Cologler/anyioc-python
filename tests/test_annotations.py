@@ -6,6 +6,7 @@
 # ----------
 
 from typing import Annotated
+import inspect
 
 from anyioc import ServiceProvider
 from anyioc.annotations import InjectBy
@@ -39,7 +40,6 @@ def test_inject_class_by_annotated_injectby_with_default():
 
     a: A = sp[A]
     assert a.val == val
-
 
 def test_inject_func_by_annotated_injectby():
     key = 'the_int_key'
@@ -92,3 +92,26 @@ def test_inject_class_by_typed_with_default():
 
     a: A = sp[A]
     assert a.val == val
+
+def test_inject_types_for_service_provider():
+    def get_value(val: ServiceProvider):
+        return val
+
+    sp = ServiceProvider()
+    sp.register_singleton(get_value, get_value)
+
+    val = sp.get(get_value)
+    assert isinstance(val, ServiceProvider)
+
+def test_inject_types_for_frameinfo():
+    def get_value(val: inspect.FrameInfo):
+        return val
+
+    sp = ServiceProvider()
+    sp.register_singleton(get_value, get_value)
+
+    fr = sp.get(get_value)
+    assert isinstance(fr, inspect.FrameInfo)
+    mo = inspect.getmodule(fr.frame)
+    assert mo is not None
+    assert mo.__name__ == 'test_annotations'

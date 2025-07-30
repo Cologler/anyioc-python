@@ -11,6 +11,7 @@ from logging import getLogger
 from threading import RLock
 from types import MappingProxyType
 from typing import Any, Callable, ContextManager, Iterable, Optional, overload, override
+import inspect
 
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as _wrap_signature
@@ -105,23 +106,27 @@ class ServiceProvider(IServiceProvider):
             self._root: ServiceProvider = self
             self._lock = RLock()
 
-            provider_service_info = ProviderServiceInfo()
-            self._services[Symbols.provider] = provider_service_info
+            # serviceinfos
+            get_current_provicer = ProviderServiceInfo()
+            get_frameinfo = CallerFrameServiceInfo()
+
+            self._services[Symbols.provider] = get_current_provicer
             self._services[Symbols.provider_root] = ValueServiceInfo(self)
             self._services[Symbols.provider_parent] = GetAttrServiceInfo('_parent')
             self._services[Symbols.cache] = GetAttrServiceInfo('_scoped_cache')
             self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
-            self._services[Symbols.caller_frame] = CallerFrameServiceInfo()
+            self._services[Symbols.caller_frame] = get_frameinfo
 
             self.__init_hooks = []
             self.__init_exc = None
 
             # service alias
-            self._services['ioc'] = provider_service_info
-            self._services['provider'] = provider_service_info
-            self._services['service_provider'] = provider_service_info
-            self._services[ServiceProvider] = provider_service_info
-            self._services[IServiceProvider] = provider_service_info
+            self._services['ioc'] = get_current_provicer
+            self._services['provider'] = get_current_provicer
+            self._services['service_provider'] = get_current_provicer
+            self._services[ServiceProvider] = get_current_provicer
+            self._services[IServiceProvider] = get_current_provicer
+            self._services[inspect.FrameInfo] = get_frameinfo
 
             # options
             self._services[Symbols.provider_options] = ValueServiceInfo(MappingProxyType(
