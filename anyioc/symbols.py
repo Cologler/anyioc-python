@@ -9,8 +9,8 @@
 from typing import TYPE_CHECKING, ForwardRef, Type, get_args
 
 if TYPE_CHECKING:
-    from . import ioc
-    from ._internal import ProviderOptions
+    from . import ioc  # noqa: F401
+    from ._internal import ProviderOptions  # noqa: F401
 
 
 class _Symbol:
