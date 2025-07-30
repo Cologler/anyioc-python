@@ -239,7 +239,7 @@ class ServiceProvider(IServiceProvider):
         assert provider.get_many('a') == [2, 1] # rev order
         ```
         '''
-        _logger.debug('get services by key: %r', key)
+        _logger.debug('Get services by key: %r', key)
         self._root.__ensure_init_hooks_called()
         service_infos: Iterable[IServiceInfo] = self._services.get_many(key)
         try:
@@ -272,10 +272,10 @@ class ServiceProvider(IServiceProvider):
             if self._exit_stack is not None:
                 self._exit_stack.__exit__(exc_type, exc_val, exc_tb)
                 self._exit_stack = None
+        _logger.debug('%r is exited.', self)
 
     def freeze_key(self, key):
         '''
-
         Freeze key to avoid registering it later.
 
         Only effective for the current ServiceProvider.
