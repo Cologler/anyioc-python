@@ -5,11 +5,11 @@
 # 
 # ----------
 
-from typing import Annotated
 import inspect
+from typing import Annotated
 
 from anyioc import ServiceProvider
-from anyioc.annotations import InjectBy
+from anyioc.annotations import InjectBy, InjectByGroup
 
 
 def test_inject_class_by_annotated_injectby():
@@ -22,10 +22,8 @@ def test_inject_class_by_annotated_injectby():
 
     sp = ServiceProvider()
     sp.register_value(key, val)
-    sp.register_singleton(A, A)
 
-    a: A = sp[A]
-    assert a.val == val
+    assert sp.resolve(A).val == val
 
 def test_inject_class_by_annotated_injectby_with_default():
     key = 'the_int_key'
@@ -36,10 +34,7 @@ def test_inject_class_by_annotated_injectby_with_default():
             self.val = x
 
     sp = ServiceProvider()
-    sp.register_singleton(A, A)
-
-    a: A = sp[A]
-    assert a.val == val
+    assert sp.resolve(A).val == val
 
 def test_inject_func_by_annotated_injectby():
     key = 'the_int_key'
@@ -50,9 +45,8 @@ def test_inject_func_by_annotated_injectby():
 
     sp = ServiceProvider()
     sp.register_value(key, val)
-    sp.register_singleton(func, func)
 
-    assert sp[func] == val
+    assert sp.resolve(func) == val
 
 def test_inject_func_by_annotated_injectby_with_default():
     key = 'the_int_key'
@@ -64,7 +58,19 @@ def test_inject_func_by_annotated_injectby_with_default():
     sp = ServiceProvider()
     sp.register_singleton(func, func)
 
-    assert sp[func] == val
+    assert sp.resolve(func) == val
+
+def test_inject_func_by_annotated_injectbygroup():
+    sv = 'ffw'
+    iv = 46656
+
+    def func(x: Annotated[tuple[str, int], InjectByGroup(str, int)]):
+        return x
+
+    sp = ServiceProvider()
+    sp.register_value(str, sv)
+    sp.register_value(int, iv)
+    assert sp.resolve(func) == (sv, iv)
 
 def test_inject_class_by_typed():
     val = 444
@@ -75,10 +81,7 @@ def test_inject_class_by_typed():
 
     sp = ServiceProvider()
     sp.register_value(int, val)
-    sp.register_singleton(A, A)
-
-    a: A = sp[A]
-    assert a.val == val
+    assert sp.resolve(A).val == val
 
 def test_inject_class_by_typed_with_default():
     val = 444
@@ -88,29 +91,22 @@ def test_inject_class_by_typed_with_default():
             self.val = x
 
     sp = ServiceProvider()
-    sp.register_singleton(A, A)
-
-    a: A = sp[A]
-    assert a.val == val
+    assert sp.resolve(A).val == val
 
 def test_inject_types_for_service_provider():
     def get_value(val: ServiceProvider):
         return val
 
     sp = ServiceProvider()
-    sp.register_singleton(get_value, get_value)
-
-    val = sp.get(get_value)
-    assert isinstance(val, ServiceProvider)
+    assert sp.resolve(get_value) is sp
 
 def test_inject_types_for_frameinfo():
     def get_value(val: inspect.FrameInfo):
         return val
 
     sp = ServiceProvider()
-    sp.register_singleton(get_value, get_value)
 
-    fr = sp.get(get_value)
+    fr = sp.resolve(get_value)
     assert isinstance(fr, inspect.FrameInfo)
     mo = inspect.getmodule(fr.frame)
     assert mo is not None

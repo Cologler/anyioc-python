@@ -23,3 +23,22 @@ class InjectBy:
             return provider[self.key]
         else:
             return provider.get(self.key, self.default)
+
+
+class InjectByGroup(InjectBy):
+    '''
+    Inject args as tuple group.
+
+    Equals:
+
+    ```
+    tuple(provider[k] for k in keys)
+    ```
+    '''
+
+    def __init__(self, *keys: Any) -> None:
+        super().__init__(None)
+        self.keys = keys
+
+    def get_service(self, provider: 'ioc.IServiceProvider'):
+        return tuple(provider[k] for k in self.keys)
