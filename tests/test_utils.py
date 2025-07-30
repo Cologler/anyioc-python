@@ -16,6 +16,7 @@ from anyioc.utils import (
     inject_by_anno,
     inject_by_keys,
     inject_by_name,
+    is_root,
     make_group,
 )
 
@@ -136,3 +137,9 @@ def test_helper_releaser():
         scoped.enter(Releaser(callback))
         callback.assert_not_called()
     callback.assert_called_once()
+
+def test_is_root():
+    provider = ServiceProvider()
+    assert is_root(provider)
+    with provider.scope() as scoped:
+        assert not is_root(scoped)

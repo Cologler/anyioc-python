@@ -5,11 +5,16 @@
 #
 # ----------
 
+import logging
 from inspect import Parameter, signature
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from ._utils import create_adapter as _create_adapter
 from ._utils import get_module_name as _get_module_name
+from .symbols import Symbols
+
+if TYPE_CHECKING:
+    from . import ioc  # noqa: F401
 
 
 def injectable(
@@ -235,14 +240,15 @@ def get_logger(ioc):
     assert logger.name == __name__ # the logger should have module name
     ```
     '''
-    import logging
-
-    from .symbols import Symbols
-
     fr = ioc[Symbols.caller_frame]
     name = _get_module_name(fr)
     return logging.getLogger(name)
 
+def is_root(provider: 'ioc.IServiceProvider'):
+    '''
+    Test is the IServiceProvider is the root provider or not.
+    '''
+    return provider[Symbols.provider_root] is provider
 
 class Releaser:
     '''
