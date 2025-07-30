@@ -20,32 +20,30 @@ def test_reset():
     reset()
     assert len(_module_scoped_providers) == 0
 
-
 def test_get_module_provider():
-    assert __name__ == 'test_anyioc_g'
+    mp = get_module_provider('A')
+    assert isinstance(mp, ServiceProvider)
+    assert mp is not get_module_provider('B')
+    assert mp is get_module_provider('A')
 
-    assert get_module_provider('A') is not get_module_provider('B')
-    assert get_module_provider('A') is get_module_provider('A')
-    assert get_module_provider() is get_module_provider(__name__)
-
-    # diff for `get_module_provider` and `get_pkgroot_provider`
-    assert get_module_provider('A.B') is not get_module_provider('A.C')
-
-    assert isinstance(get_module_provider(), ServiceProvider)
+def test_get_module_provider_without_args():
+    mp = get_module_provider()
+    assert isinstance(mp, ServiceProvider)
+    assert mp is get_module_provider(__name__)
+    assert mp is get_module_provider('test_anyioc_g')
 
 def test_get_pkgroot_provider():
-    assert __name__ == 'test_anyioc_g'
+    pp = get_pkgroot_provider('A')
+    assert isinstance(pp, ServiceProvider)
+    assert pp is not get_pkgroot_provider('B')
+    assert pp is get_pkgroot_provider('A.B.C')
+    assert pp is get_pkgroot_provider('A.C.E')
 
-    assert get_pkgroot_provider('A') is not get_pkgroot_provider('B')
-    assert get_pkgroot_provider('A') is get_pkgroot_provider('A')
-    assert get_pkgroot_provider() is get_pkgroot_provider(__name__)
-
-    # diff for `get_module_provider` and `get_pkgroot_provider`
-    assert get_pkgroot_provider('A.B.C') is get_pkgroot_provider('A.C.E')
-
-    assert get_pkgroot_provider('A.B.C') is get_module_provider('A')
-
-    assert isinstance(get_pkgroot_provider(), ServiceProvider)
+def test_get_pkgroot_provider_without_args():
+    pp = get_pkgroot_provider()
+    assert isinstance(pp, ServiceProvider)
+    assert pp is get_pkgroot_provider(__name__)
+    assert pp is get_pkgroot_provider('test_anyioc_g')
 
 def test_scoped_provider_is_provider_root():
     provider = get_pkgroot_provider('a.b')
@@ -57,8 +55,8 @@ def test_get_module_provider_auto_conf_ioc():
 
 def test_get_module_provider_args_must_be_string():
     with raises(TypeError):
-        get_module_provider(object())
+        get_module_provider(object()) # type: ignore
 
 def test_get_pkgroot_provider_args_must_be_string():
     with raises(TypeError):
-        get_pkgroot_provider(object())
+        get_pkgroot_provider(object()) # type: ignore
