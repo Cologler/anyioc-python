@@ -40,7 +40,7 @@ def update_wrapper(wrapper, wrapped):
     wrapper.__anyioc_wrapped__ = getattr(wrapped, '__anyioc_wrapped__', wrapped)
     return wrapper
 
-def wrap_signature(func):
+def wrap_signature[R](func: Callable[..., R]):
     '''
     wrap the function to single argument function.
 

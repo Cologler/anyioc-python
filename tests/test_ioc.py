@@ -56,6 +56,13 @@ def test_bind():
     provider.register_bind('b', 'k')
     assert provider['b'] == 'value'
 
+def test_resolve_direct():
+    provider = ServiceProvider()
+    provider.register_value(str, 'v')
+    def factory(s: str):
+        return s
+    assert provider.resolve(factory) == 'v'
+
 def test_predefined_keys():
     map_to_self_keys = (
         # str

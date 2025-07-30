@@ -72,6 +72,13 @@ class IServiceProvider:
         raise NotImplementedError
 
     @abstractmethod
+    def resolve[R](self, factory: Callable[..., R]) -> R:
+        '''
+        Resolve the factory direct without register.
+        '''
+        raise NotImplementedError
+
+    @abstractmethod
     def scope(self):
         '''
         create a scoped service provider for get scoped services.
@@ -232,6 +239,12 @@ class ServiceProvider(IServiceProvider):
             return [si.get(self) for si in service_infos]
         except ServiceNotFoundError as err:
             raise ServiceNotFoundError(key, *err.resolve_chain)
+
+    def resolve[R](self, factory: Callable[..., R]) -> R:
+        '''
+        Resolve the factory direct without register.
+        '''
+        return _wrap_signature(factory)(self)
 
     def enter[T](self, context: ContextManager[T]):
         '''
