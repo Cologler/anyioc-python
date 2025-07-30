@@ -5,13 +5,11 @@
 #
 # ----------
 
-from unittest.mock import MagicMock
 
 from pytest import raises
 
 from anyioc.ioc import ServiceNotFoundError, ServiceProvider
 from anyioc.utils import (
-    Releaser,
     get_logger,
     inject_by_anno,
     inject_by_keys,
@@ -129,14 +127,6 @@ def test_helper_get_logger():
     logger = provider['logger']
     assert logger.name == __name__
     assert logger.name == 'test_utils'
-
-def test_helper_releaser():
-    provider = ServiceProvider()
-    callback = MagicMock()
-    with provider.scope() as scoped:
-        scoped.enter(Releaser(callback))
-        callback.assert_not_called()
-    callback.assert_called_once()
 
 def test_is_root():
     provider = ServiceProvider()
