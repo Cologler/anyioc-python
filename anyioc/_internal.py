@@ -8,7 +8,9 @@
 from collections.abc import MutableMapping
 from contextlib import AbstractContextManager, nullcontext
 from threading import RLock
-from typing import Any, Protocol, ReadOnly, TypedDict, runtime_checkable
+from typing import Any, Protocol, TypedDict, runtime_checkable
+
+from typing_extensions import ReadOnly
 
 _NULL_CONTEXT = nullcontext()
 
