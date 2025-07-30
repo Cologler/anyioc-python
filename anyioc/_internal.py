@@ -25,7 +25,7 @@ class ProviderOptions(TypedDict):
     auto_enter: ReadOnly[bool]
 
 
-class ScopedCache(MutableMapping):
+class LockedMapping(MutableMapping):
     def __init__(self, use_lock: bool) -> None:
         super().__init__()
         self._dict: dict[Any, Any] = dict()

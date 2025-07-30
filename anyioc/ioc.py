@@ -13,7 +13,7 @@ from threading import RLock
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Optional, overload, override
 
-from ._internal import AllSupportsContext, ScopedCache
+from ._internal import AllSupportsContext, LockedMapping
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as _wrap_signature
 from .err import ServiceNotFoundError
@@ -101,7 +101,7 @@ class ServiceProvider(IServiceProvider):
             ):
 
         self._exit_stack = None
-        self._scoped_cache = ScopedCache(use_lock=_use_lock)
+        self._scoped_cache = LockedMapping(use_lock=_use_lock)
         self._lock = RLock() if _use_lock else _NULL_CONTEXT
         self._parent = _parent
 

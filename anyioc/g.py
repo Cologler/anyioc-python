@@ -7,9 +7,9 @@
 
 import importlib
 import importlib.util
-import threading
 from typing import Optional
 
+from ._internal import LockedMapping
 from ._utils import dispose_at_exit, get_frameinfos, get_module_name
 from .ioc import ServiceProvider
 
@@ -18,8 +18,7 @@ dispose_at_exit(ioc)
 
 # scoped global ioc
 
-_module_scoped_providers = {}
-_module_scoped_lock = threading.RLock()
+_module_providers = LockedMapping(use_lock=True)
 
 def _is_module_exists(module_name: str) -> bool:
     try:
@@ -39,15 +38,13 @@ def _get_module_provider(module_name: str):
             if conf_ioc is not None:
                 conf_ioc(provider)
 
-    provider = _module_scoped_providers.get(module_name)
-    if provider is None:
-        with _module_scoped_lock:
-            provider = _module_scoped_providers.get(module_name)
-            if provider is None:
-                provider = ServiceProvider()
-                dispose_at_exit(provider)
-                _module_scoped_providers[module_name] = provider
-                provider.add_init_hook(init_hook)
+    with _module_providers.lock:
+        if (provider := _module_providers.get(module_name)) is None:
+            provider = ServiceProvider()
+            dispose_at_exit(provider)
+            _module_providers[module_name] = provider
+            provider.add_init_hook(init_hook)
+        return provider
 
     return provider
 
@@ -92,9 +89,7 @@ def reset():
     '''
     Clear all module (or pkgroot) providers.
     '''
-
-    with _module_scoped_lock:
-        _module_scoped_providers.clear()
+    _module_providers.clear()
 
 # keep old func names:
 

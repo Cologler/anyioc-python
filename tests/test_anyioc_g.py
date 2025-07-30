@@ -7,18 +7,18 @@
 
 from pytest import raises
 
-from anyioc.g import ServiceProvider, _module_scoped_providers, get_module_provider, get_pkgroot_provider, reset
+from anyioc.g import ServiceProvider, _module_providers, get_module_provider, get_pkgroot_provider, reset
 from anyioc.symbols import Symbols
 
 
 def test_reset():
     reset()
-    assert len(_module_scoped_providers) == 0
+    assert len(_module_providers) == 0
     assert get_module_provider('A') is not None
     assert get_module_provider('B') is not None
-    assert len(_module_scoped_providers) == 2
+    assert len(_module_providers) == 2
     reset()
-    assert len(_module_scoped_providers) == 0
+    assert len(_module_providers) == 0
 
 def test_get_module_provider():
     mp = get_module_provider('A')
