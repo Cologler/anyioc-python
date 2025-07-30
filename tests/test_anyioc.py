@@ -150,6 +150,7 @@ def test_options_auto_enter():
 
     class ContextManager:
         value = 0
+
         def __enter__(self):
             self.value = 1
             return self

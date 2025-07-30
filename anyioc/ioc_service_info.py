@@ -10,8 +10,9 @@ from abc import ABC, abstractmethod
 from contextlib import nullcontext
 from enum import Enum
 from threading import RLock
-from typing import TYPE_CHECKING, Any, overload
+from typing import TYPE_CHECKING, Any, Callable, overload
 
+from ._internal import SupportsContext
 from ._utils import wrap_signature as _wrap_signature
 from .symbols import Symbols
 
@@ -35,7 +36,7 @@ class IServiceInfo[T](ABC):
         raise NotImplementedError
 
 
-class ServiceInfo(IServiceInfo):
+class ServiceInfo[R](IServiceInfo):
     '''generic `IServiceInfo`.'''
 
     __slots__ = (
@@ -53,7 +54,7 @@ class ServiceInfo(IServiceInfo):
         Symbols.cache,
     ])
 
-    def __init__(self, service_provider: 'ioc.ServiceProvider', key, factory, lifetime):
+    def __init__(self, service_provider: 'ioc.ServiceProvider', key, factory: Callable[..., R], lifetime):
         if key in self._not_allowed_keys:
             raise ValueError(f'key {key!r} is not allowed')
 
@@ -119,9 +120,12 @@ class ServiceInfo(IServiceInfo):
 
         service = self._factory(provider)
         if self._options['auto_enter']:
-            wrapped = getattr(
-                self._factory, '__anyioc_wrapped__', self._factory)
-            if isinstance(wrapped, type) and hasattr(wrapped, '__enter__') and hasattr(wrapped, '__exit__'):
+            wrapped = getattr(self._factory, '__anyioc_wrapped__', self._factory)
+            # We must ensure that the original object is a ContextManager.
+            # If the original object is a factory function and
+            # the ContextManager service is merely the return value of that function,
+            # then __enter__ should not be called automatically.
+            if isinstance(wrapped, SupportsContext) and isinstance(service, SupportsContext):
                 service = provider.enter(service)
         return service
 

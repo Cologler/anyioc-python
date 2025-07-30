@@ -11,9 +11,9 @@ from contextlib import ExitStack, nullcontext
 from logging import getLogger
 from threading import RLock
 from types import MappingProxyType
-from typing import Any, Callable, ContextManager, Iterable, Optional, overload, override
+from typing import Any, Callable, Iterable, Optional, overload, override
 
-from ._internal import ScopedCache
+from ._internal import ScopedCache, SupportsContext
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as _wrap_signature
 from .err import ServiceNotFoundError
@@ -253,7 +253,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return _wrap_signature(factory)(self)
 
-    def enter[T](self, context: ContextManager[T]):
+    def enter[T](self, context: SupportsContext[T]):
         '''
         enter the context.
 

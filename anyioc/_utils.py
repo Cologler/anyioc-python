@@ -11,9 +11,12 @@ import inspect
 import sys
 from collections.abc import Iterable, Mapping
 from inspect import Parameter
-from typing import Annotated, Any, Callable, cast, get_args, get_origin
+from typing import TYPE_CHECKING, Annotated, Any, Callable, cast, get_args, get_origin
 
 from .annotations import InjectBy
+
+if TYPE_CHECKING:
+    from . import ioc
 
 
 def get_module_name(fr: inspect.FrameInfo):
@@ -40,7 +43,7 @@ def update_wrapper(wrapper, wrapped):
     wrapper.__anyioc_wrapped__ = getattr(wrapped, '__anyioc_wrapped__', wrapped)
     return wrapper
 
-def wrap_signature[R](func: Callable[..., R]):
+def wrap_signature[R](func: Callable[..., R]) -> Callable[['ioc.ServiceProvider'], R]:
     '''
     wrap the function to single argument function.
 
