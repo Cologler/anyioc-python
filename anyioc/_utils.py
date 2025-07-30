@@ -123,7 +123,7 @@ def create_adapter(
             return InjectBy(*arg)
         elif isinstance(arg, InjectBy):
             return arg
-        raise TypeError(f'excepted tuple or InjectBy, got {type(tup)}')
+        raise TypeError(f'excepted tuple or InjectBy, got {type(arg)}')
 
     p_params_i = [to_injectby(v) for v in p_params]
     k_params_i = {k: to_injectby(v) for k, v in k_params.items()}
