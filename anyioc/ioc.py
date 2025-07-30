@@ -272,6 +272,15 @@ class ServiceProvider(IServiceProvider):
                 self._exit_stack.__exit__(*args)
                 self._exit_stack = None
 
+    def freeze_key(self, key):
+        '''
+
+        Freeze key to avoid registering it later.
+
+        Only effective for the current ServiceProvider.
+        '''
+        self._services.freeze_key(key)
+
     def register_service_info(self, key, service_info: IServiceInfo):
         '''
         register a `IServiceInfo` by key.

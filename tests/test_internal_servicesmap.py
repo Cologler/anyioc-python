@@ -80,3 +80,16 @@ def test_servicesmap_with_context_release_twice_should_raise_error():
     with pytest.raises(RuntimeError):
         with disposable:
             pass
+
+def test_servicesmap_freeze():
+    srvmap = ServicesMap()
+
+    srvmap.add(1, object())
+
+    srvmap.freeze_key(1)
+    srvmap.freeze_key(2)
+
+    with pytest.raises(RuntimeError):
+        srvmap.add(1, object())
+    with pytest.raises(RuntimeError):
+        srvmap.add(2, object())

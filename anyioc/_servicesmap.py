@@ -17,6 +17,7 @@ _NULL_CONTEXT = nullcontext()
 class ServicesMap:
     def __init__(self, *maps, use_lock: bool=True):
         self._lock = Lock() if use_lock else _NULL_CONTEXT
+        self._frozen_keys = set()
         self.maps: list[dict[Any, list[tuple[_Symbol, IServiceInfo]]]] = list(maps) or [{}]
 
     def resolve(self, key: Any):
@@ -28,9 +29,12 @@ class ServicesMap:
                 yield from (v for _s, v in reversed(mapping.get(key, [])))
 
     def add(self, key, value):
-        internal_value = (_Symbol(), value) # ensure dispose the right value
 
         with self._lock:
+            if key in self._frozen_keys:
+                raise RuntimeError(f'Key {key!r} is frozen.')
+
+            internal_value = (_Symbol(), value) # ensure dispose the right value
             self.maps[0].setdefault(key, []).append(internal_value)
 
         def dispose():
@@ -41,6 +45,10 @@ class ServicesMap:
                 raise RuntimeError('Cannot call dispose again')
 
         return Disposable(dispose)
+
+    def freeze_key(self, key):
+        with self._lock:
+            self._frozen_keys.add(key)
 
     def __setitem__(self, key, value):
         self.add(key, value)
