@@ -5,22 +5,42 @@
 #
 # ----------
 
+from contextlib import nullcontext
+from threading import Lock
 from typing import Any, overload
 
 from .ioc_service_info import IServiceInfo
 from .symbols import TypedSymbol, _Symbol
 
+_NULL_CONTEXT = nullcontext()
 
 class ServicesMap:
-    def __init__(self, *maps):
+    def __init__(self, *maps, use_lock: bool=True):
+        self._lock = Lock() if use_lock else _NULL_CONTEXT
         self.maps: list[dict[Any, list[tuple[_Symbol, IServiceInfo]]]] = list(maps) or [{}]
 
     def resolve(self, key: Any):
         '''
         Resolve values with reversed order.
         '''
-        for mapping in self.maps:
-            yield from (v for _s, v in reversed(mapping.get(key, [])))
+        with self._lock:
+            for mapping in self.maps:
+                yield from (v for _s, v in reversed(mapping.get(key, [])))
+
+    def add(self, key, value):
+        internal_value = (_Symbol(), value) # ensure dispose the right value
+
+        with self._lock:
+            self.maps[0].setdefault(key, []).append(internal_value)
+
+        def dispose():
+            try:
+                with self._lock:
+                    self.maps[0][key].remove(internal_value)
+            except ValueError:
+                raise RuntimeError('Cannot call dispose again')
+
+        return Disposable(dispose)
 
     def __setitem__(self, key, value):
         self.add(key, value)
@@ -49,20 +69,8 @@ class ServicesMap:
         'get items as list'
         return list(self.resolve(key))
 
-    def scope(self):
-        return self.__class__({}, *self.maps)
-
-    def add(self, key, value):
-        internal_value = (_Symbol(), value) # ensure dispose the right value
-        self.maps[0].setdefault(key, []).append(internal_value)
-
-        def dispose():
-            try:
-                self.maps[0][key].remove(internal_value)
-            except ValueError:
-                raise RuntimeError('Cannot call dispose again')
-
-        return Disposable(dispose)
+    def scope(self, use_lock: bool=False):
+        return self.__class__({}, *self.maps, use_lock=use_lock)
 
 
 class Disposable():

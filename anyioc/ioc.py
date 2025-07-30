@@ -5,13 +5,13 @@
 #
 # ----------
 
+import inspect
 from abc import abstractmethod
 from contextlib import ExitStack, nullcontext
 from logging import getLogger
 from threading import RLock
 from types import MappingProxyType
 from typing import Any, Callable, ContextManager, Iterable, Optional, overload, override
-import inspect
 
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as _wrap_signature
@@ -29,6 +29,8 @@ from .ioc_service_info import (
     ValueServiceInfo,
 )
 from .symbols import Symbols, TypedSymbol
+
+_NULL_CONTEXT = nullcontext()
 
 _logger = getLogger(__name__)
 
@@ -79,9 +81,12 @@ class IServiceProvider:
         raise NotImplementedError
 
     @abstractmethod
-    def scope(self):
+    def scope(self, *, use_lock: bool=False) -> 'IServiceProvider':
         '''
-        create a scoped service provider for get scoped services.
+        Create a scoped service provider for get scoped services.
+
+        By default, scoped IServiceProvider is not thread safely,
+        set `use_lock` to `True` can change this.
         '''
         raise NotImplementedError
 
@@ -90,7 +95,8 @@ class ServiceProvider(IServiceProvider):
     def __init__(self, auto_enter=False, *,
                 # internal uses:
                 _services: Optional[ServicesMap]=None,
-                _parent: Optional['ServiceProvider']=None
+                _parent: Optional['ServiceProvider']=None,
+                _use_lock: bool=True,
             ):
 
         self._exit_stack = None
@@ -105,13 +111,13 @@ class ServiceProvider(IServiceProvider):
             assert auto_enter is False, 'must be default value'
             self._services = _services
             self._root: ServiceProvider = _parent._root
-            self._lock = nullcontext()
+            self._lock = RLock() if _use_lock else _NULL_CONTEXT
 
         else:
             # root provider
-            self._services = ServicesMap()
+            self._services = ServicesMap(use_lock=True)
             self._root: ServiceProvider = self
-            self._lock = RLock()
+            self._lock = RLock() # always use lock
 
             # serviceinfos
             get_current_provicer = ProviderServiceInfo()
@@ -347,11 +353,19 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register_service_info(new_key, BindedServiceInfo(target_key))
 
-    def scope(self):
+    @override
+    def scope(self, *, use_lock: bool=False) -> 'ServiceProvider':
         '''
-        create a scoped service provider.
+        Create a scoped service provider for get scoped services.
+
+        By default, scoped IServiceProvider is not thread safely,
+        set `use_lock` to `True` can change this.
         '''
-        ssp = ServiceProvider(_services=self._services.scope(), _parent=self)
+        ssp = ServiceProvider(
+            _services=self._services.scope(use_lock=use_lock),
+            _parent=self,
+            _use_lock=use_lock,
+        )
         return self.enter(ssp)
 
     @property
