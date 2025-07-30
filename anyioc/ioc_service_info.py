@@ -5,7 +5,6 @@
 #
 # ----------
 
-import inspect
 from abc import ABC, abstractmethod
 from contextlib import nullcontext
 from enum import Enum
@@ -13,6 +12,7 @@ from threading import RLock
 from typing import TYPE_CHECKING, Any, Callable, overload
 
 from ._internal import SupportsContext
+from ._utils import get_frameinfos as _get_frameinfos
 from ._utils import wrap_signature as _wrap_signature
 from .symbols import Symbols
 
@@ -212,8 +212,5 @@ class CallerFrameServiceInfo(IServiceInfo):
     __slots__ = ()
 
     def get(self, provider):
-        frs = inspect.getouterframes(inspect.currentframe())
-        for fr in frs[2:]:
-            mo = inspect.getmodule(fr.frame)
-            if mo is None or mo.__name__.partition('.')[0] != 'anyioc':
-                return fr
+        for f in _get_frameinfos(exclude_anyioc_frames=True):
+            return f

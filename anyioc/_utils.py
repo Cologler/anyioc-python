@@ -8,6 +8,7 @@
 
 import atexit
 import inspect
+import itertools
 import sys
 from collections.abc import Iterable, Mapping
 from inspect import Parameter
@@ -20,10 +21,20 @@ if TYPE_CHECKING:
 
 
 def get_module_name(fr: inspect.FrameInfo):
-    'get module name from frame info'
+    '''
+    Get module name from frame info
+    '''
     mo = inspect.getmodule(fr.frame)
     name = '<stdin>' if mo is None else mo.__name__
     return name
+
+def get_frameinfos(*,
+        context: int=1, exclude_anyioc_frames: bool=True
+    ):
+    frs = inspect.stack(context=context)[1:] # exclude get_frameinfos
+    if exclude_anyioc_frames:
+        frs = list(itertools.dropwhile(lambda f: get_module_name(f).partition('.')[0] == 'anyioc', frs))
+    return frs
 
 def dispose_at_exit(provider):
     '''

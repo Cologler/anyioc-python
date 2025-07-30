@@ -7,13 +7,23 @@
 
 from pytest import raises
 
-from anyioc.g import (
-    ServiceProvider,
-    get_module_provider, get_pkgroot_provider
-)
+from anyioc.g import ServiceProvider, _module_scoped_providers, get_module_provider, get_pkgroot_provider, reset
 from anyioc.symbols import Symbols
 
+
+def test_reset():
+    reset()
+    assert len(_module_scoped_providers) == 0
+    assert get_module_provider('A') is not None
+    assert get_module_provider('B') is not None
+    assert len(_module_scoped_providers) == 2
+    reset()
+    assert len(_module_scoped_providers) == 0
+
+
 def test_get_module_provider():
+    assert __name__ == 'test_anyioc_g'
+
     assert get_module_provider('A') is not get_module_provider('B')
     assert get_module_provider('A') is get_module_provider('A')
     assert get_module_provider() is get_module_provider(__name__)
@@ -24,6 +34,8 @@ def test_get_module_provider():
     assert isinstance(get_module_provider(), ServiceProvider)
 
 def test_get_pkgroot_provider():
+    assert __name__ == 'test_anyioc_g'
+
     assert get_pkgroot_provider('A') is not get_pkgroot_provider('B')
     assert get_pkgroot_provider('A') is get_pkgroot_provider('A')
     assert get_pkgroot_provider() is get_pkgroot_provider(__name__)

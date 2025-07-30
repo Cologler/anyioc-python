@@ -7,11 +7,10 @@
 
 import importlib
 import importlib.util
-import inspect
 import threading
 from typing import Optional
 
-from ._utils import dispose_at_exit, get_module_name
+from ._utils import dispose_at_exit, get_frameinfos, get_module_name
 from .ioc import ServiceProvider
 
 ioc = ServiceProvider()
@@ -52,10 +51,6 @@ def _get_module_provider(module_name: str):
 
     return provider
 
-def _get_caller_module_name():
-    fr = inspect.getouterframes(inspect.currentframe())[2]
-    return get_module_name(fr)
-
 def get_module_provider(module_name: Optional[str]=None) -> ServiceProvider:
     '''
     get the module scoped singleton `ServiceProvider`.
@@ -69,7 +64,7 @@ def get_module_provider(module_name: Optional[str]=None) -> ServiceProvider:
     ```
     '''
     if module_name is None:
-        module_name = _get_caller_module_name()
+        module_name = get_module_name(get_frameinfos(context=0, exclude_anyioc_frames=True)[0])
 
     if not isinstance(module_name, str):
         raise TypeError
@@ -85,13 +80,21 @@ def get_pkgroot_provider(pkgroot: Optional[str]=None) -> ServiceProvider:
     for example, `get_pkgroot_provider('A.B.C.D')` is equals `get_module_provider('A')`
     '''
     if pkgroot is None:
-        pkgroot = _get_caller_module_name()
+        pkgroot = get_module_name(get_frameinfos(context=0, exclude_anyioc_frames=True)[0])
 
     if not isinstance(pkgroot, str):
         raise TypeError
 
     pkgroot = pkgroot.partition('.')[0]
     return _get_module_provider(pkgroot)
+
+def reset():
+    '''
+    Clear all module (or pkgroot) providers.
+    '''
+
+    with _module_scoped_lock:
+        _module_scoped_providers.clear()
 
 # keep old func names:
 
