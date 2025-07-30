@@ -12,6 +12,7 @@ import itertools
 import sys
 from collections.abc import Iterable, Mapping
 from inspect import Parameter
+from logging import getLogger
 from typing import TYPE_CHECKING, Annotated, Any, Callable, cast, get_args, get_origin
 
 from ._internal import Disposable
@@ -21,6 +22,8 @@ from .err import ServiceNotFoundError
 if TYPE_CHECKING:
     from . import ioc
 
+
+_logger = getLogger(__name__)
 
 def get_module_name(fr: inspect.FrameInfo):
     '''
@@ -90,6 +93,8 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable
                 metadatas = get_args(param.annotation)[1:]
                 injectbys = [x for x in metadatas if isinstance(x, InjectBy)]
                 if injectbys:
+                    if len(injectbys) > 1:
+                        _logger.warning('Too many annotated InjectBy')
                     return injectbys[0]
             else:
                 # create InjectBy for type annotation
