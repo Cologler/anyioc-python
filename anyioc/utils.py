@@ -250,6 +250,19 @@ def is_root(provider: 'ioc.IServiceProvider'):
     '''
     return provider[Symbols.provider_root] is provider
 
+def get_scope_depth(provider: 'ioc.IServiceProvider'):
+    '''
+    Get the depth of scopes.
+
+    The root provider is 0.
+    '''
+    depth = 0
+    root = provider[Symbols.provider_root]
+    while provider is not root:
+        provider = provider[Symbols.provider_parent]
+        depth += 1
+    return depth
+
 # keep old func names:
 
 auto_inject = inject_by_name

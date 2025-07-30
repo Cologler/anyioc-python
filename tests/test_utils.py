@@ -11,6 +11,7 @@ from pytest import raises
 from anyioc.ioc import ServiceNotFoundError, ServiceProvider
 from anyioc.utils import (
     get_logger,
+    get_scope_depth,
     inject_by_anno,
     inject_by_keys,
     inject_by_name,
@@ -133,3 +134,11 @@ def test_is_root():
     assert is_root(provider)
     with provider.scope() as scoped:
         assert not is_root(scoped)
+
+def test_get_scope_depth():
+    root = ServiceProvider()
+    assert get_scope_depth(root) == 0
+    with root.scope() as s1:
+        assert get_scope_depth(s1) == 1
+        with s1.scope() as s2:
+            assert get_scope_depth(s2) == 2
