@@ -5,10 +5,13 @@
 #
 # ----------
 
-from anyioc import ServiceProvider, IServiceProvider
-from anyioc.symbols import Symbols
+import contextlib
+from unittest.mock import MagicMock
 
-from tests.assert_utils import assert_value_singleton, assert_value_scoped, assert_value_transient
+from anyioc import IServiceProvider, ServiceProvider
+from anyioc.symbols import Symbols
+from tests.assert_utils import assert_value_scoped, assert_value_singleton, assert_value_transient
+
 
 def test_singleton():
     provider = ServiceProvider()
@@ -25,7 +28,7 @@ def test_transient():
     provider.register_transient(1, lambda: ServiceProvider())
     assert_value_transient(provider, 1)
 
-def test_resolve_group():
+def test_group():
     provider = ServiceProvider()
     provider.register_transient('str', lambda: 'name')
     provider.register_transient('int', lambda: 1)
@@ -56,12 +59,24 @@ def test_bind():
     provider.register_bind('b', 'k')
     assert provider['b'] == 'value'
 
-def test_resolve_direct():
+def test_resolve():
     provider = ServiceProvider()
     provider.register_value(str, 'v')
     def factory(s: str):
         return s
     assert provider.resolve(factory) == 'v'
+
+def test_enter():
+    provider = ServiceProvider()
+    callback = MagicMock()
+    @contextlib.contextmanager
+    def ctx():
+        yield
+        callback()
+    with provider.scope() as scoped:
+        scoped.enter(ctx())
+        callback.assert_not_called()
+    callback.assert_called_once()
 
 def test_predefined_keys():
     map_to_self_keys = (

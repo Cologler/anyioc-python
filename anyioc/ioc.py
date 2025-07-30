@@ -13,7 +13,7 @@ from threading import RLock
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Optional, overload, override
 
-from ._internal import ScopedCache, SupportsContext
+from ._internal import AllSupportsContext, ScopedCache
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as _wrap_signature
 from .err import ServiceNotFoundError
@@ -253,7 +253,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return _wrap_signature(factory)(self)
 
-    def enter[T](self, context: SupportsContext[T]):
+    def enter[T](self, context: AllSupportsContext[T]):
         '''
         enter the context.
 
@@ -267,10 +267,10 @@ class ServiceProvider(IServiceProvider):
     def __enter__(self):
         return self
 
-    def __exit__(self, *args):
+    def __exit__(self, exc_type, exc_val, exc_tb):
         with self._lock:
             if self._exit_stack is not None:
-                self._exit_stack.__exit__(*args)
+                self._exit_stack.__exit__(exc_type, exc_val, exc_tb)
                 self._exit_stack = None
 
     def freeze_key(self, key):

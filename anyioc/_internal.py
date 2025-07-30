@@ -6,7 +6,7 @@
 # ----------
 
 from collections.abc import MutableMapping
-from contextlib import nullcontext
+from contextlib import AbstractContextManager, nullcontext
 from threading import RLock
 from typing import Any, Protocol, ReadOnly, TypedDict, runtime_checkable
 
@@ -15,8 +15,9 @@ _NULL_CONTEXT = nullcontext()
 @runtime_checkable
 class SupportsContext[T](Protocol):
     def __enter__(self) -> T: ...
-    def __exit__(self, *_): ...
+    def __exit__(self, exc_type, exc_val, exc_tb) -> Any: ...
 
+type AllSupportsContext[T] = SupportsContext[T] | AbstractContextManager[T]
 
 class ProviderOptions(TypedDict):
     auto_enter: ReadOnly[bool]
