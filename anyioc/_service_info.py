@@ -35,18 +35,18 @@ class ServiceInfo[T](IServiceInfo[T]):
         # for not transient
         '_lock',
         # for singleton
-        '_cache_value', '_service_provider',
+        '_cached_value', '_service_provider',
         # options
         '_options',
     )
 
-    _not_allowed_keys = frozenset([
+    _NOT_ALLOWED_KEYS = frozenset([
         Symbols.provider_options,
         Symbols.cache,
     ])
 
     def __init__(self, service_provider: 'ioc.ServiceProvider', key, factory: Callable[..., T], lifetime):
-        if key in self._not_allowed_keys:
+        if key in self._NOT_ALLOWED_KEYS:
             raise ValueError(f'key {key!r} is not allowed')
 
         self._factory_origin = factory
@@ -54,8 +54,6 @@ class ServiceInfo[T](IServiceInfo[T]):
 
         self._key = key
         self._lifetime = lifetime
-        self._cache_value = None
-        self._service_provider = service_provider
         self._options = service_provider[Symbols.provider_options]
 
         if self._lifetime != LifeTime.transient:
@@ -64,11 +62,13 @@ class ServiceInfo[T](IServiceInfo[T]):
             self._lock = _NULL_CONTEXT
 
         if self._lifetime == LifeTime.singleton:
-            # service_provider is required when lifetime == singleton
-            assert self._service_provider is not None
+            # service_provider is required when the lifetime is singleton
+            self._service_provider: 'ioc.ServiceProvider | None' = service_provider
+            # the resolved value maybe a None, so we should cache it as a tuple.
+            self._cached_value: tuple[T] | None = None
 
     def __repr__(self) -> str:
-        return f'<Service: {self._lifetime}, {self._factory_origin!r}>'
+        return f'<{self._lifetime} service from {self._factory_origin!r}>'
 
     @override
     def get_service(self, provider: 'ioc.ServiceProvider') -> T:
@@ -86,24 +86,26 @@ class ServiceInfo[T](IServiceInfo[T]):
     def _from_scoped(self, provider: 'ioc.ServiceProvider') -> T:
         cache = provider[Symbols.cache]
         try:
-            return cache[self] # type: ignore
+            return cache[self]
         except KeyError:
             pass
-        with cache.lock:
+        with self._lock:
             try:
-                return cache[self] # type: ignore
+                return cache[self]
             except KeyError:
-                service = self._create(provider) # must create with lock
-                cache[self] = service
-                return service
+                pass
+            service = self._create(provider)
+            cache[self] = service
+            return service
 
     def _from_singleton(self) -> T:
-        if self._cache_value is None:
+        if (cached_value := self._cached_value) is None:
             with self._lock:
-                if self._cache_value is None:
-                    self._cache_value = (
-                        self._create(self._service_provider), )
-        return self._cache_value[0]
+                if (cached_value := self._cached_value) is None:
+                    service_provider = self._service_provider
+                    assert service_provider
+                    self._cached_value = cached_value = (self._create(service_provider),)
+        return cached_value[0]
 
     def _create(self, provider: 'ioc.ServiceProvider') -> T:
         '''

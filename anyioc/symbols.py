@@ -10,6 +10,8 @@ import inspect
 from typing import TYPE_CHECKING, ForwardRef, Type, get_args
 
 if TYPE_CHECKING:
+    from typing import Any  # noqa: F401
+
     from . import (
         ioc,  # noqa: F401
         ioc_resolver,  # noqa: F401
@@ -88,7 +90,7 @@ class Symbols:
     provider_parent = TypedSymbol['ioc.ServiceProvider']('provider_parent')
 
     # the cache dict to store scoped instances
-    cache = TypedSymbol['LockedMapping']('cache')
+    cache = TypedSymbol['LockedMapping[Any, Any]']('cache')
 
     # the missing resolver from `IServiceProvider`
     missing_resolver = TypedSymbol['ioc_resolver.ServiceInfoChainResolver']('missing_resolver')
