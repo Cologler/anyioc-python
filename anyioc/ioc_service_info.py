@@ -5,12 +5,12 @@
 #
 # ----------
 
-from abc import ABC, abstractmethod
 from contextlib import nullcontext
 from enum import Enum
 from threading import RLock
 from typing import TYPE_CHECKING, Any, Callable, overload
 
+from ._bases import IServiceInfo
 from ._internal import SupportsContext
 from ._utils import get_frameinfos as _get_frameinfos
 from ._utils import wrap_signature as _wrap_signature
@@ -26,14 +26,6 @@ class LifeTime(Enum):
     transient = 0
     scoped = 1
     singleton = 2
-
-
-class IServiceInfo[T](ABC):
-    __slots__ = ()
-
-    @abstractmethod
-    def get(self, provider) -> T:
-        raise NotImplementedError
 
 
 class ServiceInfo[R](IServiceInfo):
@@ -79,7 +71,7 @@ class ServiceInfo[R](IServiceInfo):
     def __repr__(self) -> str:
         return f'<Service: {self._lifetime}, {self._factory_origin!r}>'
 
-    def get(self, provider: 'ioc.ServiceProvider'):
+    def get_service(self, provider: 'ioc.ServiceProvider'):
         if self._lifetime is LifeTime.transient:
             return self._create(provider)
 
@@ -138,7 +130,7 @@ class ProviderServiceInfo(IServiceInfo):
     def __repr__(self) -> str:
         return '<Provider>'
 
-    def get(self, provider):
+    def get_service(self, provider):
         return provider
 
 
@@ -160,7 +152,7 @@ class GetAttrServiceInfo(IServiceInfo):
     def __repr__(self) -> str:
         return f'<GetAttr: {self._attr_info[0]!r}>'
 
-    def get(self, provider):
+    def get_service(self, provider):
         return getattr(provider, *self._attr_info)
 
 
@@ -175,7 +167,7 @@ class ValueServiceInfo(IServiceInfo):
     def __repr__(self) -> str:
         return f'<Value: {self._value!r}>'
 
-    def get(self, provider):
+    def get_service(self, provider):
         return self._value
 
 
@@ -187,7 +179,7 @@ class GroupedServiceInfo(IServiceInfo):
     def __init__(self, keys: list):
         self._keys = keys
 
-    def get(self, provider):
+    def get_service(self, provider):
         return tuple(provider[k] for k in self._keys)
 
 
@@ -202,7 +194,7 @@ class BindedServiceInfo(IServiceInfo):
     def __repr__(self) -> str:
         return f'<Binded: {self._target_key!r}>'
 
-    def get(self, provider):
+    def get_service(self, provider):
         return provider[self._target_key]
 
 
@@ -211,6 +203,6 @@ class CallerFrameServiceInfo(IServiceInfo):
 
     __slots__ = ()
 
-    def get(self, provider):
+    def get_service(self, provider):
         for f in _get_frameinfos(exclude_anyioc_frames=True):
             return f

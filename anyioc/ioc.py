@@ -186,7 +186,7 @@ class ServiceProvider(IServiceProvider):
         except KeyError:
             pass
         # load missing resolver and resolve service info.
-        resolver = self._services[Symbols.missing_resolver].get(self)
+        resolver = self._services[Symbols.missing_resolver].get_service(self)
         return resolver.get(self, key)
 
     @overload
@@ -199,7 +199,7 @@ class ServiceProvider(IServiceProvider):
         self._root.__ensure_init_hooks_called()
         service_info = self._get_service_info(key)
         try:
-            return service_info.get(self)
+            return service_info.get_service(self)
         except ServiceNotFoundError as err:
             raise ServiceNotFoundError(key, *err.resolve_chain)
 
@@ -243,7 +243,7 @@ class ServiceProvider(IServiceProvider):
         self._root.__ensure_init_hooks_called()
         service_infos: Iterable[IServiceInfo] = self._services.get_many(key)
         try:
-            return [si.get(self) for si in service_infos]
+            return [si.get_service(self) for si in service_infos]
         except ServiceNotFoundError as err:
             raise ServiceNotFoundError(key, *err.resolve_chain)
 

@@ -125,7 +125,7 @@ class SimpleServiceInfo(IServiceInfo):
     def __init__(self, factory):
         self._factory = factory
 
-    def get(self, provider):
+    def get_service(self, provider):
         return self._factory(provider)
 
 

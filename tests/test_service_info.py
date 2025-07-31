@@ -27,15 +27,15 @@ def test_service_info():
 
     # without parameters
     si = ServiceInfo(factory=lambda: 15, **other_kwargs)
-    assert si.get(other_kwargs['service_provider']) == 15
+    assert si.get_service(other_kwargs['service_provider']) == 15
 
     # with one parameter
     si = ServiceInfo(factory=lambda _: 15, **other_kwargs)
-    assert si.get(other_kwargs['service_provider']) == 15
+    assert si.get_service(other_kwargs['service_provider']) == 15
 
     # with one keyword parameter
     si = ServiceInfo(factory=lambda *, sr2fe: 15, **other_kwargs)
-    assert si.get(other_kwargs['service_provider']) == 15
+    assert si.get_service(other_kwargs['service_provider']) == 15
 
 @pytest.mark.parametrize('key', [
     Symbols.cache,
@@ -49,28 +49,28 @@ def test_service_info_not_allowed_keys(key):
 def test_provider_service_info():
     src = {}
     si = ProviderServiceInfo()
-    assert src is si.get(src)
+    assert src is si.get_service(src)
 
 def test_grouped_service_info():
     src = {1: 2, 3: 4, 5: 6}
     group = []
     si = GroupedServiceInfo(group)
 
-    ret = si.get(src)
+    ret = si.get_service(src)
     assert isinstance(ret, tuple)
     assert ret == ()
 
     group.append(1)
-    ret = si.get(src)
+    ret = si.get_service(src)
     assert isinstance(ret, tuple)
     assert ret == (2, )
 
     group.append(3)
-    ret = si.get(src)
+    ret = si.get_service(src)
     assert isinstance(ret, tuple)
     assert ret == (2, 4)
 
 def test_binded_service_info():
     src = {1: 2, 3: 4, 5: 6}
     si = BindedServiceInfo(3)
-    assert si.get(src) == 4
+    assert si.get_service(src) == 4

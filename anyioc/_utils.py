@@ -15,6 +15,7 @@ from inspect import Parameter
 from logging import getLogger
 from typing import TYPE_CHECKING, Annotated, Any, Callable, cast, get_args, get_origin
 
+from ._bases import IServiceInfo
 from ._internal import Disposable
 from .annotations import InjectBy
 from .err import ServiceNotFoundError
@@ -85,7 +86,7 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable
     if len(params) > 1:
         params = [p for p in params if p.kind != Parameter.VAR_POSITIONAL]
 
-    def get_injectby(param: Parameter) -> InjectBy | None:
+    def get_injectby(param: Parameter) -> IServiceInfo | None:
         if param.kind in (Parameter.VAR_KEYWORD, Parameter.VAR_POSITIONAL):
             return None
         if param.annotation is not Parameter.empty:
@@ -146,21 +147,21 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable
 
 def create_adapter[R](
         func: Callable[..., R],
-        p_params: Iterable[tuple[Any] | tuple[Any, Any] | InjectBy],
-        k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | InjectBy]
+        p_params: Iterable[tuple[Any] | tuple[Any, Any] | IServiceInfo],
+        k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | IServiceInfo]
     ) -> Callable[['ioc.IServiceProvider'], R]:
 
-    def to_injectby(arg: tuple[Any] | tuple[Any, Any] | InjectBy):
+    def to_serviceinfo(arg: tuple[Any] | tuple[Any, Any] | IServiceInfo):
         if isinstance(arg, tuple):
             if len(arg) not in (1, 2):
                 raise ValueError('tuple should contains 1 or 2 elements')
             return InjectBy(*arg)
-        elif isinstance(arg, InjectBy):
+        elif isinstance(arg, IServiceInfo):
             return arg
         raise TypeError(f'excepted tuple or InjectBy, got {type(arg)}')
 
-    p_params_i = [to_injectby(v) for v in p_params]
-    k_params_i = {k: to_injectby(v) for k, v in k_params.items()}
+    p_params_i = [to_serviceinfo(v) for v in p_params]
+    k_params_i = {k: to_serviceinfo(v) for k, v in k_params.items()}
 
     def wrapper(ioc):
         return func(

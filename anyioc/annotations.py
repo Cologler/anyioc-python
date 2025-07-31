@@ -7,11 +7,13 @@
 
 from typing import TYPE_CHECKING, Any
 
+from ._bases import IServiceInfo
+
 if TYPE_CHECKING:
     from . import ioc  # noqa: F401
 
 
-class InjectBy:
+class InjectBy(IServiceInfo):
     _UNSET = object()
 
     def __init__(self, key: Any, default: Any=_UNSET) -> None:
