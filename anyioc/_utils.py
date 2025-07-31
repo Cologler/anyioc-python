@@ -78,6 +78,7 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable
 
     unlike the `inject*` series of utils, this is used for implicit convert.
     '''
+    from .ioc_service_info import ProviderServiceInfo
 
     sign = inspect.signature(func)
     params = list(sign.parameters.values())
@@ -108,7 +109,7 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable
     params_with_injectby = [(p, get_injectby(p)) for p in params]
 
     if not params:
-        return update_wrapper(lambda _: func(), func)
+        return create_adapter(func)
 
     elif all(p[1] for p in params_with_injectby):
         # all params are annotated with InjectBy(key=...)
@@ -116,28 +117,26 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable
             func,
             p_params=[
                 cast(InjectBy, p[1]) for p in params_with_injectby
-                if p[0].kind == Parameter.POSITIONAL_ONLY],
+                if p[0].kind == Parameter.POSITIONAL_ONLY
+            ],
             k_params={
                 p[0].name: cast(InjectBy, p[1]) for p in params_with_injectby
-                if p[0].kind != Parameter.POSITIONAL_ONLY}
+                if p[0].kind != Parameter.POSITIONAL_ONLY
+            }
         )
 
     elif len(params) == 1:
         arg_0, = params
 
-        if arg_0.kind in (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD):
+        if arg_0.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD, Parameter.VAR_POSITIONAL):
             # does not need to wrap.
-            return func
+            return create_adapter(func, p_params=(ProviderServiceInfo(),))
 
-        elif arg_0.kind == inspect.Parameter.KEYWORD_ONLY:
-            arg_0_name = arg_0.name
-            return update_wrapper(lambda sp: func(**{arg_0_name: sp}), func)
+        elif arg_0.kind == Parameter.KEYWORD_ONLY:
+            return create_adapter(func, k_params={arg_0.name: ProviderServiceInfo()})
 
-        elif arg_0.kind == inspect.Parameter.VAR_POSITIONAL:
-            return update_wrapper(lambda sp: func(sp), func)
-
-        elif arg_0.kind == inspect.Parameter.VAR_KEYWORD:
-            return update_wrapper(lambda sp: func(**{'provider': sp}), func)
+        elif arg_0.kind == Parameter.VAR_KEYWORD:
+            return create_adapter(func, k_params={'provider': ProviderServiceInfo()})
 
         else:
             raise ValueError(f'unsupported factory signature: {sign}')
@@ -145,13 +144,16 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable
     else:
         raise TypeError('factory has too many parameters.')
 
+_EMPTY_P_PARAMS: tuple[IServiceInfo, ...] = ()
+_EMPTY_K_PARAMS: dict[str, IServiceInfo] = {}
+
 def create_adapter[R](
         func: Callable[..., R],
-        p_params: Iterable[tuple[Any] | tuple[Any, Any] | IServiceInfo],
-        k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | IServiceInfo]
+        p_params: Iterable[tuple[Any] | tuple[Any, Any] | IServiceInfo] = _EMPTY_P_PARAMS,
+        k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | IServiceInfo] = _EMPTY_K_PARAMS,
     ) -> Callable[['ioc.IServiceProvider'], R]:
 
-    def to_serviceinfo(arg: tuple[Any] | tuple[Any, Any] | IServiceInfo):
+    def to_serviceinfo(arg: tuple[Any] | tuple[Any, Any] | IServiceInfo) -> IServiceInfo:
         if isinstance(arg, tuple):
             if len(arg) not in (1, 2):
                 raise ValueError('tuple should contains 1 or 2 elements')
@@ -160,8 +162,8 @@ def create_adapter[R](
             return arg
         raise TypeError(f'excepted tuple or InjectBy, got {type(arg)}')
 
-    p_params_i = [to_serviceinfo(v) for v in p_params]
-    k_params_i = {k: to_serviceinfo(v) for k, v in k_params.items()}
+    p_params_i = [to_serviceinfo(v) for v in p_params] if p_params else _EMPTY_P_PARAMS
+    k_params_i = {k: to_serviceinfo(v) for k, v in k_params.items()} if k_params else _EMPTY_K_PARAMS
 
     def wrapper(ioc):
         return func(
