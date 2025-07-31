@@ -108,13 +108,17 @@ def test_resolve_with_override_kwargs():
     provider = ServiceProvider()
     provider.register_value(bool, False)
 
-    def func(*, is_call_from_ioc: bool):
+    def func(is_call_from_ioc: bool):
         return is_call_from_ioc
 
     assert False is provider.resolve(func)
-    assert True is provider.resolve(func, kwargs={
-        'is_call_from_ioc': True
-    })
+    assert True is provider.resolve(func, kwargs={'is_call_from_ioc': True})
+
+    def kw_only_func(*, is_call_from_ioc: bool):
+        return is_call_from_ioc
+
+    assert False is provider.resolve(kw_only_func)
+    assert True is provider.resolve(kw_only_func, kwargs={'is_call_from_ioc': True})
 
 def test_enter():
     provider = ServiceProvider()
