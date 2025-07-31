@@ -92,3 +92,7 @@ class IServiceProvider:
         Returns the result of the `context.__enter__()` method.
         '''
         raise NotImplementedError
+
+
+class Factory[T](Protocol):
+    def __call__(self, IServiceProvider, /) -> T: ...

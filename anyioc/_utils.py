@@ -15,7 +15,7 @@ from inspect import Parameter
 from logging import getLogger
 from typing import Annotated, Any, Callable, cast, get_args, get_origin
 
-from ._bases import IServiceInfo, IServiceProvider, SupportsContext
+from ._bases import Factory, IServiceInfo, IServiceProvider, SupportsContext
 from ._internal import Disposable, ProviderOptions
 from .annotations import InjectBy
 from .err import ServiceNotFoundError
@@ -70,7 +70,7 @@ class FollowedInjectBy(InjectBy):
                 return wrap_signature(self.key, follow=True)(provider)
             raise
 
-def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable[[IServiceProvider], R]:
+def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Factory[R]:
     '''
     wrap the function to single argument function.
 
@@ -149,7 +149,7 @@ def create_adapter[R](
         func: Callable[..., R],
         p_params: Iterable[tuple[Any] | tuple[Any, Any] | IServiceInfo] = _EMPTY_P_PARAMS,
         k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | IServiceInfo] = _EMPTY_K_PARAMS,
-    ) -> Callable[[IServiceProvider], R]:
+    ) -> Factory[R]:
 
     def to_serviceinfo(arg: tuple[Any] | tuple[Any, Any] | IServiceInfo) -> IServiceInfo:
         if isinstance(arg, tuple):
@@ -174,7 +174,7 @@ def create_adapter[R](
 
 def create_service[T](
         provider: IServiceProvider,
-        factory: Callable[[IServiceProvider], T],
+        factory: Factory[T],
         options: ProviderOptions | None = None,
     ) -> T:
 

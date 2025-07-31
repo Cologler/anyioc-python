@@ -120,57 +120,6 @@ def inject_by_name(func=None):
 
     return decorator if func is None else decorator(func)
 
-@overload
-def inject_by_anno[**P, R](func: Literal[None] = None, *, use_name_if_empty: bool = False) \
-    -> Callable[[Callable[P, R]], Callable[[IServiceProvider], R]]: ...
-@overload
-def inject_by_anno[**P, R](func: Callable[P, R] | None, *, use_name_if_empty: bool = False) \
-    -> Callable[[IServiceProvider], R]: ...
-def inject_by_anno(func=None, *, use_name_if_empty: bool = False):
-    '''
-    wrap a callable with signature `(ioc) => any` for inject arguments by parameter annotation.
-
-    return a decorator when `func` is `None`.
-
-    Options:
-
-    - `use_name_if_empty`: whether use `Parameter.name` as key when the `Parameter.annotation` is empty.
-
-    ### Example:
-
-    ``` py
-    @inject_by_anno
-    def func(a: int, b: str='x'):
-        return a + b
-    ```
-
-    is equals:
-
-    ``` py
-    def func(ioc):
-        def _func(a, b):
-            return a + b
-        return _func(a=ioc[int], b=ioc.get(str, 'x'))
-    ```
-    '''
-    def decorator(func, /):
-        def selector(param: Parameter):
-            anno = param.annotation
-            if anno is Parameter.empty:
-                if use_name_if_empty:
-                    ioc_key = param.name
-                elif param.default is Parameter.empty:
-                    raise ValueError(f'annotation of args {param.name} is empty.')
-                else:
-                    # use `object()` as key to ensure never get any value from container.
-                    ioc_key = object()
-            else:
-                ioc_key = anno
-            return ioc_key
-
-        return inject_by_key_selector(selector)(func)
-
-    return decorator if func is None else decorator(func)
 
 def inject_by_keys(**keys):
     '''
