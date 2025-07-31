@@ -5,8 +5,10 @@
 #
 # ----------
 
-from .ioc import IServiceProvider, ServiceProvider, ServiceNotFoundError
+from ._bases import IServiceProvider
 from ._service_info import LifeTime
+from .err import ServiceNotFoundError
+from .ioc import ServiceProvider
 
 __all__ = [
     'IServiceProvider',

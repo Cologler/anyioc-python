@@ -7,7 +7,9 @@
 
 
 import inspect
-from typing import TYPE_CHECKING, ForwardRef, Type, get_args
+from typing import TYPE_CHECKING
+
+from ._primitive_symbol import TypedSymbol
 
 if TYPE_CHECKING:
     from typing import Any  # noqa: F401
@@ -17,59 +19,6 @@ if TYPE_CHECKING:
         ioc_resolver,  # noqa: F401
     )
     from ._internal import LockedMapping, ProviderOptions  # noqa: F401
-
-
-class _Symbol:
-    '''
-    Symbol with description.
-    '''
-
-    __slots__ = ('_name', )
-
-    def __init__(self, name: str=''):
-        self._name = name
-
-    def __str__(self):
-        return f'Symbol({self._name})'
-
-    def __repr__(self):
-        return f'Symbol({self._name!r})'
-
-
-class TypedSymbol[T](_Symbol):
-    '''
-    Symbol with type.
-
-    Must use `TypedSymbol[int](...)` instead of `TypedSymbol(...)` directly.
-    '''
-
-    __slots__ = (
-        '__orig_class__',
-        '_type', # for cached property
-    )
-
-    def __str__(self):
-        ta = self._get_type_args()
-        tn = ta.__forward_arg__ if isinstance(ta, ForwardRef) else ta.__name__
-        return f'TypedSymbol[{tn}]({self._name})'
-
-    def __repr__(self):
-        ta = self._get_type_args()
-        tn = repr(ta) if isinstance(ta, ForwardRef) else ta.__name__
-        return f'TypedSymbol[{tn}]({self._name!r})'
-
-    def _get_type_args(self) -> Type[T]:
-        if (oc := getattr(self, '__orig_class__', None)) is not None:
-            return get_args(oc)[0]
-        raise TypeError('TypedSymbol is created without type args')
-
-    def get_type(self):
-        '''
-        Get the type of this symbol
-        '''
-        if not hasattr(self, '_type'):
-            self._type = self._get_type_args()
-        return self._type
 
 
 class Symbols:

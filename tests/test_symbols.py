@@ -11,7 +11,8 @@ from pytest import raises
 
 from anyioc import ServiceProvider
 from anyioc._internal import LockedMapping
-from anyioc.symbols import Symbols, TypedSymbol, _Symbol
+from anyioc._primitive_symbol import TypedSymbol, _Symbol
+from anyioc.symbols import Symbols
 
 
 def test_symbol_str():

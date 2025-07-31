@@ -6,14 +6,14 @@
 # ----------
 
 import inspect
-from abc import abstractmethod
 from contextlib import ExitStack, nullcontext
 from logging import getLogger
 from threading import RLock
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Optional, overload, override
 
-from ._internal import AllSupportsContext, Disposable, LockedMapping
+from ._bases import AllSupportsContext, IServiceProvider
+from ._internal import Disposable, LockedMapping
 from ._service_info import (
     BindedServiceInfo,
     CallerFrameServiceInfo,
@@ -34,62 +34,6 @@ from .symbols import Symbols, TypedSymbol
 _NULL_CONTEXT = nullcontext()
 
 _logger = getLogger(__name__)
-
-
-class IServiceProvider:
-    '''
-    the base interface for `ServiceProvider`.
-    '''
-
-    @overload
-    def __getitem__[T](self, key: TypedSymbol[T]) -> T: ...
-    @overload
-    def __getitem__(self, key) -> Any: ...
-    @abstractmethod
-    def __getitem__(self, key) -> Any:
-        '''
-        Get a service by key.
-        '''
-        raise NotImplementedError
-
-    @overload
-    def get[T, TD](self, key: TypedSymbol[T], d: TD=None) -> T | TD: ...
-    @overload
-    def get(self, key, d=None) -> Any: ...
-    @abstractmethod
-    def get(self, key, d=None) -> Any:
-        '''
-        Get a service by key with default value.
-        '''
-        raise NotImplementedError
-
-    @overload
-    def get_many[T](self, key: TypedSymbol[T]) -> list[T]: ...
-    @overload
-    def get_many(self, key) -> list[Any]: ...
-    @abstractmethod
-    def get_many(self, key) -> list[Any]:
-        '''
-        Get services by key.
-        '''
-        raise NotImplementedError
-
-    @abstractmethod
-    def resolve[R](self, factory: Callable[..., R]) -> R:
-        '''
-        Resolve the factory direct without register.
-        '''
-        raise NotImplementedError
-
-    @abstractmethod
-    def scope(self, *, use_lock: bool=False) -> 'IServiceProvider':
-        '''
-        Create a scoped service provider for get scoped services.
-
-        By default, scoped IServiceProvider is not thread safely,
-        set `use_lock` to `True` can change this.
-        '''
-        raise NotImplementedError
 
 
 class ServiceProvider(IServiceProvider):
@@ -253,12 +197,8 @@ class ServiceProvider(IServiceProvider):
         '''
         return wrap_signature(factory, follow=follow)(self)
 
-    def enter[T](self, context: AllSupportsContext[T]):
-        '''
-        enter the context.
-
-        returns the result of the `context.__enter__()` method.
-        '''
+    @override
+    def enter[T](self, context: AllSupportsContext[T]) -> T:
         with self._lock:
             if self._exit_stack is None:
                 self._exit_stack = ExitStack()

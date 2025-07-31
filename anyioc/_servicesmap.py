@@ -12,7 +12,7 @@ from typing import Any, overload
 
 from ._internal import Disposable
 from ._service_info import IServiceInfo
-from .symbols import TypedSymbol, _Symbol
+from ._primitive_symbol import TypedSymbol, _Symbol
 
 _NULL_CONTEXT = nullcontext()
 _logger = getLogger(__name__)

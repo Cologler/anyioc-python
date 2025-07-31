@@ -15,8 +15,8 @@ from inspect import Parameter
 from logging import getLogger
 from typing import TYPE_CHECKING, Annotated, Any, Callable, cast, get_args, get_origin
 
-from ._bases import IServiceInfo
-from ._internal import Disposable, ProviderOptions, SupportsContext
+from ._bases import IServiceInfo, SupportsContext
+from ._internal import Disposable, ProviderOptions
 from .annotations import InjectBy
 from .err import ServiceNotFoundError
 from .symbols import Symbols
