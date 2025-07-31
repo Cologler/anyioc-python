@@ -104,6 +104,18 @@ def test_resolve_with_follow():
     b = provider.resolve(factory, follow=True)
     assert b.a.s == 'v'
 
+def test_resolve_with_override_kwargs():
+    provider = ServiceProvider()
+    provider.register_value(bool, False)
+
+    def func(*, is_call_from_ioc: bool):
+        return is_call_from_ioc
+
+    assert False is provider.resolve(func)
+    assert True is provider.resolve(func, kwargs={
+        'is_call_from_ioc': True
+    })
+
 def test_enter():
     provider = ServiceProvider()
     callback = MagicMock()

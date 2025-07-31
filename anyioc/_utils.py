@@ -70,7 +70,10 @@ class FollowedInjectBy(InjectBy):
                 return wrap_signature(self.key, follow=True)(provider)
             raise
 
-def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Factory[R]:
+def wrap_signature[R](func: Callable[..., R], *,
+        follow: bool = False,
+        override_kwargs: Mapping[str, Any] | None = None,
+    ) -> Factory[R]:
     '''
     wrap the function to single argument function.
 
@@ -119,21 +122,25 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Factory[
             k_params={
                 p[0].name: cast(InjectBy, p[1]) for p in params_with_injectby
                 if p[0].kind != Parameter.POSITIONAL_ONLY
-            }
+            },
+            override_kwargs=override_kwargs,
         )
 
     elif len(params) == 1:
         arg_0, = params
 
-        if arg_0.kind in (Parameter.POSITIONAL_ONLY, Parameter.POSITIONAL_OR_KEYWORD, Parameter.VAR_POSITIONAL):
+        if arg_0.kind in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL):
             # does not need to wrap.
-            return create_adapter(func, p_params=(ProviderServiceInfo(),))
+            return create_adapter(func, p_params=(ProviderServiceInfo(),),
+                override_kwargs=override_kwargs)
 
-        elif arg_0.kind == Parameter.KEYWORD_ONLY:
-            return create_adapter(func, k_params={arg_0.name: ProviderServiceInfo()})
+        elif arg_0.kind in (Parameter.KEYWORD_ONLY, Parameter.POSITIONAL_OR_KEYWORD):
+            return create_adapter(func, k_params={arg_0.name: ProviderServiceInfo()},
+                override_kwargs=override_kwargs)
 
         elif arg_0.kind == Parameter.VAR_KEYWORD:
-            return create_adapter(func, k_params={'provider': ProviderServiceInfo()})
+            return create_adapter(func, k_params={'provider': ProviderServiceInfo()},
+                override_kwargs=override_kwargs)
 
         else:
             raise ValueError(f'unsupported factory signature: {sign}')
@@ -143,13 +150,17 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Factory[
 
 
 _EMPTY_P_PARAMS: tuple[IServiceInfo, ...] = ()
-_EMPTY_K_PARAMS: dict[str, IServiceInfo] = {}
+_EMPTY_K_PARAMS: Mapping[str, IServiceInfo] = {}
+_EMPTY_K_ARGS: Mapping[str, Any] = {}
 
 def create_adapter[R](
         func: Callable[..., R],
         p_params: Iterable[tuple[Any] | tuple[Any, Any] | IServiceInfo] = _EMPTY_P_PARAMS,
         k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | IServiceInfo] = _EMPTY_K_PARAMS,
+        override_kwargs: Mapping[str, Any] | None = None,
     ) -> Factory[R]:
+
+    from ._service_info import ValueServiceInfo
 
     def to_serviceinfo(arg: tuple[Any] | tuple[Any, Any] | IServiceInfo) -> IServiceInfo:
         if isinstance(arg, tuple):
@@ -160,8 +171,14 @@ def create_adapter[R](
             return arg
         raise TypeError(f'excepted tuple or IServiceInfo, got {type(arg)}')
 
+    if override_kwargs is None:
+        override_kwargs = _EMPTY_K_ARGS
+
     p_params_i = [to_serviceinfo(v) for v in p_params] if p_params else _EMPTY_P_PARAMS
-    k_params_i = {k: to_serviceinfo(v) for k, v in k_params.items()} if k_params else _EMPTY_K_PARAMS
+    k_params_i = {
+        k: ValueServiceInfo(override_kwargs[k]) if k in override_kwargs else to_serviceinfo(v)
+        for k, v in k_params.items()
+    } if k_params else _EMPTY_K_PARAMS
 
     def wrapper(ioc):
         return func(

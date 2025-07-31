@@ -6,6 +6,7 @@
 # ----------
 
 import inspect
+from collections.abc import Mapping
 from contextlib import ExitStack, nullcontext
 from logging import getLogger
 from threading import RLock
@@ -191,11 +192,14 @@ class ServiceProvider(IServiceProvider):
         except ServiceNotFoundError as err:
             raise ServiceNotFoundError(key, *err.resolve_chain)
 
-    def resolve[R](self, factory: Callable[..., R], *, follow: bool=False) -> R:
+    def resolve[R](self, factory: Callable[..., R], *,
+            follow: bool = False,
+            kwargs: Mapping[str, Any] | None = None
+        ) -> R:
         '''
         Resolve the factory direct without register.
         '''
-        return wrap_signature(factory, follow=follow)(self)
+        return wrap_signature(factory, follow=follow, override_kwargs=kwargs)(self)
 
     @override
     def enter[T](self, context: AllSupportsContext[T]) -> T:
