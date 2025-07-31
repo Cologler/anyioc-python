@@ -7,9 +7,9 @@
 
 from contextlib import nullcontext
 from threading import RLock
-from typing import List
+from typing import Any
 
-from ._bases import IServiceInfo
+from ._bases import IServiceInfo, IServiceProvider
 from ._service_info import FactoryServiceInfo, ValueServiceInfo
 from ._utils import wrap_signature
 from .err import ServiceNotFoundError
@@ -20,9 +20,9 @@ class IServiceInfoResolver:
     the base class for dynamic resolve `IServiceInfo`.
     '''
 
-    def get(self, provider, key) -> IServiceInfo:
+    def get(self, provider: IServiceProvider, key: Any, /) -> IServiceInfo[Any]:
         '''
-        get the `IServiceInfo` from resolver.
+        Get the `IServiceInfo` from resolver.
         '''
         raise ServiceNotFoundError(key)
 
@@ -34,19 +34,20 @@ class IServiceInfoResolver:
 
     def cache(self, *, sync=False):
         '''
-        return a `IServiceInfoResolver` to cache all values from current `IServiceInfoResolver`.
-        that mean all values will not dynamic update after first resolved.
+        Returns a `IServiceInfoResolver` to cache all `IServiceInfo`s from this `IServiceInfoResolver`.
+
+        All values won't dynamic update after the first resolved.
         '''
         return CacheServiceInfoResolver(self, sync=sync)
 
 
 class ServiceInfoChainResolver(IServiceInfoResolver):
     '''
-    a helper resolver for resolve values from each `IServiceInfoResolver`
+    A chained resolver for resolve IServiceInfos from each `IServiceInfoResolver`
     '''
 
-    def __init__(self, *resolvers):
-        self.chain: List[IServiceInfoResolver] = list(resolvers)
+    def __init__(self, *resolvers: IServiceInfoResolver):
+        self.chain = list(resolvers)
 
     def get(self, provider, key):
         for resolver in self.chain:
@@ -56,7 +57,7 @@ class ServiceInfoChainResolver(IServiceInfoResolver):
                 pass
         return super().get(provider, key)
 
-    def append(self, other):
+    def append(self, other: IServiceInfoResolver) -> None:
         if isinstance(other, ServiceInfoChainResolver):
             self.chain.extend(other.chain)
         else:
