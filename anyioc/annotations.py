@@ -5,12 +5,9 @@
 # 
 # ----------
 
-from typing import TYPE_CHECKING, Any, override
+from typing import Any, override
 
-from ._bases import IServiceInfo
-
-if TYPE_CHECKING:
-    from . import ioc  # noqa: F401
+from ._bases import IServiceInfo, IServiceProvider
 
 
 class InjectBy(IServiceInfo[Any]):
@@ -22,7 +19,7 @@ class InjectBy(IServiceInfo[Any]):
         self.default = default
 
     @override
-    def get_service(self, provider: 'ioc.IServiceProvider'):
+    def get_service(self, provider: IServiceProvider):
         if self.default is self._UNSET:
             return provider[self.key]
         else:
@@ -45,5 +42,8 @@ class InjectByGroup(IServiceInfo[tuple[Any, ...]]):
         self._keys = keys
 
     @override
-    def get_service(self, provider: 'ioc.ServiceProvider'):
+    def get_service(self, provider: IServiceProvider):
         return tuple(provider[k] for k in self._keys)
+
+
+__all__ = ['InjectBy', 'InjectByGroup']

@@ -5,12 +5,14 @@
 #
 # ----------
 
-from typing import List
-from threading import RLock
 from contextlib import nullcontext
+from threading import RLock
+from typing import List
 
+from ._bases import IServiceInfo
+from ._service_info import ValueServiceInfo
 from .err import ServiceNotFoundError
-from ._service_info import ValueServiceInfo, IServiceInfo
+
 
 class IServiceInfoResolver:
     '''

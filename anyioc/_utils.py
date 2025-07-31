@@ -13,17 +13,13 @@ import sys
 from collections.abc import Iterable, Mapping
 from inspect import Parameter
 from logging import getLogger
-from typing import TYPE_CHECKING, Annotated, Any, Callable, cast, get_args, get_origin
+from typing import Annotated, Any, Callable, cast, get_args, get_origin
 
-from ._bases import IServiceInfo, SupportsContext
+from ._bases import IServiceInfo, IServiceProvider, SupportsContext
 from ._internal import Disposable, ProviderOptions
 from .annotations import InjectBy
 from .err import ServiceNotFoundError
 from .symbols import Symbols
-
-if TYPE_CHECKING:
-    from . import ioc
-
 
 _logger = getLogger(__name__)
 
@@ -66,7 +62,7 @@ def update_wrapper(wrapper, wrapped):
 
 
 class FollowedInjectBy(InjectBy):
-    def get_service(self, provider: 'ioc.IServiceProvider'):
+    def get_service(self, provider: IServiceProvider):
         try:
             return super().get_service(provider)
         except ServiceNotFoundError:
@@ -74,7 +70,7 @@ class FollowedInjectBy(InjectBy):
                 return wrap_signature(self.key, follow=True)(provider)
             raise
 
-def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable[['ioc.IServiceProvider'], R]:
+def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable[[IServiceProvider], R]:
     '''
     wrap the function to single argument function.
 
@@ -153,7 +149,7 @@ def create_adapter[R](
         func: Callable[..., R],
         p_params: Iterable[tuple[Any] | tuple[Any, Any] | IServiceInfo] = _EMPTY_P_PARAMS,
         k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | IServiceInfo] = _EMPTY_K_PARAMS,
-    ) -> Callable[['ioc.IServiceProvider'], R]:
+    ) -> Callable[[IServiceProvider], R]:
 
     def to_serviceinfo(arg: tuple[Any] | tuple[Any, Any] | IServiceInfo) -> IServiceInfo:
         if isinstance(arg, tuple):
@@ -177,8 +173,8 @@ def create_adapter[R](
 
 
 def create_service[T](
-        provider: 'ioc.ServiceProvider',
-        factory: Callable[['ioc.IServiceProvider'], T],
+        provider: IServiceProvider,
+        factory: Callable[[IServiceProvider], T],
         options: ProviderOptions | None = None,
     ) -> T:
 

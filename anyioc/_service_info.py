@@ -9,14 +9,11 @@ import inspect
 from contextlib import nullcontext
 from enum import Enum
 from threading import RLock
-from typing import TYPE_CHECKING, Any, Callable, override
+from typing import Any, Callable, override
 
-from ._bases import IServiceInfo
+from ._bases import IServiceInfo, IServiceProvider
 from ._utils import create_service, get_frameinfos, wrap_signature
 from .symbols import Symbols
-
-if TYPE_CHECKING:
-    from . import ioc
 
 _NULL_CONTEXT = nullcontext()
 
@@ -45,7 +42,7 @@ class ServiceInfo[T](IServiceInfo[T]):
         Symbols.cache,
     ])
 
-    def __init__(self, service_provider: 'ioc.ServiceProvider', key, factory: Callable[..., T], lifetime):
+    def __init__(self, service_provider: IServiceProvider, key, factory: Callable[..., T], lifetime):
         if key in self._NOT_ALLOWED_KEYS:
             raise ValueError(f'key {key!r} is not allowed')
 
@@ -63,7 +60,7 @@ class ServiceInfo[T](IServiceInfo[T]):
 
         if self._lifetime == LifeTime.singleton:
             # service_provider is required when the lifetime is singleton
-            self._service_provider: 'ioc.ServiceProvider | None' = service_provider
+            self._service_provider: IServiceProvider | None = service_provider
             # the resolved value maybe a None, so we should cache it as a tuple.
             self._cached_value: tuple[T] | None = None
 
@@ -71,7 +68,7 @@ class ServiceInfo[T](IServiceInfo[T]):
         return f'<{self._lifetime} service from {self._factory_origin!r}>'
 
     @override
-    def get_service(self, provider: 'ioc.ServiceProvider') -> T:
+    def get_service(self, provider: IServiceProvider) -> T:
         if self._lifetime is LifeTime.transient:
             return self._create(provider)
 
@@ -83,7 +80,7 @@ class ServiceInfo[T](IServiceInfo[T]):
 
         raise NotImplementedError(f'what is {self._lifetime}?')
 
-    def _from_scoped(self, provider: 'ioc.ServiceProvider') -> T:
+    def _from_scoped(self, provider: IServiceProvider) -> T:
         cache = provider[Symbols.cache]
         try:
             return cache[self]
@@ -107,14 +104,14 @@ class ServiceInfo[T](IServiceInfo[T]):
                     self._cached_value = cached_value = (self._create(service_provider),)
         return cached_value[0]
 
-    def _create(self, provider: 'ioc.ServiceProvider') -> T:
+    def _create(self, provider: IServiceProvider) -> T:
         '''
         return the finally service instance.
         '''
         return create_service(provider, self._factory, options=self._options)
 
 
-class ProviderServiceInfo(IServiceInfo['ioc.ServiceProvider']):
+class ProviderServiceInfo(IServiceInfo[IServiceProvider]):
     '''
     Get current `ServiceProvider`.
     '''
@@ -125,7 +122,7 @@ class ProviderServiceInfo(IServiceInfo['ioc.ServiceProvider']):
         return '<(ioc) => ioc>'
 
     @override
-    def get_service(self, provider: 'ioc.ServiceProvider'):
+    def get_service(self, provider: IServiceProvider):
         return provider
 
 
@@ -146,7 +143,7 @@ class GetAttrServiceInfo(IServiceInfo[Any]):
         return f'<(ioc) => getattr(ioc, {getattr_args})>'
 
     @override
-    def get_service(self, provider: 'ioc.ServiceProvider'):
+    def get_service(self, provider: IServiceProvider):
         return getattr(provider, *self._getattr_args)
 
 
@@ -162,7 +159,7 @@ class ValueServiceInfo[T](IServiceInfo[T]):
         return f'<(_) => {self._value!r}>'
 
     @override
-    def get_service(self, provider: 'ioc.ServiceProvider') -> T:
+    def get_service(self, provider: IServiceProvider) -> T:
         return self._value
 
 
@@ -178,7 +175,7 @@ class BindedServiceInfo(IServiceInfo[Any]):
         return f'<(ioc) => ioc[{self._target_key!r}]>'
 
     @override
-    def get_service(self, provider: 'ioc.ServiceProvider'):
+    def get_service(self, provider: IServiceProvider):
         return provider[self._target_key]
 
 
@@ -188,6 +185,6 @@ class CallerFrameServiceInfo(IServiceInfo[inspect.FrameInfo | None]):
     __slots__ = ()
 
     @override
-    def get_service(self, provider: 'ioc.ServiceProvider'):
+    def get_service(self, provider: IServiceProvider):
         for f in get_frameinfos(exclude_anyioc_frames=True):
             return f

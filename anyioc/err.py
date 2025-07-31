@@ -17,3 +17,6 @@ class ServiceNotFoundError(LookupError):
             resolve_chain_msg = '->'.join([repr(i) for i in resolve_chain])
             msg += f'; resolve chain: {resolve_chain_msg}'
         super().__init__(msg)
+
+
+__all__ = ['ServiceNotFoundError']
