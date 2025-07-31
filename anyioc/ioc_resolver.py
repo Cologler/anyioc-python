@@ -10,7 +10,8 @@ from threading import RLock
 from typing import List
 
 from ._bases import IServiceInfo
-from ._service_info import ValueServiceInfo
+from ._service_info import FactoryServiceInfo, ValueServiceInfo
+from ._utils import wrap_signature
 from .err import ServiceNotFoundError
 
 
@@ -121,27 +122,14 @@ class ImportServiceInfoResolver(IServiceInfoResolver):
         return super().get(provider, key)
 
 
-class SimpleServiceInfo(IServiceInfo):
-    __slots__ = ('_factory')
-
-    def __init__(self, factory):
-        self._factory = factory
-
-    def get_service(self, provider):
-        return self._factory(provider)
-
-
 class TypesServiceInfoResolver(IServiceInfoResolver):
     '''
-    dynamic resolve `IServiceInfo` if the key is a type instance.
+    Dynamic resolve `IServiceInfo` if the key is a type instance.
     '''
-
-    inject_by = None
 
     def get(self, provider, key):
         if isinstance(key, type):
-            factory = self.inject_by(key) if self.inject_by else key
-            return SimpleServiceInfo(factory)
+            return FactoryServiceInfo(wrap_signature(key))
         return super().get(provider, key)
 
 
@@ -149,8 +137,6 @@ class TypeNameServiceInfoResolver(IServiceInfoResolver):
     '''
     dynamic resolve `IServiceInfo` if the key is a type name or qualname.
     '''
-
-    inject_by = None
 
     def _get_type(self, key):
         if isinstance(key, str):
@@ -164,6 +150,5 @@ class TypeNameServiceInfoResolver(IServiceInfoResolver):
     def get(self, provider, key):
         klass = self._get_type(str)
         if klass is not None:
-            factory = self.inject_by(klass) if self.inject_by else klass
-            return SimpleServiceInfo(factory)
+            return FactoryServiceInfo(wrap_signature(klass))
         return super().get(provider, key)

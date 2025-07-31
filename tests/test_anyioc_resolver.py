@@ -5,15 +5,17 @@
 #
 # ----------
 
+from typing import Annotated
+
 from pytest import raises
 
-from anyioc import ServiceProvider, ServiceNotFoundError
-from anyioc.symbols import Symbols
+from anyioc import InjectBy, ServiceNotFoundError, ServiceProvider
 from anyioc.ioc_resolver import (
     ImportServiceInfoResolver,
     TypesServiceInfoResolver,
 )
-from anyioc.utils import inject_by_name
+from anyioc.symbols import Symbols
+
 
 def test_import_resolver():
     provider = ServiceProvider()
@@ -41,7 +43,7 @@ def test_import_resolver_with_cache():
 
 def test_type_resolver():
     class CLASS:
-        def __init__(self, name):
+        def __init__(self, name: Annotated[str, InjectBy('name')]):
             self.name = name
 
     provider = ServiceProvider()
@@ -49,14 +51,13 @@ def test_type_resolver():
     with raises(ServiceNotFoundError):
         _ = provider[CLASS]
     tsir = TypesServiceInfoResolver()
-    tsir.inject_by = inject_by_name
     provider[Symbols.missing_resolver].append(tsir.cache())
     assert provider[CLASS].name == 'some-name'
     assert provider[CLASS] is not provider[CLASS]
 
 def test_type_resolver_with_cache():
     class CLASS:
-        def __init__(self, name):
+        def __init__(self, name: Annotated[str, InjectBy('name')]):
             self.name = name
 
     provider = ServiceProvider()
@@ -64,20 +65,18 @@ def test_type_resolver_with_cache():
     with raises(ServiceNotFoundError):
         _ = provider[CLASS]
     tsir = TypesServiceInfoResolver()
-    tsir.inject_by = inject_by_name
     provider[Symbols.missing_resolver].append(tsir)
     assert provider[CLASS].name == 'some-name'
     assert provider[CLASS] is not provider[CLASS]
 
 def test_chain_resolver():
     class CLASS:
-        def __init__(self, name):
+        def __init__(self, name: Annotated[str, InjectBy('name')]):
             self.name = name
 
     provider = ServiceProvider()
     provider.register_value('name', 'some-name')
     tsir = TypesServiceInfoResolver()
-    tsir.inject_by = inject_by_name
     provider[Symbols.missing_resolver].append(ImportServiceInfoResolver() + tsir)
     import sys
     assert provider['sys'] is sys

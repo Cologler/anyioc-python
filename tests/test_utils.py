@@ -6,53 +6,13 @@
 # ----------
 
 
-from pytest import raises
-
-from anyioc.ioc import ServiceNotFoundError, ServiceProvider
+from anyioc.ioc import ServiceProvider
 from anyioc.utils import (
     get_logger,
     get_scope_depth,
-    inject_by_keys,
-    inject_by_name,
     is_root,
 )
 
-
-def test_inject_by_name():
-    class SomeClass:
-        def __init__(self, name_1, name_2, *, name_3=77):
-            self.value = (name_1, name_2, name_3)
-
-    provider = ServiceProvider()
-    provider.register_transient('name_1', lambda _: 15)
-    provider.register_transient('name_2', lambda _: 18)
-    provider.register_transient('some_class', inject_by_name(SomeClass))
-    instance = provider.get('some_class')
-    assert instance.value == (15, 18, 77)
-
-def test_inject_by_name_with_error():
-    class SomeClass:
-        def __init__(self, name):
-            pass
-
-    provider = ServiceProvider()
-    provider.register_transient('some_class', inject_by_name(SomeClass))
-    with raises(ServiceNotFoundError):
-        _ = provider['some_class']
-    with raises(ServiceNotFoundError):
-        _ = provider.get('some_class')
-
-def test_inject_by_keys():
-    class SomeClass:
-        def __init__(self, first, second):
-            self.value = (first, second)
-
-    provider = ServiceProvider()
-    provider.register_transient('val1', lambda : 100)
-    provider.register_transient('val2', lambda : 200)
-    provider.register_transient('some_class', inject_by_keys(first='val1', second='val2')(SomeClass))
-    instance = provider.get('some_class')
-    assert instance.value == (100, 200)
 
 def test_helper_get_logger():
     provider = ServiceProvider()

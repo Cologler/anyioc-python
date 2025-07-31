@@ -11,7 +11,7 @@ from enum import Enum
 from threading import RLock
 from typing import Any, Callable, override
 
-from ._bases import IServiceInfo, IServiceProvider
+from ._bases import Factory, IServiceInfo, IServiceProvider
 from ._utils import create_service, get_frameinfos, wrap_signature
 from .symbols import Symbols
 
@@ -188,3 +188,14 @@ class CallerFrameServiceInfo(IServiceInfo[inspect.FrameInfo | None]):
     def get_service(self, provider: IServiceProvider):
         for f in get_frameinfos(exclude_anyioc_frames=True):
             return f
+
+
+class FactoryServiceInfo[T](IServiceInfo[T]):
+    __slots__ = ('_factory')
+
+    def __init__(self, factory: Factory[T]):
+        self._factory = factory
+
+    @override
+    def get_service(self, provider: IServiceProvider) -> T:
+        return self._factory(provider)
