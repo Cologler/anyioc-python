@@ -8,13 +8,7 @@
 import pytest
 
 from anyioc import ServiceProvider
-from anyioc.ioc_service_info import (
-    BindedServiceInfo,
-    GroupedServiceInfo,
-    LifeTime,
-    ProviderServiceInfo,
-    ServiceInfo
-)
+from anyioc.ioc_service_info import BindedServiceInfo, LifeTime, ProviderServiceInfo, ServiceInfo
 from anyioc.symbols import Symbols
 
 
@@ -47,30 +41,14 @@ def test_service_info_not_allowed_keys(key):
         ServiceInfo(service_provider, key, lambda: None, LifeTime.transient)
 
 def test_provider_service_info():
-    src = {}
+    sp = ServiceProvider()
     si = ProviderServiceInfo()
-    assert src is si.get_service(src)
-
-def test_grouped_service_info():
-    src = {1: 2, 3: 4, 5: 6}
-    group = []
-    si = GroupedServiceInfo(group)
-
-    ret = si.get_service(src)
-    assert isinstance(ret, tuple)
-    assert ret == ()
-
-    group.append(1)
-    ret = si.get_service(src)
-    assert isinstance(ret, tuple)
-    assert ret == (2, )
-
-    group.append(3)
-    ret = si.get_service(src)
-    assert isinstance(ret, tuple)
-    assert ret == (2, 4)
+    assert sp is si.get_service(sp)
 
 def test_binded_service_info():
-    src = {1: 2, 3: 4, 5: 6}
+    sp = ServiceProvider()
+    sp.register_value(1, 2)
+    sp.register_value(3, 4)
+    sp.register_value(5,6)
     si = BindedServiceInfo(3)
-    assert si.get_service(src) == 4
+    assert si.get_service(sp) == 4

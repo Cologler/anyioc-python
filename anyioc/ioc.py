@@ -22,7 +22,6 @@ from .ioc_service_info import (
     BindedServiceInfo,
     CallerFrameServiceInfo,
     GetAttrServiceInfo,
-    GroupedServiceInfo,
     IServiceInfo,
     LifeTime,
     ProviderServiceInfo,
