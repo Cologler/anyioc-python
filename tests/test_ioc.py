@@ -6,27 +6,50 @@
 # ----------
 
 import contextlib
+import itertools
 from unittest.mock import MagicMock
+from typing import Iterable, Any
 
 from anyioc import IServiceProvider, ServiceProvider
 from anyioc.symbols import Symbols
-from tests.assert_utils import assert_value_scoped, assert_value_singleton, assert_value_transient
+
+
+def assert_value_is_singleton(providers: Iterable[ServiceProvider], key: Any):
+    for left, right in itertools.combinations_with_replacement(providers, 2):
+        assert left.get(key) is right.get(key)
+
+def assert_value_is_scoped(providers: Iterable[ServiceProvider], key: Any):
+    for left, right in itertools.combinations_with_replacement(providers, 2):
+        assert (left is right) == (left.get(key) is right.get(key))
+
+def assert_value_is_transient(providers: Iterable[ServiceProvider], key: Any):
+    for left, right in itertools.combinations_with_replacement(providers, 2):
+        assert left.get(key) is not right.get(key)
 
 
 def test_singleton():
     provider = ServiceProvider()
-    provider.register_singleton(1, lambda: ServiceProvider())
-    assert_value_singleton(provider, 1)
+    provider.register_singleton(1, lambda: object())
+    with provider.scope() as s1:
+        with provider.scope() as s2:
+            with provider.scope() as s3:
+                assert_value_is_singleton([provider, s1, s2, s3], 1)
 
-def test_scoped():
+def test_scope():
     provider = ServiceProvider()
-    provider.register_scoped(1, lambda: ServiceProvider())
-    assert_value_scoped(provider, 1)
+    provider.register_scoped(1, lambda: object())
+    with provider.scope() as s1:
+        with provider.scope() as s2:
+            with provider.scope() as s3:
+                assert_value_is_scoped([provider, s1, s2, s3], 1)
 
 def test_transient():
     provider = ServiceProvider()
-    provider.register_transient(1, lambda: ServiceProvider())
-    assert_value_transient(provider, 1)
+    provider.register_transient(1, lambda: object())
+    with provider.scope() as s1:
+        with provider.scope() as s2:
+            with provider.scope() as s3:
+                assert_value_is_transient([provider, s1, s2, s3], 1)
 
 def test_group():
     provider = ServiceProvider()
@@ -103,18 +126,13 @@ def test_predefined_keys():
     )
 
     provider = ServiceProvider()
-    for k in map_to_self_keys:
-        assert provider is provider[k]
+    with provider.scope() as s1:
+        with provider.scope() as s2:
+            with provider.scope() as s3:
+                for k in map_to_self_keys:
+                    assert_value_is_scoped([provider, s1, s2, s3], k)
 
-    with provider.scope() as scoped:
-        for k in map_to_self_keys:
-            assert scoped is scoped[k]
-
-        with scoped.scope() as deep_scoped:
-            for k in map_to_self_keys:
-                assert deep_scoped is deep_scoped[k]
-
-def test_types():
+def test_scope_types():
     # since scoped is scoped[ServiceProvider]
     provider = ServiceProvider()
     with provider.scope() as scope:
