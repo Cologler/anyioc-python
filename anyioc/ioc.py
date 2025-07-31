@@ -13,7 +13,7 @@ from threading import RLock
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Optional, overload, override
 
-from ._internal import AllSupportsContext, LockedMapping
+from ._internal import AllSupportsContext, Disposable, LockedMapping
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as _wrap_signature
 from .err import ServiceNotFoundError
@@ -30,6 +30,7 @@ from .ioc_service_info import (
     ValueServiceInfo,
 )
 from .symbols import Symbols, TypedSymbol
+from .annotations import InjectByGroup
 
 _NULL_CONTEXT = nullcontext()
 
@@ -335,24 +336,22 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register_service_info(key, ValueServiceInfo(value))
 
-    def register_group(self, key, keys: list):
+    def register_group(self, key: Any, keys: Iterable[Any]) -> Disposable:
         '''
-        register a grouped `key` for get other `keys`.
+        Register a group `key` for get other `keys`.
 
-        the `keys` can be a ref and you can update it later.
+        For example:
 
-        for example:
-
-        ``` py
+        ```
         provider.register_value('str', 'name')
         provider.register_value('int', 1)
         provider.register_group('any', ['str', 'int'])
         assert provider['any'] == ('name', 1)
         ```
 
-        equals `register_transient(key, lambda ioc: tuple(ioc[k] for k in keys))`
+        Is equals `register_transient(key, lambda ioc: tuple(ioc[k] for k in keys))`
         '''
-        return self.register_service_info(key, GroupedServiceInfo(keys))
+        return self.register_service_info(key, InjectByGroup(*keys))
 
     def register_bind(self, new_key, target_key):
         '''

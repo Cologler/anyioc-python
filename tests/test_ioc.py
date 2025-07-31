@@ -63,7 +63,8 @@ def test_group():
     assert provider['any'] is not provider['any']
     # allow to add later
     group_keys.append('float')
-    assert provider['any'] == ('name', 1, 1.1)
+    # nothing changes:
+    assert provider['any'] == ('name', 1)
 
 def test_value():
     provider = ServiceProvider()

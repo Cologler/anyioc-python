@@ -16,7 +16,6 @@ from anyioc.utils import (
     inject_by_keys,
     inject_by_name,
     is_root,
-    make_group,
 )
 
 
@@ -107,20 +106,6 @@ def test_inject_by_keys():
     provider.register_transient('some_class', inject_by_keys(first='val1', second='val2')(SomeClass))
     instance = provider.get('some_class')
     assert instance.value == (100, 200)
-
-def test_make_group():
-    provider = ServiceProvider()
-    group = make_group(provider, 'gk')
-    group('some_group_key')
-    provider.register_value('some_group_key', 2)
-    assert provider['gk'] == (2, )
-
-def test_make_group_without_group_key():
-    provider = ServiceProvider()
-    group = make_group(provider)
-    group('some_group_key')
-    provider.register_value('some_group_key', 2)
-    assert provider[group] == (2, )
 
 def test_helper_get_logger():
     provider = ServiceProvider()

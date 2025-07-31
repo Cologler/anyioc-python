@@ -214,29 +214,6 @@ def auto_enter(func):
         return item
     return new_func
 
-def make_group(container, group_key=None):
-    '''
-    add a new group into `container` by key `group_key`.
-    if `group_key` is `None`, use return function as key.
-
-    return a function accept single argument for add next group item key.
-    '''
-    group_keys = []
-
-    def add_next_key(next_group_key):
-        '''
-        add next key into this group.
-        '''
-        group_keys.append(next_group_key)
-        return next_group_key
-
-    if group_key is None:
-        group_key = add_next_key
-
-    container.register_group(group_key, group_keys)
-
-    return add_next_key
-
 def get_logger(ioc):
     '''
     a helper that use to get logger from ioc.
