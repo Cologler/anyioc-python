@@ -64,6 +64,7 @@ def update_wrapper(wrapper, wrapped):
     wrapper.__anyioc_wrapped__ = getattr(wrapped, '__anyioc_wrapped__', wrapped)
     return wrapper
 
+
 class FollowedInjectBy(InjectBy):
     def get_service(self, provider: 'ioc.IServiceProvider'):
         try:
@@ -143,6 +144,7 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable
 
     else:
         raise TypeError('factory has too many parameters.')
+
 
 _EMPTY_P_PARAMS: tuple[IServiceInfo, ...] = ()
 _EMPTY_K_PARAMS: dict[str, IServiceInfo] = {}

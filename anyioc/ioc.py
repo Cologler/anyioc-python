@@ -14,10 +14,6 @@ from types import MappingProxyType
 from typing import Any, Callable, Iterable, Optional, overload, override
 
 from ._internal import AllSupportsContext, Disposable, LockedMapping
-from ._servicesmap import ServicesMap
-from ._utils import wrap_signature as wrap_signature
-from .err import ServiceNotFoundError
-from .ioc_resolver import ServiceInfoChainResolver
 from ._service_info import (
     BindedServiceInfo,
     CallerFrameServiceInfo,
@@ -28,8 +24,12 @@ from ._service_info import (
     ServiceInfo,
     ValueServiceInfo,
 )
-from .symbols import Symbols, TypedSymbol
+from ._servicesmap import ServicesMap
+from ._utils import wrap_signature as wrap_signature
 from .annotations import InjectByGroup
+from .err import ServiceNotFoundError
+from .ioc_resolver import ServiceInfoChainResolver
+from .symbols import Symbols, TypedSymbol
 
 _NULL_CONTEXT = nullcontext()
 
@@ -282,7 +282,7 @@ class ServiceProvider(IServiceProvider):
         '''
         self._services.freeze_key(key)
 
-    def register_service_info(self, key, service_info: IServiceInfo):
+    def register_service_info(self, key, service_info: IServiceInfo) -> Disposable:
         '''
         register a `IServiceInfo` by key.
         '''
@@ -291,7 +291,7 @@ class ServiceProvider(IServiceProvider):
         _logger.debug('register %r with key %r', service_info, key)
         return self._services.add(key, service_info)
 
-    def register(self, key, factory, lifetime):
+    def register(self, key, factory, lifetime) -> Disposable:
         '''
         register a service factory by key.
 
@@ -300,7 +300,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register_service_info(key, ServiceInfo(self, key, factory, lifetime))
 
-    def register_singleton(self, key, factory):
+    def register_singleton(self, key, factory) -> Disposable:
         '''
         register a service factory by key.
 
@@ -309,7 +309,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register(key, factory, LifeTime.singleton)
 
-    def register_scoped(self, key, factory):
+    def register_scoped(self, key, factory) -> Disposable:
         '''
         register a service factory by key.
 
@@ -318,7 +318,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register(key, factory, LifeTime.scoped)
 
-    def register_transient(self, key, factory):
+    def register_transient(self, key, factory) -> Disposable:
         '''
         register a service factory by key.
 
@@ -327,7 +327,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register(key, factory, LifeTime.transient)
 
-    def register_value(self, key, value):
+    def register_value(self, key, value) -> Disposable:
         '''
         register a value by key.
 
@@ -352,7 +352,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register_service_info(key, InjectByGroup(*keys))
 
-    def register_bind(self, new_key, target_key):
+    def register_bind(self, new_key, target_key) -> Disposable:
         '''
         bind `new_key` to `target_key` so
         you can use `new_key` as key to get value from service provider.
