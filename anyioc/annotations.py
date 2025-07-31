@@ -45,5 +45,4 @@ class InjectByGroup(IServiceInfo[tuple[Any, ...]]):
 
     @override
     def get_service(self, provider: 'ioc.ServiceProvider'):
-        print(self._keys)
         return tuple(provider[k] for k in self._keys)
