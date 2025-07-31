@@ -5,10 +5,11 @@
 #
 # ----------
 
+import types
 from contextlib import nullcontext
 from threading import RLock
-from typing import Any
-
+from typing import Any, override
+import sys
 from ._bases import IServiceInfo, IServiceProvider
 from ._service_info import FactoryServiceInfo, ValueServiceInfo
 from ._utils import wrap_signature
@@ -107,19 +108,28 @@ class CacheServiceInfoResolver(IServiceInfoResolver):
 
 class ImportServiceInfoResolver(IServiceInfoResolver):
     '''
-    dynamic resolve `IServiceInfo` if the key is a package name.
+    Dynamic resolve `IServiceInfo` if the key is a module name.
+
+    - Relative import is not allowed;
+    - If the key is `{module_name}`, only lookup modules from `sys.modules`;
+    - If the key is `module::{module_name}` (startswith `module::`), the resolver will try to import it;
     '''
 
-    def get(self, provider, key):
-        import importlib
-        if isinstance(key, str):
-            try:
-                module = importlib.import_module(key)
-                return ValueServiceInfo(module)
-            except TypeError:
-                pass
-            except ModuleNotFoundError:
-                pass
+    @override
+    def get(self, provider: IServiceProvider, key: Any, /) -> IServiceInfo[types.ModuleType]:
+        if isinstance(key, str) and not key.startswith('.'): # relative import is not allows
+            if key.startswith('module::'):
+                module_name = key.removeprefix('module::')
+                import importlib
+                try:
+                    module = importlib.import_module(module_name)
+                    return ValueServiceInfo(module)
+                except (TypeError, ModuleNotFoundError):
+                    pass
+            else:
+                module_name = key
+                if module := sys.modules.get(module_name):
+                    return ValueServiceInfo(module)
         return super().get(provider, key)
 
 
