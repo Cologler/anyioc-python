@@ -18,7 +18,7 @@ from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as _wrap_signature
 from .err import ServiceNotFoundError
 from .ioc_resolver import ServiceInfoChainResolver
-from .ioc_service_info import (
+from ._service_info import (
     BindedServiceInfo,
     CallerFrameServiceInfo,
     GetAttrServiceInfo,

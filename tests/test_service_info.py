@@ -8,7 +8,7 @@
 import pytest
 
 from anyioc import ServiceProvider
-from anyioc.ioc_service_info import BindedServiceInfo, LifeTime, ProviderServiceInfo, ServiceInfo
+from anyioc._service_info import BindedServiceInfo, LifeTime, ProviderServiceInfo, ServiceInfo
 from anyioc.symbols import Symbols
 
 

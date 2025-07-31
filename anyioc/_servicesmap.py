@@ -11,7 +11,7 @@ from threading import Lock
 from typing import Any, overload
 
 from ._internal import Disposable
-from .ioc_service_info import IServiceInfo
+from ._service_info import IServiceInfo
 from .symbols import TypedSymbol, _Symbol
 
 _NULL_CONTEXT = nullcontext()

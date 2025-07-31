@@ -78,7 +78,7 @@ def wrap_signature[R](func: Callable[..., R], *, follow: bool=False) -> Callable
 
     unlike the `inject*` series of utils, this is used for implicit convert.
     '''
-    from .ioc_service_info import ProviderServiceInfo
+    from ._service_info import ProviderServiceInfo
 
     sign = inspect.signature(func)
     params = list(sign.parameters.values())

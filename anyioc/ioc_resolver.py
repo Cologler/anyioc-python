@@ -10,7 +10,7 @@ from threading import RLock
 from contextlib import nullcontext
 
 from .err import ServiceNotFoundError
-from .ioc_service_info import ValueServiceInfo, IServiceInfo
+from ._service_info import ValueServiceInfo, IServiceInfo
 
 class IServiceInfoResolver:
     '''

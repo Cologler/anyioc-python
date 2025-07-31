@@ -6,7 +6,7 @@
 # ----------
 
 from .ioc import IServiceProvider, ServiceProvider, ServiceNotFoundError
-from .ioc_service_info import LifeTime
+from ._service_info import LifeTime
 
 __all__ = [
     'IServiceProvider',
