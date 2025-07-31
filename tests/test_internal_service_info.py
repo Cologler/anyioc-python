@@ -9,7 +9,7 @@ import pytest
 
 from anyioc import LifeTime, ServiceProvider
 from anyioc._service_info import BindedServiceInfo, GetAttrServiceInfo, ProviderServiceInfo, ValueServiceInfo
-from anyioc._service_info.extra import ServiceInfo
+from anyioc._service_info.extra import create_lifetime_service_info
 from anyioc.symbols import Symbols
 
 
@@ -21,15 +21,15 @@ def test_service_info():
     }
 
     # without parameters
-    si = ServiceInfo(factory=lambda: 15, **other_kwargs)
+    si = create_lifetime_service_info(factory=lambda: 15, **other_kwargs)
     assert si.get_service(other_kwargs['service_provider']) == 15
 
     # with one parameter
-    si = ServiceInfo(factory=lambda _: 15, **other_kwargs)
+    si = create_lifetime_service_info(factory=lambda _: 15, **other_kwargs)
     assert si.get_service(other_kwargs['service_provider']) == 15
 
     # with one keyword parameter
-    si = ServiceInfo(factory=lambda *, sr2fe: 15, **other_kwargs)
+    si = create_lifetime_service_info(factory=lambda *, sr2fe: 15, **other_kwargs)
     assert si.get_service(other_kwargs['service_provider']) == 15
 
 @pytest.mark.parametrize('key', [
@@ -39,7 +39,7 @@ def test_service_info():
 def test_service_info_not_allowed_keys(key):
     service_provider = ServiceProvider()
     with pytest.raises(ValueError):
-        ServiceInfo(service_provider, key, lambda: None, LifeTime.transient)
+        create_lifetime_service_info(service_provider, key, lambda: None, LifeTime.transient)
 
 def test_value_serviceinfo_repr():
     assert repr(ValueServiceInfo('value')) == "<(_) => 'value'>"

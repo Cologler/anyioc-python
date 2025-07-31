@@ -22,7 +22,7 @@ from ._service_info import (
     ProviderServiceInfo,
     ValueServiceInfo,
 )
-from ._service_info.extra import CallerFrameServiceInfo, ServiceInfo
+from ._service_info.extra import CallerFrameServiceInfo, create_lifetime_service_info
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as wrap_signature
 from .annotations import InjectByGroup
@@ -240,7 +240,7 @@ class ServiceProvider(IServiceProvider):
         `factory` accept a function which require one or zero parameter.
         if the count of parameter is 1, pass a `IServiceProvider` as the argument.
         '''
-        return self.register_service_info(key, ServiceInfo(self, key, factory, lifetime))
+        return self.register_service_info(key, create_lifetime_service_info(self, key, factory, lifetime))
 
     def register_singleton(self, key, factory) -> Disposable:
         '''

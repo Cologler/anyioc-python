@@ -8,23 +8,23 @@
 from typing import Any, override
 
 from ._bases import IServiceInfo, IServiceProvider
-from ._service_info import ValueServiceInfo
+from ._service_info import ValueServiceInfo, GetOrDefaultServiceInfo
 
 
 class InjectBy(IServiceInfo[Any]):
     _UNSET = object()
-    __slots__ = ('key', 'default')
+    __slots__ = ('key', 'default', '_service_info')
 
     def __init__(self, key: Any, default: Any=_UNSET) -> None:
-        self.key = key
-        self.default = default
+        if default is self._UNSET:
+            service_info = GetOrDefaultServiceInfo(key)
+        else:
+            service_info = GetOrDefaultServiceInfo(key, default)
+        self._service_info = service_info
 
     @override
     def get_service(self, provider: IServiceProvider):
-        if self.default is self._UNSET:
-            return provider[self.key]
-        else:
-            return provider.get(self.key, self.default)
+        return self._service_info.get_service(provider)
 
 
 class InjectByGroup(IServiceInfo[tuple[Any, ...]]):

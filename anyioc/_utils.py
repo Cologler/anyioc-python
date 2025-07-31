@@ -17,7 +17,7 @@ from typing import Annotated, Any, Callable, cast, get_args, get_origin
 
 from ._bases import Factory, IServiceInfo, IServiceProvider, SupportsContext
 from ._internal import Disposable, ProviderOptions
-from .annotations import InjectBy
+from ._service_info import GetOrDefaultServiceInfo
 from .err import ServiceNotFoundError
 from .symbols import Symbols
 
@@ -61,7 +61,7 @@ def update_wrapper(wrapper, wrapped):
     return wrapper
 
 
-class FollowedInjectBy(InjectBy):
+class FollowedInjectBy(GetOrDefaultServiceInfo):
     def get_service(self, provider: IServiceProvider):
         try:
             return super().get_service(provider)
@@ -100,7 +100,7 @@ def wrap_signature[R](func: Callable[..., R], *,
                     return sis[0]
             else:
                 # create InjectBy for type annotation
-                InjectByType = FollowedInjectBy if follow else InjectBy
+                InjectByType = FollowedInjectBy if follow else GetOrDefaultServiceInfo
                 if param.default is Parameter.empty:
                     return InjectByType(param.annotation)
                 else:
@@ -116,11 +116,11 @@ def wrap_signature[R](func: Callable[..., R], *,
         return create_adapter(
             func,
             p_params=[
-                cast(InjectBy, p[1]) for p in params_with_injectby
+                cast(IServiceInfo, p[1]) for p in params_with_injectby
                 if p[0].kind == Parameter.POSITIONAL_ONLY
             ],
             k_params={
-                p[0].name: cast(InjectBy, p[1]) for p in params_with_injectby
+                p[0].name: cast(IServiceInfo, p[1]) for p in params_with_injectby
                 if p[0].kind != Parameter.POSITIONAL_ONLY
             },
             override_kwargs=override_kwargs,
@@ -166,7 +166,7 @@ def create_adapter[R](
         if isinstance(arg, tuple):
             if len(arg) not in (1, 2):
                 raise ValueError('tuple should contains 1 or 2 elements')
-            return InjectBy(*arg)
+            return GetOrDefaultServiceInfo(*arg)
         elif isinstance(arg, IServiceInfo):
             return arg
         raise TypeError(f'excepted tuple or IServiceInfo, got {type(arg)}')
