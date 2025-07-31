@@ -12,9 +12,7 @@ from threading import RLock
 from typing import TYPE_CHECKING, Any, Callable, override
 
 from ._bases import IServiceInfo
-from ._internal import SupportsContext
-from ._utils import get_frameinfos as _get_frameinfos
-from ._utils import wrap_signature as _wrap_signature
+from ._utils import create_service, get_frameinfos, wrap_signature
 from .symbols import Symbols
 
 if TYPE_CHECKING:
@@ -52,7 +50,7 @@ class ServiceInfo[T](IServiceInfo[T]):
             raise ValueError(f'key {key!r} is not allowed')
 
         self._factory_origin = factory
-        self._factory = _wrap_signature(factory)
+        self._factory = wrap_signature(factory)
 
         self._key = key
         self._lifetime = lifetime
@@ -111,17 +109,7 @@ class ServiceInfo[T](IServiceInfo[T]):
         '''
         return the finally service instance.
         '''
-
-        service = self._factory(provider)
-        if self._options['auto_enter']:
-            wrapped = getattr(self._factory, '__anyioc_wrapped__', self._factory)
-            # We must ensure that the original object is a ContextManager.
-            # If the original object is a factory function and
-            # the ContextManager service is merely the return value of that function,
-            # then __enter__ should not be called automatically.
-            if isinstance(wrapped, SupportsContext) and isinstance(service, SupportsContext):
-                service = provider.enter(service)
-        return service # type: ignore
+        return create_service(provider, self._factory, options=self._options)
 
 
 class ProviderServiceInfo(IServiceInfo['ioc.ServiceProvider']):
@@ -199,5 +187,5 @@ class CallerFrameServiceInfo(IServiceInfo[inspect.FrameInfo | None]):
 
     @override
     def get_service(self, provider: 'ioc.ServiceProvider'):
-        for f in _get_frameinfos(exclude_anyioc_frames=True):
+        for f in get_frameinfos(exclude_anyioc_frames=True):
             return f

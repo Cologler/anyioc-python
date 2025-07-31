@@ -16,9 +16,10 @@ from logging import getLogger
 from typing import TYPE_CHECKING, Annotated, Any, Callable, cast, get_args, get_origin
 
 from ._bases import IServiceInfo
-from ._internal import Disposable
+from ._internal import Disposable, ProviderOptions, SupportsContext
 from .annotations import InjectBy
 from .err import ServiceNotFoundError
+from .symbols import Symbols
 
 if TYPE_CHECKING:
     from . import ioc
@@ -171,3 +172,23 @@ def create_adapter[R](
         )
 
     return update_wrapper(wrapper, func)
+
+
+def create_service[T](
+        provider: 'ioc.ServiceProvider',
+        factory: Callable[['ioc.IServiceProvider'], T],
+        options: ProviderOptions | None = None,
+    ) -> T:
+
+    options = provider[Symbols.provider_options] if options is None else options
+
+    service = factory(provider)
+    if options['auto_enter']:
+        wrapped = getattr(factory, '__anyioc_wrapped__', factory)
+        # We must ensure that the original object is a ContextManager.
+        # If the original object is a factory function and
+        # the ContextManager service is merely the return value of that function,
+        # then __enter__ should not be called automatically.
+        if isinstance(wrapped, SupportsContext) and isinstance(service, SupportsContext):
+            service = provider.enter(service)
+    return service # type: ignore

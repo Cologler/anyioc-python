@@ -15,7 +15,7 @@ from typing import Any, Callable, Iterable, Optional, overload, override
 
 from ._internal import AllSupportsContext, Disposable, LockedMapping
 from ._servicesmap import ServicesMap
-from ._utils import wrap_signature as _wrap_signature
+from ._utils import wrap_signature as wrap_signature
 from .err import ServiceNotFoundError
 from .ioc_resolver import ServiceInfoChainResolver
 from ._service_info import (
@@ -152,7 +152,7 @@ class ServiceProvider(IServiceProvider):
         assert self._root is not None
 
     def add_init_hook(self, func: Callable):
-        func = _wrap_signature(func)
+        func = wrap_signature(func)
         if self.__init_hooks is not None:
             with self._lock:
                 if self.__init_hooks is not None:
@@ -251,7 +251,7 @@ class ServiceProvider(IServiceProvider):
         '''
         Resolve the factory direct without register.
         '''
-        return _wrap_signature(factory, follow=follow)(self)
+        return wrap_signature(factory, follow=follow)(self)
 
     def enter[T](self, context: AllSupportsContext[T]):
         '''
