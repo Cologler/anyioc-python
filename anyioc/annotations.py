@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 
 class InjectBy(IServiceInfo[Any]):
     _UNSET = object()
+    __slots__ = ('key', 'default')
 
     def __init__(self, key: Any, default: Any=_UNSET) -> None:
         self.key = key
