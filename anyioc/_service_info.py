@@ -9,7 +9,7 @@ import inspect
 from contextlib import nullcontext
 from enum import Enum
 from threading import RLock
-from typing import TYPE_CHECKING, Any, Callable, Iterable, overload, override
+from typing import TYPE_CHECKING, Any, Callable, override
 
 from ._bases import IServiceInfo
 from ._internal import SupportsContext
@@ -132,7 +132,7 @@ class ProviderServiceInfo(IServiceInfo['ioc.ServiceProvider']):
     __slots__ = ()
 
     def __repr__(self) -> str:
-        return '<Provider>'
+        return '<(ioc) => ioc>'
 
     @override
     def get_service(self, provider: 'ioc.ServiceProvider'):
@@ -141,22 +141,19 @@ class ProviderServiceInfo(IServiceInfo['ioc.ServiceProvider']):
 
 class GetAttrServiceInfo(IServiceInfo[Any]):
     '''
-    getattr from current `ServiceProvider`.
+    Call `getattr()` from current `ServiceProvider`.
     '''
 
     __slots__ = ('_getattr_args',)
     _UNSET = object()
 
-    @overload
-    def __init__(self, attr_name: str, /) -> None: ...
-    @overload
-    def __init__(self, attr_name: str, attr_default: Any, /) -> None: ...
     def __init__(self, attr_name: str, attr_default: Any=_UNSET):
         super().__init__()
         self._getattr_args = (attr_name,) if attr_default is self._UNSET else (attr_name, attr_default)
 
     def __repr__(self) -> str:
-        return f'<GetAttr: {self._getattr_args[0]!r}>'
+        getattr_args = ', '.join(repr(x) for x in self._getattr_args)
+        return f'<(ioc) => getattr(ioc, {getattr_args})>'
 
     @override
     def get_service(self, provider: 'ioc.ServiceProvider'):
@@ -172,7 +169,7 @@ class ValueServiceInfo[T](IServiceInfo[T]):
         self._value = value
 
     def __repr__(self) -> str:
-        return f'<Value: {self._value!r}>'
+        return f'<(_) => {self._value!r}>'
 
     @override
     def get_service(self, provider: 'ioc.ServiceProvider') -> T:
@@ -188,7 +185,7 @@ class BindedServiceInfo(IServiceInfo[Any]):
         self._target_key = target_key
 
     def __repr__(self) -> str:
-        return f'<Binded: {self._target_key!r}>'
+        return f'<(ioc) => ioc[{self._target_key!r}]>'
 
     @override
     def get_service(self, provider: 'ioc.ServiceProvider'):
