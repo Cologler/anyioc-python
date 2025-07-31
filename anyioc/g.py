@@ -7,11 +7,15 @@
 
 import importlib
 import importlib.util
+from logging import getLogger
 from typing import Optional
 
 from ._internal import Disposable, LockedMapping
 from ._utils import dispose_at_exit, get_frameinfos, get_module_name
 from .ioc import ServiceProvider
+
+_logger = getLogger(__name__)
+
 
 ioc = ServiceProvider()
 dispose_at_exit(ioc)
@@ -32,11 +36,18 @@ def _get_module_provider(module_name: str):
     def init_hook(provider):
         # auto init ioc
         initioc_module_name = module_name + '.init_ioc'
+        _logger.debug('Looking for init_ioc module: %s', initioc_module_name)
         if _is_module_exists(initioc_module_name):
+            _logger.debug('Found module %s', initioc_module_name)
             init_ioc = importlib.import_module(initioc_module_name)
             conf_ioc = getattr(init_ioc, 'conf_ioc', None)
             if conf_ioc is not None:
+                _logger.debug('Found conf_ioc function, call it now...')
                 conf_ioc(provider)
+            else:
+                _logger.debug('No such function named conf_ioc')
+        else:
+            _logger.debug('No module call %s', initioc_module_name)
 
     with _module_providers.lock:
         if (value := _module_providers.get(module_name)) is None:
