@@ -8,7 +8,7 @@
 import inspect
 from typing import Annotated
 
-from anyioc import ServiceProvider
+from anyioc import LifeTime, ServiceProvider
 from anyioc.annotations import InjectBy, InjectByGroup, InjectWithValue
 
 
@@ -47,6 +47,21 @@ def test_inject_func_by_annotated_injectby():
     sp.register_value(key, val)
 
     assert sp.resolve(func) == val
+
+def test_inject_func_by_annotated_injectby_with_lifetime():
+    key = 'the_key'
+
+    def get_transient(x: Annotated[object, InjectBy(key, lifetime=LifeTime.transient)]):
+        return x
+
+    def get_scoped(x: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]):
+        return x
+
+    sp = ServiceProvider()
+    sp.register_transient(key, lambda: object())
+
+    assert sp.resolve(get_transient) is not sp.resolve(get_transient)
+    assert sp.resolve(get_scoped) is sp.resolve(get_scoped)
 
 def test_inject_func_by_annotated_injectby_with_default():
     key = 'the_int_key'

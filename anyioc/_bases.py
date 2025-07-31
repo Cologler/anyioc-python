@@ -15,9 +15,22 @@ from ._primitive_symbol import TypedSymbol
 
 
 class LifeTime(Enum):
+    '''
+    Never cache.
+    '''
     transient = 0
+
+    '''
+    Value is cached per IServiceProvider scope.
+    '''
     scoped = 1
+
+    '''
+    Value is cached on the IServiceInfo,
+    and constructed using the IServiceProvider that owns this IServiceInfo.
+    '''
     singleton = 2
+
 
 @runtime_checkable
 class SupportsContext[T](Protocol):

@@ -131,7 +131,13 @@ class LifetimeServiceInfo[T](IServiceInfo[T]):
         Symbols.cache,
     ])
 
-    def __init__(self, service_provider: IServiceProvider, key: Any, service_info: IServiceInfo[T], lifetime: LifeTime):
+    def __init__(self, *,
+            service_provider: IServiceProvider | None,
+            key: Any,
+            service_info: IServiceInfo[T],
+            lifetime: LifeTime,
+        ):
+
         if key in self._NOT_ALLOWED_KEYS:
             raise ValueError(f'Key {key!r} is not allowed')
 
