@@ -8,10 +8,16 @@
 from abc import ABC, abstractmethod
 from collections.abc import Callable
 from contextlib import AbstractContextManager
+from enum import Enum
 from typing import Any, Protocol, overload, runtime_checkable
 
 from ._primitive_symbol import TypedSymbol
 
+
+class LifeTime(Enum):
+    transient = 0
+    scoped = 1
+    singleton = 2
 
 @runtime_checkable
 class SupportsContext[T](Protocol):

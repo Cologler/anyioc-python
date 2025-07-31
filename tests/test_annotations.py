@@ -9,7 +9,7 @@ import inspect
 from typing import Annotated
 
 from anyioc import ServiceProvider
-from anyioc.annotations import InjectBy, InjectByGroup
+from anyioc.annotations import InjectBy, InjectByGroup, InjectWithValue
 
 
 def test_inject_class_by_annotated_injectby():
@@ -71,6 +71,15 @@ def test_inject_func_by_annotated_injectbygroup():
     sp.register_value(str, sv)
     sp.register_value(int, iv)
     assert sp.resolve(func) == (sv, iv)
+
+def test_inject_func_by_annotated_injectwithvalue():
+    def func(inject_from_ioc: Annotated[int, InjectWithValue(1)] = 0):
+        return inject_from_ioc
+
+    sp = ServiceProvider()
+    sp.register_value(int, 2)
+    assert func() == 0
+    assert sp.resolve(func) == 1
 
 def test_inject_class_by_typed():
     val = 444

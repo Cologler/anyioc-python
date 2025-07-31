@@ -13,18 +13,16 @@ from threading import RLock
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Optional, overload, override
 
-from ._bases import AllSupportsContext, IServiceProvider
+from ._bases import AllSupportsContext, IServiceProvider, LifeTime
 from ._internal import Disposable, LockedMapping
 from ._service_info import (
     BindedServiceInfo,
-    CallerFrameServiceInfo,
     GetAttrServiceInfo,
     IServiceInfo,
-    LifeTime,
     ProviderServiceInfo,
-    ServiceInfo,
     ValueServiceInfo,
 )
+from ._service_info.extra import CallerFrameServiceInfo, ServiceInfo
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as wrap_signature
 from .annotations import InjectByGroup

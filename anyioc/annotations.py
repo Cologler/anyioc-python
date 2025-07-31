@@ -8,6 +8,7 @@
 from typing import Any, override
 
 from ._bases import IServiceInfo, IServiceProvider
+from ._service_info import ValueServiceInfo
 
 
 class InjectBy(IServiceInfo[Any]):
@@ -46,4 +47,15 @@ class InjectByGroup(IServiceInfo[tuple[Any, ...]]):
         return tuple(provider[k] for k in self._keys)
 
 
-__all__ = ['InjectBy', 'InjectByGroup']
+class InjectWithValue[T](ValueServiceInfo[T]):
+    '''
+    Inject with the fixed value.
+    '''
+    __slots__ = ()
+
+
+__all__ = [
+    'InjectBy',
+    'InjectByGroup',
+    'InjectWithValue'
+]
