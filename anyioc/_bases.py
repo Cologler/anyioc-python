@@ -11,5 +11,5 @@ class IServiceInfo[T](ABC):
     __slots__ = ()
 
     @abstractmethod
-    def get_service(self, provider) -> T:
+    def get_service(self, provider, /) -> T:
         raise NotImplementedError

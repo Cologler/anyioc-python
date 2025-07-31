@@ -5,10 +5,11 @@
 #
 # ----------
 
+import inspect
 from contextlib import nullcontext
 from enum import Enum
 from threading import RLock
-from typing import TYPE_CHECKING, Any, Callable, overload
+from typing import TYPE_CHECKING, Any, Callable, Iterable, overload, override
 
 from ._bases import IServiceInfo
 from ._internal import SupportsContext
@@ -28,7 +29,7 @@ class LifeTime(Enum):
     singleton = 2
 
 
-class ServiceInfo[R](IServiceInfo):
+class ServiceInfo[T](IServiceInfo[T]):
     '''generic `IServiceInfo`.'''
 
     __slots__ = (
@@ -46,7 +47,7 @@ class ServiceInfo[R](IServiceInfo):
         Symbols.cache,
     ])
 
-    def __init__(self, service_provider: 'ioc.ServiceProvider', key, factory: Callable[..., R], lifetime):
+    def __init__(self, service_provider: 'ioc.ServiceProvider', key, factory: Callable[..., T], lifetime):
         if key in self._not_allowed_keys:
             raise ValueError(f'key {key!r} is not allowed')
 
@@ -71,7 +72,8 @@ class ServiceInfo[R](IServiceInfo):
     def __repr__(self) -> str:
         return f'<Service: {self._lifetime}, {self._factory_origin!r}>'
 
-    def get_service(self, provider: 'ioc.ServiceProvider'):
+    @override
+    def get_service(self, provider: 'ioc.ServiceProvider') -> T:
         if self._lifetime is LifeTime.transient:
             return self._create(provider)
 
@@ -83,21 +85,21 @@ class ServiceInfo[R](IServiceInfo):
 
         raise NotImplementedError(f'what is {self._lifetime}?')
 
-    def _from_scoped(self, provider: 'ioc.ServiceProvider'):
+    def _from_scoped(self, provider: 'ioc.ServiceProvider') -> T:
         cache = provider[Symbols.cache]
         try:
-            return cache[self]
+            return cache[self] # type: ignore
         except KeyError:
             pass
         with cache.lock:
             try:
-                return cache[self]
+                return cache[self] # type: ignore
             except KeyError:
-                service = self._create(provider)
+                service = self._create(provider) # must create with lock
                 cache[self] = service
                 return service
 
-    def _from_singleton(self):
+    def _from_singleton(self) -> T:
         if self._cache_value is None:
             with self._lock:
                 if self._cache_value is None:
@@ -105,7 +107,7 @@ class ServiceInfo[R](IServiceInfo):
                         self._create(self._service_provider), )
         return self._cache_value[0]
 
-    def _create(self, provider: 'ioc.ServiceProvider'):
+    def _create(self, provider: 'ioc.ServiceProvider') -> T:
         '''
         return the finally service instance.
         '''
@@ -119,22 +121,25 @@ class ServiceInfo[R](IServiceInfo):
             # then __enter__ should not be called automatically.
             if isinstance(wrapped, SupportsContext) and isinstance(service, SupportsContext):
                 service = provider.enter(service)
-        return service
+        return service # type: ignore
 
 
-class ProviderServiceInfo(IServiceInfo):
-    '''a `IServiceInfo` use for get current `ServiceProvider`.'''
+class ProviderServiceInfo(IServiceInfo['ioc.ServiceProvider']):
+    '''
+    Get current `ServiceProvider`.
+    '''
 
     __slots__ = ()
 
     def __repr__(self) -> str:
         return '<Provider>'
 
-    def get_service(self, provider):
+    @override
+    def get_service(self, provider: 'ioc.ServiceProvider'):
         return provider
 
 
-class GetAttrServiceInfo(IServiceInfo):
+class GetAttrServiceInfo(IServiceInfo[Any]):
     '''
     getattr from current `ServiceProvider`.
     '''
@@ -152,57 +157,62 @@ class GetAttrServiceInfo(IServiceInfo):
     def __repr__(self) -> str:
         return f'<GetAttr: {self._attr_info[0]!r}>'
 
-    def get_service(self, provider):
+    @override
+    def get_service(self, provider: 'ioc.ServiceProvider'):
         return getattr(provider, *self._attr_info)
 
 
-class ValueServiceInfo(IServiceInfo):
+class ValueServiceInfo[T](IServiceInfo[T]):
     '''a `IServiceInfo` use for get fixed value.'''
 
-    __slots__ = ('_value')
+    __slots__ = ('_value',)
 
-    def __init__(self, value):
+    def __init__(self, value: T):
         self._value = value
 
     def __repr__(self) -> str:
         return f'<Value: {self._value!r}>'
 
-    def get_service(self, provider):
+    @override
+    def get_service(self, provider: 'ioc.ServiceProvider') -> T:
         return self._value
 
 
-class GroupedServiceInfo(IServiceInfo):
+class GroupedServiceInfo(IServiceInfo[tuple[Any, ...]]):
     '''a `IServiceInfo` use for get multi values as a tuple from keys list.'''
 
-    __slots__ = ('_keys')
+    __slots__ = ('_keys',)
 
-    def __init__(self, keys: list):
+    def __init__(self, keys: Iterable[Any]):
         self._keys = keys
 
-    def get_service(self, provider):
+    @override
+    def get_service(self, provider: 'ioc.ServiceProvider'):
         return tuple(provider[k] for k in self._keys)
 
 
-class BindedServiceInfo(IServiceInfo):
+class BindedServiceInfo(IServiceInfo[Any]):
     '''a `IServiceInfo` use for get value from target key.'''
 
-    __slots__ = ('_target_key')
+    __slots__ = ('_target_key',)
 
-    def __init__(self, target_key):
+    def __init__(self, target_key: Any):
         self._target_key = target_key
 
     def __repr__(self) -> str:
         return f'<Binded: {self._target_key!r}>'
 
-    def get_service(self, provider):
+    @override
+    def get_service(self, provider: 'ioc.ServiceProvider'):
         return provider[self._target_key]
 
 
-class CallerFrameServiceInfo(IServiceInfo):
+class CallerFrameServiceInfo(IServiceInfo[inspect.FrameInfo | None]):
     'a `IServiceInfo` use for get caller frameinfo'
 
     __slots__ = ()
 
-    def get_service(self, provider):
+    @override
+    def get_service(self, provider: 'ioc.ServiceProvider'):
         for f in _get_frameinfos(exclude_anyioc_frames=True):
             return f

@@ -5,7 +5,7 @@
 # 
 # ----------
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, override
 
 from ._bases import IServiceInfo
 
@@ -13,13 +13,14 @@ if TYPE_CHECKING:
     from . import ioc  # noqa: F401
 
 
-class InjectBy(IServiceInfo):
+class InjectBy(IServiceInfo[Any]):
     _UNSET = object()
 
     def __init__(self, key: Any, default: Any=_UNSET) -> None:
         self.key = key
         self.default = default
 
+    @override
     def get_service(self, provider: 'ioc.IServiceProvider'):
         if self.default is self._UNSET:
             return provider[self.key]
@@ -27,7 +28,7 @@ class InjectBy(IServiceInfo):
             return provider.get(self.key, self.default)
 
 
-class InjectByGroup(InjectBy):
+class InjectByGroup(IServiceInfo[tuple[Any, ...]]):
     '''
     Inject args as tuple group.
 
@@ -37,10 +38,12 @@ class InjectByGroup(InjectBy):
     tuple(provider[k] for k in keys)
     ```
     '''
+    __slots__ = ('_keys',)
 
-    def __init__(self, *keys: Any) -> None:
-        super().__init__(None)
-        self.keys = keys
+    def __init__(self, *keys: Any):
+        self._keys = keys
 
-    def get_service(self, provider: 'ioc.IServiceProvider'):
-        return tuple(provider[k] for k in self.keys)
+    @override
+    def get_service(self, provider: 'ioc.ServiceProvider'):
+        print(self._keys)
+        return tuple(provider[k] for k in self._keys)
