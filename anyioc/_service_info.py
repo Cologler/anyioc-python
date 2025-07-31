@@ -144,22 +144,23 @@ class GetAttrServiceInfo(IServiceInfo[Any]):
     getattr from current `ServiceProvider`.
     '''
 
-    __slots__ = ('_attr_info',)
+    __slots__ = ('_getattr_args',)
+    _UNSET = object()
 
     @overload
     def __init__(self, attr_name: str, /) -> None: ...
     @overload
     def __init__(self, attr_name: str, attr_default: Any, /) -> None: ...
-    def __init__(self, *attr_info):
+    def __init__(self, attr_name: str, attr_default: Any=_UNSET):
         super().__init__()
-        self._attr_info = attr_info
+        self._getattr_args = (attr_name,) if attr_default is self._UNSET else (attr_name, attr_default)
 
     def __repr__(self) -> str:
-        return f'<GetAttr: {self._attr_info[0]!r}>'
+        return f'<GetAttr: {self._getattr_args[0]!r}>'
 
     @override
     def get_service(self, provider: 'ioc.ServiceProvider'):
-        return getattr(provider, *self._attr_info)
+        return getattr(provider, *self._getattr_args)
 
 
 class ValueServiceInfo[T](IServiceInfo[T]):
@@ -176,19 +177,6 @@ class ValueServiceInfo[T](IServiceInfo[T]):
     @override
     def get_service(self, provider: 'ioc.ServiceProvider') -> T:
         return self._value
-
-
-class GroupedServiceInfo(IServiceInfo[tuple[Any, ...]]):
-    '''a `IServiceInfo` use for get multi values as a tuple from keys list.'''
-
-    __slots__ = ('_keys',)
-
-    def __init__(self, keys: Iterable[Any]):
-        self._keys = keys
-
-    @override
-    def get_service(self, provider: 'ioc.ServiceProvider'):
-        return tuple(provider[k] for k in self._keys)
 
 
 class BindedServiceInfo(IServiceInfo[Any]):
