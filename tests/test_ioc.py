@@ -7,51 +7,62 @@
 
 import contextlib
 import itertools
+from typing import Any, Iterable
 from unittest.mock import MagicMock
-from typing import Iterable, Any
 
-from anyioc import IServiceProvider, ServiceProvider
+from pytest import raises
+
+from anyioc import IServiceProvider, ServiceNotFoundError, ServiceProvider
 from anyioc.symbols import Symbols
 
 
 def assert_value_is_singleton(providers: Iterable[ServiceProvider], key: Any):
     for left, right in itertools.combinations_with_replacement(providers, 2):
-        assert left.get(key) is right.get(key)
+        assert left[key] is right[key]
 
 def assert_value_is_scoped(providers: Iterable[ServiceProvider], key: Any):
     for left, right in itertools.combinations_with_replacement(providers, 2):
-        assert (left is right) == (left.get(key) is right.get(key))
+        assert (left is right) == (left[key] is right[key])
 
 def assert_value_is_transient(providers: Iterable[ServiceProvider], key: Any):
     for left, right in itertools.combinations_with_replacement(providers, 2):
-        assert left.get(key) is not right.get(key)
+        assert left[key] is not right[key]
 
 
-def test_singleton():
-    provider = ServiceProvider()
-    provider.register_singleton(1, lambda: object())
-    with provider.scope() as s1:
-        with provider.scope() as s2:
-            with provider.scope() as s3:
-                assert_value_is_singleton([provider, s1, s2, s3], 1)
+def test_register_singleton():
+    root_provider = ServiceProvider()
+    with root_provider.scope() as owner_provider:
+        owner_provider.register_singleton(1, lambda: object())
+        owner_provider.register_singleton(2, lambda ioc: ioc)
 
-def test_scope():
-    provider = ServiceProvider()
-    provider.register_scoped(1, lambda: object())
-    with provider.scope() as s1:
-        with provider.scope() as s2:
-            with provider.scope() as s3:
-                assert_value_is_scoped([provider, s1, s2, s3], 1)
+        with owner_provider.scope() as scoped_provider:
+            with scoped_provider.scope() as child_provider:
+                assert_value_is_singleton([owner_provider, scoped_provider, child_provider], 1)
+                assert child_provider[2] is owner_provider
 
-def test_transient():
-    provider = ServiceProvider()
-    provider.register_transient(1, lambda: object())
-    with provider.scope() as s1:
-        with provider.scope() as s2:
-            with provider.scope() as s3:
-                assert_value_is_transient([provider, s1, s2, s3], 1)
+def test_register_scoped():
+    root_provider = ServiceProvider()
+    with root_provider.scope() as owner_provider:
+        owner_provider.register_scoped(1, lambda: object())
+        owner_provider.register_scoped(2, lambda ioc: ioc)
 
-def test_group():
+        with owner_provider.scope() as scoped_provider:
+            with scoped_provider.scope() as child_provider:
+                assert_value_is_scoped([owner_provider, scoped_provider, child_provider], 1)
+                assert child_provider[2] is child_provider
+
+def test_register_transient():
+    root_provider = ServiceProvider()
+    with root_provider.scope() as owner_provider:
+        owner_provider.register_transient(1, lambda: object())
+        owner_provider.register_transient(2, lambda ioc: ioc)
+
+        with owner_provider.scope() as scoped_provider:
+            with scoped_provider.scope() as child_provider:
+                assert_value_is_transient([owner_provider, scoped_provider, child_provider], 1)
+                assert child_provider[2] is child_provider
+
+def test_register_group():
     provider = ServiceProvider()
     provider.register_transient('str', lambda: 'name')
     provider.register_transient('int', lambda: 1)
@@ -61,12 +72,12 @@ def test_group():
     assert provider['any'] == ('name', 1)
     # always transient:
     assert provider['any'] is not provider['any']
-    # allow to add later
+
+    # if we add later, nothing changes:
     group_keys.append('float')
-    # nothing changes:
     assert provider['any'] == ('name', 1)
 
-def test_value():
+def test_register_value():
     provider = ServiceProvider()
 
     provider.register_value('k', 'value')
@@ -77,11 +88,57 @@ def test_value():
 
     assert provider['k'] == 'value'
 
-def test_bind():
+def test_register_bind():
     provider = ServiceProvider()
     provider.register_value('k', 'value')
     provider.register_bind('b', 'k')
     assert provider['b'] == 'value'
+
+def test_get_item_missing_service():
+    provider = ServiceProvider()
+    provider.register_transient('a', lambda ioc: ioc['b'])
+    provider.register_transient('b', lambda ioc: ioc['c'])
+    provider.register_transient('c', lambda ioc: ioc['d'])
+
+    with raises(ServiceNotFoundError):
+        provider['any']
+
+    with raises(ServiceNotFoundError, match="unknown service: 'd'; resolve chain: 'a'->'b'->'c'->'d'"):
+        provider['a']
+
+def test_get_or_def_missing_service():
+    assert ServiceProvider().get('any') is None
+
+def test_get_many():
+    provider = ServiceProvider()
+    provider.register_transient('a', lambda: 1)
+    provider.register_transient('a', lambda: 2)
+    provider.register_transient('a', lambda: 3)
+
+    assert [3, 2, 1] == provider.get_many('a')
+
+def test_get_many_from_multilevel():
+    provider = ServiceProvider()
+    provider.register_transient('a', lambda ioc: 10)
+    provider.register_transient('a', lambda ioc: 11)
+
+    provider2 = provider.scope()
+    provider2.register_transient('a', lambda ioc: 20)
+    provider2.register_transient('a', lambda ioc: 21)
+
+    provider3 = provider2.scope()
+    provider3.register_transient('a', lambda ioc: 30)
+    provider3.register_transient('a', lambda ioc: 31)
+
+    provider4 = provider3.scope()
+    provider4.register_transient('a', lambda ioc: 40)
+    provider4.register_transient('a', lambda ioc: 41)
+
+    assert [31, 30, 21, 20, 11, 10] == provider3.get_many('a')
+
+def test_get_many_missing_service():
+    provider = ServiceProvider()
+    assert [] == provider.get_many('a') # wont raise error
 
 def test_resolve():
     provider = ServiceProvider()
