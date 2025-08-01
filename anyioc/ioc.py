@@ -65,7 +65,7 @@ class ServiceProvider(IServiceProvider):
             self._root: ServiceProvider = self
 
             # serviceinfos
-            get_current_provicer = ProviderServiceInfo()
+            get_current_provicer = ProviderServiceInfo.get_singleton_instance()
             get_frameinfo = CallerFrameServiceInfo()
 
             self._services[Symbols.provider] = get_current_provicer

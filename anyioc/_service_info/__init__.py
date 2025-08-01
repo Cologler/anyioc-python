@@ -7,7 +7,7 @@
 
 from contextlib import nullcontext
 from threading import RLock
-from typing import Any, override
+from typing import Any, final, override
 
 from .._bases import Factory, IServiceInfo, IServiceProvider, LifeTime
 from ..symbols import Symbols
@@ -15,11 +15,12 @@ from ..symbols import Symbols
 _NULL_CONTEXT = nullcontext()
 
 
+@final
 class ProviderServiceInfo(IServiceInfo[IServiceProvider]):
     '''
     Get current `ServiceProvider`.
     '''
-
+    _INSTANCE: 'ProviderServiceInfo'
     __slots__ = ()
 
     def __repr__(self) -> str:
@@ -28,6 +29,12 @@ class ProviderServiceInfo(IServiceInfo[IServiceProvider]):
     @override
     def get_service(self, provider: IServiceProvider):
         return provider
+
+    @classmethod
+    def get_singleton_instance(cls):
+        return cls._INSTANCE
+
+ProviderServiceInfo._INSTANCE = ProviderServiceInfo()
 
 
 class GetAttrServiceInfo(IServiceInfo[Any]):

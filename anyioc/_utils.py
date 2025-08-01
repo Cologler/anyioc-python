@@ -134,15 +134,15 @@ def wrap_signature[R](func: Callable[..., R], *,
 
         if arg_0.kind in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL):
             # does not need to wrap.
-            return create_adapter(func, p_params=(ProviderServiceInfo(),),
+            return create_adapter(func, p_params=(ProviderServiceInfo.get_singleton_instance(),),
                 override_kwargs=override_kwargs)
 
         elif arg_0.kind in (Parameter.KEYWORD_ONLY, Parameter.POSITIONAL_OR_KEYWORD):
-            return create_adapter(func, k_params={arg_0.name: ProviderServiceInfo()},
+            return create_adapter(func, k_params={arg_0.name: ProviderServiceInfo.get_singleton_instance()},
                 override_kwargs=override_kwargs)
 
         elif arg_0.kind == Parameter.VAR_KEYWORD:
-            return create_adapter(func, k_params={'provider': ProviderServiceInfo()},
+            return create_adapter(func, k_params={'provider': ProviderServiceInfo.get_singleton_instance()},
                 override_kwargs=override_kwargs)
 
         else:
