@@ -126,8 +126,7 @@ def wrap_signature[R](func: Callable[..., R], *,
                 if si := get_serviceinfo_from_annotation(param.annotation, param.default):
                     if isinstance(si, InjectBy):
                         if isinstance(si._service_info, LifetimeServiceInfo):
-                            _logger.warning('lifetime is invalid for VAR_POSITIONAL parameter.')
-                            god = si._service_info._service_info
+                            raise RuntimeError('lifetime is invalid for VAR_POSITIONAL parameter.')
                         else:
                             god = si._service_info
                         assert isinstance(god, GetOrDefaultServiceInfo)
