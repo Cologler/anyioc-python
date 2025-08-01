@@ -47,7 +47,7 @@ class IServiceInfo[T](ABC):
     def get_service(self, provider, /) -> T:
         raise NotImplementedError
 
-    def get_services(self, provider, /) -> tuple[Any, ...]:
+    def get_packed_services(self, provider, /) -> tuple[T, ...]:
         return (self.get_service(provider),)
 
 

@@ -18,7 +18,13 @@ from typing import Annotated, Any, Callable, cast, get_args, get_origin
 from ._bases import Factory, IServiceInfo, IServiceProvider, SupportsContext
 from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
 from ._internal import Disposable, ProviderOptions
-from ._service_info import GetManyServiceInfo, GetOrDefaultServiceInfo, LifetimeServiceInfo, ProviderServiceInfo
+from ._service_info import (
+    GetManyServiceInfo,
+    GetOrDefaultServiceInfo,
+    LifetimeServiceInfo,
+    ProviderServiceInfo,
+    ValueServiceInfo,
+)
 from .annotations import InjectBy
 from .err import ServiceNotFoundError
 from .symbols import Symbols
@@ -72,7 +78,7 @@ class FollowedInjectBy(GetOrDefaultServiceInfo):
                 return wrap_signature(self.key, follow=True)(provider)
             raise
 
-class UnpackingServiceInfo[T](IServiceInfo[Iterable[T]]):
+class UnpackingServiceInfo[T](IServiceInfo[T]):
     __slots__ = (
         'service_info',
     )
@@ -81,10 +87,10 @@ class UnpackingServiceInfo[T](IServiceInfo[Iterable[T]]):
         self.service_info = service_info
 
     def get_service(self, provider):
-        return self.service_info.get_service(provider)
+        raise NotImplementedError
 
-    def get_services(self, provider):
-        return tuple(self.get_service(provider))
+    def get_packed_services(self, provider):
+        return tuple(self.service_info.get_service(provider))
 
 def wrap_signature[R](func: Callable[..., R], *,
         follow: bool = False,
@@ -201,8 +207,6 @@ def create_adapter[R](
         override_kwargs: Mapping[str, Any] | None = None,
     ) -> Factory[R]:
 
-    from ._service_info import ValueServiceInfo
-
     def to_serviceinfo(arg: tuple[Any] | tuple[Any, Any] | IServiceInfo) -> IServiceInfo:
         if isinstance(arg, tuple):
             if len(arg) not in (1, 2):
@@ -215,16 +219,16 @@ def create_adapter[R](
     if override_kwargs is None:
         override_kwargs = _EMPTY_K_ARGS
 
-    p_params_i = [to_serviceinfo(v) for v in p_params] if p_params else _EMPTY_P_PARAMS
-    k_params_i = {
+    p_params_si = [to_serviceinfo(v) for v in p_params] if p_params else _EMPTY_P_PARAMS
+    k_params_si = {
         k: ValueServiceInfo(override_kwargs[k]) if k in override_kwargs else to_serviceinfo(v)
         for k, v in k_params.items()
     } if k_params else _EMPTY_K_PARAMS
 
     def wrapper(ioc):
         return func(
-            *(v for si in p_params_i for v in si.get_services(ioc)),
-            **{k: v.get_service(ioc) for k, v in k_params_i.items()}
+            *(v for si in p_params_si for v in si.get_packed_services(ioc)),
+            **{k: v.get_service(ioc) for k, v in k_params_si.items()}
         )
 
     return update_wrapper(wrapper, func)
