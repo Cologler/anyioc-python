@@ -220,11 +220,25 @@ class GetOrDefaultServiceInfo(IServiceInfo[Any]):
         if self.default is self._UNSET:
             return f'<(ioc) => ioc[{self.key!r}]>'
         else:
-            return f'<(ioc) => ioct.({self.key!r}, {self.default!r})>'
+            return f'<(ioc) => ioc.get({self.key!r}, {self.default!r})>'
 
     @override
-    def get_service(self, provider: IServiceProvider):
+    def get_service(self, provider: IServiceProvider) -> Any:
         if self.default is self._UNSET:
             return provider[self.key]
         else:
             return provider.get(self.key, self.default)
+
+
+class GetManyServiceInfo(IServiceInfo[list[Any]]):
+    __slots__ = ('key',)
+
+    def __init__(self, key: Any) -> None:
+        self.key = key
+
+    def __repr__(self) -> str:
+        return f'<(ioc) => ioc.get_many({self.key!r})>'
+
+    @override
+    def get_service(self, provider: IServiceProvider) -> list[Any]:
+        return provider.get_many(self.key)

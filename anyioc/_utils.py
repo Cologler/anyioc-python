@@ -18,7 +18,7 @@ from typing import Annotated, Any, Callable, cast, get_args, get_origin
 from ._bases import Factory, IServiceInfo, IServiceProvider, SupportsContext
 from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
 from ._internal import Disposable, ProviderOptions
-from ._service_info import GetOrDefaultServiceInfo
+from ._service_info import GetManyServiceInfo, GetOrDefaultServiceInfo
 from .err import ServiceNotFoundError
 from .symbols import Symbols
 
@@ -71,6 +71,17 @@ class FollowedInjectBy(GetOrDefaultServiceInfo):
                 return wrap_signature(self.key, follow=True)(provider)
             raise
 
+class UnpackingServiceInfo[T](IServiceInfo[T]):
+    __slots__ = (
+        'service_info',
+    )
+
+    def __init__(self, service_info: IServiceInfo[T]):
+        self.service_info = service_info
+
+    def get_service(self, provider) -> T:
+        return self.service_info.get_service(provider)
+
 def wrap_signature[R](func: Callable[..., R], *,
         follow: bool = False,
         override_kwargs: Mapping[str, Any] | None = None,
@@ -89,23 +100,34 @@ def wrap_signature[R](func: Callable[..., R], *,
     if len(params) > 1:
         params = [p for p in params if p.kind != Parameter.VAR_POSITIONAL]
 
+    def get_serviceinfo_from_annotation(annotation: Any, default: Any) -> IServiceInfo | None:
+        if get_origin(annotation) is Annotated:
+            metadatas = get_args(annotation)[1:]
+            if sis := [x for x in metadatas if isinstance(x, IServiceInfo)]:
+                if len(sis) > 1:
+                    _logger.warning('Too many annotated InjectBy')
+                return sis[0]
+
     def get_serviceinfo(param: Parameter) -> IServiceInfo | None:
-        if param.kind in (Parameter.VAR_KEYWORD, Parameter.VAR_POSITIONAL):
-            return None
-        if param.annotation is not Parameter.empty:
-            if get_origin(param.annotation) is Annotated:
-                metadatas = get_args(param.annotation)[1:]
-                if sis := [x for x in metadatas if isinstance(x, IServiceInfo)]:
-                    if len(sis) > 1:
-                        _logger.warning('Too many annotated InjectBy')
-                    return sis[0]
-            else:
+        if param.kind == Parameter.VAR_KEYWORD:
+            return
+
+        elif param.kind == Parameter.VAR_POSITIONAL:
+            if param.annotation is not Parameter.empty:
                 # create InjectBy for type annotation
-                InjectByType = FollowedInjectBy if follow else GetOrDefaultServiceInfo
-                if param.default is Parameter.empty:
-                    return InjectByType(param.annotation)
-                else:
-                    return InjectByType(param.annotation, param.default)
+                return UnpackingServiceInfo(GetManyServiceInfo(param.annotation))
+
+        elif param.annotation is not Parameter.empty:
+            if si := get_serviceinfo_from_annotation(param.annotation, param.default):
+                return si
+
+            # create InjectBy for type annotation
+            ServiceInfoType = FollowedInjectBy if follow else GetOrDefaultServiceInfo
+            if param.default is Parameter.empty:
+                return ServiceInfoType(param.annotation)
+            else:
+                return ServiceInfoType(param.annotation, param.default)
+
         elif param.name in SERVICEPROVIDER_NAMING_CONVENTION:
             return GetOrDefaultServiceInfo(Symbols.provider)
 
@@ -120,11 +142,11 @@ def wrap_signature[R](func: Callable[..., R], *,
             func,
             p_params=[
                 cast(IServiceInfo, p[1]) for p in params_with_serviceinfo
-                if p[0].kind == Parameter.POSITIONAL_ONLY
+                if p[0].kind in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL)
             ],
             k_params={
                 p[0].name: cast(IServiceInfo, p[1]) for p in params_with_serviceinfo
-                if p[0].kind != Parameter.POSITIONAL_ONLY
+                if p[0].kind not in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL)
             },
             override_kwargs=override_kwargs,
         )
@@ -184,8 +206,14 @@ def create_adapter[R](
     } if k_params else _EMPTY_K_PARAMS
 
     def wrapper(ioc):
+        p_args = []
+        for si in p_params_i:
+            if type(si) is UnpackingServiceInfo:
+                p_args.extend(si.get_service(ioc))
+            else:
+                p_args.append(si.get_service(ioc))
         return func(
-            *(v.get_service(ioc) for v in p_params_i),
+            *p_args,
             **{k: v.get_service(ioc) for k, v in k_params_i.items()}
         )
 

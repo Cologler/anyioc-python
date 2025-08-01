@@ -55,6 +55,16 @@ def test_wrap_signature_with_var_positional_params():
         return args
     assert wrap_signature(func)(sp) == (sp, )
 
+def test_wrap_signature_with_var_positional_params_with_typing():
+    sp = ServiceProvider()
+    sp.register_value(int, 1)
+    sp.register_value(int, 2)
+    sp.register_value(int, 3)
+
+    def func(*args: int):
+        return args
+    assert wrap_signature(func)(sp) == (3, 2, 1)
+
 def test_wrap_signature_with_var_keyword_params():
     sp = ServiceProvider()
 
