@@ -8,6 +8,7 @@
 
 import atexit
 import inspect
+import io
 import itertools
 import sys
 from collections.abc import Iterable, Mapping
@@ -214,6 +215,32 @@ class Adapter[R](Factory[R]):
             *(v for si in self.p_params for v in si.get_packed_services(ioc)),
             **{k: v.get_service(ioc) for k, v in self.k_params.items()}
         )
+
+    def __str__(self) -> str:
+        out = io.StringIO()
+        self.write_str(out)
+        return out.getvalue()
+
+    def write_str(self, out: io.StringIO,
+            *, init_indent: str = '',
+            level_indent: str = '  '):
+
+        level = 0
+        def write(s: str):
+            out.write(init_indent)
+            out.write(level_indent * level + s)
+
+        write(f'{self.func}(\n')
+        level += 1
+
+        for i, s in enumerate(self.p_params):
+            write(f'args.{i} = {s},\n')
+
+        for k, s in self.k_params.items():
+            write(f'{k} = {s},\n')
+
+        level -= 1
+        write(')')
 
 
 def create_adapter[R](
