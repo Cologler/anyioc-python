@@ -229,6 +229,9 @@ class GetOrDefaultServiceInfo(IServiceInfo[Any]):
         else:
             return provider.get(self.key, self.default)
 
+    def has_default(self):
+        return self.default is not self._UNSET
+
 
 class GetManyServiceInfo(IServiceInfo[list[Any]]):
     __slots__ = ('key',)

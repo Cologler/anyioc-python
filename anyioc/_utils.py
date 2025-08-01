@@ -18,7 +18,8 @@ from typing import Annotated, Any, Callable, cast, get_args, get_origin
 from ._bases import Factory, IServiceInfo, IServiceProvider, SupportsContext
 from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
 from ._internal import Disposable, ProviderOptions
-from ._service_info import GetManyServiceInfo, GetOrDefaultServiceInfo, ProviderServiceInfo
+from ._service_info import GetManyServiceInfo, GetOrDefaultServiceInfo, LifetimeServiceInfo, ProviderServiceInfo
+from .annotations import InjectBy
 from .err import ServiceNotFoundError
 from .symbols import Symbols
 
@@ -116,6 +117,19 @@ def wrap_signature[R](func: Callable[..., R], *,
 
         elif param.kind == Parameter.VAR_POSITIONAL:
             if param.annotation is not Parameter.empty:
+                if si := get_serviceinfo_from_annotation(param.annotation, param.default):
+                    if isinstance(si, InjectBy):
+                        if isinstance(si._service_info, LifetimeServiceInfo):
+                            _logger.warning('lifetime is invalid for VAR_POSITIONAL parameter.')
+                            god = si._service_info._service_info
+                        else:
+                            god = si._service_info
+                        assert isinstance(god, GetOrDefaultServiceInfo)
+                        if god.has_default():
+                            _logger.warning('default is invalid for VAR_POSITIONAL parameter.')
+                        return UnpackingServiceInfo(GetManyServiceInfo(god.key))
+                    return si
+
                 # create ServiceInfo for type annotation
                 return UnpackingServiceInfo(GetManyServiceInfo(param.annotation))
 

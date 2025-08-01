@@ -71,9 +71,22 @@ def test_inject_func_by_annotated_injectby_with_default():
         return x
 
     sp = ServiceProvider()
-    sp.register_singleton(func, func)
 
     assert sp.resolve(func) == val
+
+def test_inject_func_by_annotated_injectby_for_args():
+    key = 'the_int_key'
+
+    def func(*args: Annotated[int, InjectBy(key)]):
+        return args
+
+    sp = ServiceProvider()
+    sp.register_value(key, 1)
+    sp.register_value(key, 2)
+    sp.register_value(key, 3)
+
+    assert sp.resolve(func) == (3, 2, 1)
+
 
 def test_inject_func_by_annotated_injectbygroup():
     sv = 'ffw'
