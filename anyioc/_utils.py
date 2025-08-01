@@ -18,7 +18,7 @@ from typing import Annotated, Any, Callable, cast, get_args, get_origin
 from ._bases import Factory, IServiceInfo, IServiceProvider, SupportsContext
 from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
 from ._internal import Disposable, ProviderOptions
-from ._service_info import GetManyServiceInfo, GetOrDefaultServiceInfo
+from ._service_info import GetManyServiceInfo, GetOrDefaultServiceInfo, ProviderServiceInfo
 from .err import ServiceNotFoundError
 from .symbols import Symbols
 
@@ -71,16 +71,19 @@ class FollowedInjectBy(GetOrDefaultServiceInfo):
                 return wrap_signature(self.key, follow=True)(provider)
             raise
 
-class UnpackingServiceInfo[T](IServiceInfo[T]):
+class UnpackingServiceInfo[T](IServiceInfo[Iterable[T]]):
     __slots__ = (
         'service_info',
     )
 
-    def __init__(self, service_info: IServiceInfo[T]):
+    def __init__(self, service_info: IServiceInfo[Iterable[T]]):
         self.service_info = service_info
 
-    def get_service(self, provider) -> T:
+    def get_service(self, provider):
         return self.service_info.get_service(provider)
+
+    def get_services(self, provider):
+        return tuple(self.get_service(provider))
 
 def wrap_signature[R](func: Callable[..., R], *,
         follow: bool = False,
@@ -91,7 +94,6 @@ def wrap_signature[R](func: Callable[..., R], *,
 
     unlike the `inject*` series of utils, this is used for implicit convert.
     '''
-    from ._service_info import ProviderServiceInfo
 
     sign = inspect.signature(func)
     params = list(sign.parameters.values())
@@ -114,14 +116,14 @@ def wrap_signature[R](func: Callable[..., R], *,
 
         elif param.kind == Parameter.VAR_POSITIONAL:
             if param.annotation is not Parameter.empty:
-                # create InjectBy for type annotation
+                # create ServiceInfo for type annotation
                 return UnpackingServiceInfo(GetManyServiceInfo(param.annotation))
 
         elif param.annotation is not Parameter.empty:
             if si := get_serviceinfo_from_annotation(param.annotation, param.default):
                 return si
 
-            # create InjectBy for type annotation
+            # create ServiceInfo for type annotation
             ServiceInfoType = FollowedInjectBy if follow else GetOrDefaultServiceInfo
             if param.default is Parameter.empty:
                 return ServiceInfoType(param.annotation)
@@ -206,14 +208,8 @@ def create_adapter[R](
     } if k_params else _EMPTY_K_PARAMS
 
     def wrapper(ioc):
-        p_args = []
-        for si in p_params_i:
-            if type(si) is UnpackingServiceInfo:
-                p_args.extend(si.get_service(ioc))
-            else:
-                p_args.append(si.get_service(ioc))
         return func(
-            *p_args,
+            *(v for si in p_params_i for v in si.get_services(ioc)),
             **{k: v.get_service(ioc) for k, v in k_params_i.items()}
         )
 
