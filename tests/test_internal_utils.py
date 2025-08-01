@@ -33,10 +33,19 @@ def test_wrap_signature_with_single_keyword_params():
     assert wrap_signature(func)(sp) is sp
 
 def test_wrap_signature_with_multi_params():
-    def func(arg_0, arg_1):
-        return arg_0 + arg_1
+    def func(arg_0, arg_1: str):
+        return (arg_0, arg_1)
     with pytest.raises(TypeError):
         wrap_signature(func)
+
+def test_wrap_signature_with_multi_params_with_naming_convention():
+    sp = ServiceProvider()
+    sp.register_value(str, 'arg_1_val')
+
+    def func(ioc, arg_1: str): # convention for ioc
+        return (ioc, arg_1)
+
+    assert wrap_signature(func)(sp) == (sp, 'arg_1_val')
 
 def test_wrap_signature_with_var_positional_params():
     sp = ServiceProvider()

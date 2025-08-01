@@ -154,18 +154,3 @@ def test_call_init_hook_when_raises_errors():
         provider['a']
 
     assert counter == 1
-
-def test_resolve_from_naming_convention():
-    root_provider = ServiceProvider()
-    root_provider.register_value(str, 'dep_content')
-
-    def func1(arg0, dep_str: str):
-        return (arg0, dep_str)
-
-    with raises(TypeError):
-        root_provider.resolve(func1)
-
-    def func2(ioc, dep_str: str): # convention for ioc
-        return (ioc, dep_str)
-
-    assert root_provider.resolve(func2) == (root_provider, 'dep_content')
