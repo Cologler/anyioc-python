@@ -61,13 +61,6 @@ def dispose_at_exit(provider):
     atexit.register(callback)
     return Disposable(unregister)
 
-def update_wrapper(wrapper, wrapped):
-    '''
-    update wrapper with internal attributes.
-    '''
-    wrapper.__anyioc_wrapped__ = getattr(wrapped, '__anyioc_wrapped__', wrapped)
-    return wrapper
-
 
 class FollowedInjectBy(GetOrDefaultServiceInfo):
     def get_service(self, provider: IServiceProvider):
@@ -199,6 +192,30 @@ _EMPTY_P_PARAMS: tuple[IServiceInfo, ...] = ()
 _EMPTY_K_PARAMS: Mapping[str, IServiceInfo] = {}
 _EMPTY_K_ARGS: Mapping[str, Any] = {}
 
+class Adapter[R](Factory[R]):
+    __slots__ = (
+        'func',
+        'p_params',
+        'k_params',
+        'origin_func'
+    )
+
+    def __init__(self, func: Callable[..., R],
+            p_params: Iterable[IServiceInfo],
+            k_params: Mapping[str, IServiceInfo]
+        ) -> None:
+        self.func = func
+        self.p_params = p_params
+        self.k_params = k_params
+        self.origin_func = func.func if isinstance(func, Adapter) else func
+
+    def __call__(self, ioc, /) -> Any:
+        return self.func(
+            *(v for si in self.p_params for v in si.get_packed_services(ioc)),
+            **{k: v.get_service(ioc) for k, v in self.k_params.items()}
+        )
+
+
 def create_adapter[R](
         func: Callable[..., R],
         p_params: Iterable[tuple[Any] | tuple[Any, Any] | IServiceInfo] = _EMPTY_P_PARAMS,
@@ -224,13 +241,7 @@ def create_adapter[R](
         for k, v in k_params.items()
     } if k_params else _EMPTY_K_PARAMS
 
-    def wrapper(ioc):
-        return func(
-            *(v for si in p_params_si for v in si.get_packed_services(ioc)),
-            **{k: v.get_service(ioc) for k, v in k_params_si.items()}
-        )
-
-    return update_wrapper(wrapper, func)
+    return Adapter(func, p_params_si, k_params_si)
 
 
 def create_service[T](
@@ -243,7 +254,7 @@ def create_service[T](
 
     service = factory(provider)
     if options['auto_enter']:
-        wrapped = getattr(factory, '__anyioc_wrapped__', factory)
+        wrapped = getattr(factory, 'origin_func', factory)
         # We must ensure that the original object is a ContextManager.
         # If the original object is a factory function and
         # the ContextManager service is merely the return value of that function,

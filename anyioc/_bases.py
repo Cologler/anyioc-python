@@ -117,4 +117,5 @@ class IServiceProvider:
 
 
 class Factory[T](Protocol):
+    __slots__ = ()
     def __call__(self, IServiceProvider, /) -> T: ...
