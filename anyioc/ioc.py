@@ -14,6 +14,7 @@ from types import MappingProxyType
 from typing import Any, Callable, Iterable, Optional, overload, override
 
 from ._bases import AllSupportsContext, IServiceProvider, LifeTime
+from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
 from ._internal import Disposable, LockedMapping
 from ._service_info import (
     BindedServiceInfo,
@@ -78,9 +79,8 @@ class ServiceProvider(IServiceProvider):
             self.__init_exc = None
 
             # service alias
-            self._services['ioc'] = get_current_provicer
-            self._services['provider'] = get_current_provicer
-            self._services['service_provider'] = get_current_provicer
+            for name in SERVICEPROVIDER_NAMING_CONVENTION:
+                self._services[name] = get_current_provicer
             self._services[ServiceProvider] = get_current_provicer
             self._services[IServiceProvider] = get_current_provicer
             self._services[inspect.FrameInfo] = get_frameinfo

@@ -16,6 +16,7 @@ from logging import getLogger
 from typing import Annotated, Any, Callable, cast, get_args, get_origin
 
 from ._bases import Factory, IServiceInfo, IServiceProvider, SupportsContext
+from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
 from ._internal import Disposable, ProviderOptions
 from ._service_info import GetOrDefaultServiceInfo
 from .err import ServiceNotFoundError
@@ -88,7 +89,7 @@ def wrap_signature[R](func: Callable[..., R], *,
     if len(params) > 1:
         params = [p for p in params if p.kind != Parameter.VAR_POSITIONAL]
 
-    def get_injectby(param: Parameter) -> IServiceInfo | None:
+    def get_serviceinfo(param: Parameter) -> IServiceInfo | None:
         if param.kind in (Parameter.VAR_KEYWORD, Parameter.VAR_POSITIONAL):
             return None
         if param.annotation is not Parameter.empty:
@@ -105,22 +106,24 @@ def wrap_signature[R](func: Callable[..., R], *,
                     return InjectByType(param.annotation)
                 else:
                     return InjectByType(param.annotation, param.default)
+        elif param.name in SERVICEPROVIDER_NAMING_CONVENTION:
+            return GetOrDefaultServiceInfo(Symbols.provider)
 
-    params_with_injectby = [(p, get_injectby(p)) for p in params]
+    params_with_serviceinfo = [(p, get_serviceinfo(p)) for p in params]
 
     if not params:
         return create_adapter(func)
 
-    elif all(p[1] for p in params_with_injectby):
+    elif all(p[1] for p in params_with_serviceinfo):
         # all params are annotated with InjectBy(key=...)
         return create_adapter(
             func,
             p_params=[
-                cast(IServiceInfo, p[1]) for p in params_with_injectby
+                cast(IServiceInfo, p[1]) for p in params_with_serviceinfo
                 if p[0].kind == Parameter.POSITIONAL_ONLY
             ],
             k_params={
-                p[0].name: cast(IServiceInfo, p[1]) for p in params_with_injectby
+                p[0].name: cast(IServiceInfo, p[1]) for p in params_with_serviceinfo
                 if p[0].kind != Parameter.POSITIONAL_ONLY
             },
             override_kwargs=override_kwargs,
