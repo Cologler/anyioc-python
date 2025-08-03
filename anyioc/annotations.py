@@ -76,11 +76,7 @@ class InjectWithValue:
     value
     ```
 
-    For VAR_POSITIONAL parameter, this equals:
-
-    ```
-    * (value, )
-    ```
+    For VAR_POSITIONAL parameter, this is not allowed.
     '''
     value: Any
 

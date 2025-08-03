@@ -7,6 +7,7 @@
 
 import inspect
 from typing import Annotated
+from pytest import raises
 
 from anyioc import LifeTime, ServiceProvider
 from anyioc.annotations import InjectBy, InjectByGroup, InjectWithValue
@@ -130,7 +131,9 @@ def test_inject_func_by_annotated_injectwithvalue_for_args():
         return args
 
     assert func() == ()
-    assert ServiceProvider().resolve(func) == (1, )
+
+    with raises(TypeError):
+        ServiceProvider().resolve(func)
 
 
 def test_inject_class_by_typed():
