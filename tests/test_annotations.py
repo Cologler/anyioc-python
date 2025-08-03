@@ -7,6 +7,7 @@
 
 import inspect
 from typing import Annotated
+
 from pytest import raises
 
 from anyioc import LifeTime, ServiceProvider
@@ -92,6 +93,34 @@ def test_inject_func_by_annotated_injectby_for_args():
     sp.register_value(key, 3)
 
     assert sp.resolve(func) == (3, 2, 1)
+
+def test_inject_func_by_annotated_injectby_for_args_with_lifetime():
+    key = 'jioerwjherhg'
+
+    def get_transient(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.transient)]):
+        return args
+
+    def get_scoped_1(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]):
+        return args
+
+    def get_scoped_2(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]):
+        return args
+
+    sp = ServiceProvider()
+    sp.register_transient(key, lambda: object())
+    sp.register_transient(key, lambda: object())
+
+    assert all(len(sp.resolve(f)) == 2 for f in [get_transient, get_scoped_1, get_scoped_2]), \
+        'all args are tuple[object, object]'
+
+    assert len(set(x for f in [get_transient, get_transient] for x in sp.resolve(f))) == 4, \
+        'objects are unique on all transient function'
+
+    assert len(set(x for f in [get_scoped_1, get_scoped_2] for x in sp.resolve(f))) == 4, \
+        'objects are unique on different scoped function'
+
+    assert sp.resolve(get_scoped_1) == sp.resolve(get_scoped_1), \
+        'objects are cached on different scoped function'
 
 
 def test_inject_func_by_annotated_injectbygroup():

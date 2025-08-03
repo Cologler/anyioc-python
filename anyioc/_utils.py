@@ -117,11 +117,16 @@ def wrap_signature[R](func: Callable[..., R], *,
                 tp, md = get_type_and_metadatas(param.annotation)
                 if ji := get_injectinfo_from_annotation(md):
                     if isinstance(ji, InjectBy):
-                        if ji.lifetime != LifeTime.transient:
-                            raise ValueError('lifetime is invalid on VAR_POSITIONAL parameter.')
                         if ji.has_default():
                             _logger.warning('default is invalid for VAR_POSITIONAL parameter.')
-                        return ParameterAdapter(GetManyServiceInfo(ji.key), unpack=True)
+                        si = GetManyServiceInfo(ji.key)
+                        if ji.lifetime != LifeTime.transient:
+                            si = LifetimeServiceInfo(service_provider=None, key=None,
+                                service_info=si,
+                                lifetime=ji.lifetime,
+                                scoped_key=ji,
+                            )
+                        return ParameterAdapter(si, unpack=True)
                     elif isinstance(ji, InjectByGroup):
                         return ParameterAdapter(GetGroupServiceInfo(ji.keys), unpack=True)
                     elif isinstance(ji, InjectWithValue):
