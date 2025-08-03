@@ -7,7 +7,7 @@
 
 from contextlib import nullcontext
 from threading import RLock
-from typing import Any, final, override
+from typing import Any, Iterable, final, override
 
 from .._bases import Factory, IServiceInfo, IServiceProvider, LifeTime
 from ..symbols import Symbols
@@ -132,6 +132,8 @@ class LifetimeServiceInfo[T](IServiceInfo[T]):
         '_lock',
         # for singleton
         '_cached_value',
+        # for scoped
+        '_scoped_key',
     )
 
     _NOT_ALLOWED_KEYS = frozenset([
@@ -139,10 +141,11 @@ class LifetimeServiceInfo[T](IServiceInfo[T]):
     ])
 
     def __init__(self, *,
+            lifetime: LifeTime,
             service_provider: IServiceProvider | None,
             key: Any,
             service_info: IServiceInfo[T],
-            lifetime: LifeTime,
+            scoped_key: Any | None = None,
         ):
 
         if key in self._NOT_ALLOWED_KEYS:
@@ -155,8 +158,9 @@ class LifetimeServiceInfo[T](IServiceInfo[T]):
             # the resolved value maybe a None, so we should cache it as a tuple.
             self._cached_value: tuple[T] | None = None
 
-        self._service_info = service_info
         self._lifetime = lifetime
+        self._service_info = service_info
+        self._scoped_key = scoped_key if scoped_key is not None else self
 
         if self._lifetime != LifeTime.transient:
             self._lock = RLock()
@@ -180,18 +184,19 @@ class LifetimeServiceInfo[T](IServiceInfo[T]):
         raise NotImplementedError(f'what is {self._lifetime}?')
 
     def _from_scoped(self, provider: IServiceProvider) -> T:
+        scoped_key = self._scoped_key
         cache = provider[Symbols.cache]
         try:
-            return cache[self]
+            return cache[scoped_key]
         except KeyError:
             pass
         with self._lock:
             try:
-                return cache[self]
+                return cache[scoped_key]
             except KeyError:
                 pass
             service = self._create(provider)
-            cache[self] = service
+            cache[scoped_key] = service
             return service
 
     def _from_singleton(self, provider: IServiceProvider) -> T:
@@ -210,38 +215,53 @@ class LifetimeServiceInfo[T](IServiceInfo[T]):
 
 class GetOrDefaultServiceInfo(IServiceInfo[Any]):
     _UNSET = object()
-    __slots__ = ('key', 'default')
+    __slots__ = ('_key', '_default')
 
     def __init__(self, key: Any, default: Any=_UNSET) -> None:
-        self.key = key
-        self.default = default
+        self._key = key
+        self._default = default
 
     def __repr__(self) -> str:
-        if self.default is self._UNSET:
-            return f'<(ioc) => ioc[{self.key!r}]>'
+        if self._default is self._UNSET:
+            return f'<(ioc) => ioc[{self._key!r}]>'
         else:
-            return f'<(ioc) => ioc.get({self.key!r}, {self.default!r})>'
+            return f'<(ioc) => ioc.get({self._key!r}, {self._default!r})>'
 
     @override
     def get_service(self, provider: IServiceProvider) -> Any:
-        if self.default is self._UNSET:
-            return provider[self.key]
+        if self._default is self._UNSET:
+            return provider[self._key]
         else:
-            return provider.get(self.key, self.default)
+            return provider.get(self._key, self._default)
 
     def has_default(self):
-        return self.default is not self._UNSET
+        return self._default is not self._UNSET
 
 
 class GetManyServiceInfo(IServiceInfo[list[Any]]):
-    __slots__ = ('key',)
+    '''
+    Get many services from single key.
+    '''
+    __slots__ = ('_key',)
 
     def __init__(self, key: Any) -> None:
-        self.key = key
+        self._key = key
 
     def __repr__(self) -> str:
-        return f'<(ioc) => ioc.get_many({self.key!r})>'
+        return f'<(ioc) => ioc.get_many({self._key!r})>'
 
     @override
     def get_service(self, provider: IServiceProvider) -> list[Any]:
-        return provider.get_many(self.key)
+        return provider.get_many(self._key)
+
+
+class GetGroupServiceInfo(IServiceInfo[tuple[Any]]):
+    __slots__ = ('_keys',)
+
+    def __init__(self, keys: Iterable[Any]) -> None:
+        super().__init__()
+        self._keys = tuple(keys)
+
+    @override
+    def get_service(self, provider: IServiceProvider):
+        return tuple(provider[k] for k in self._keys)

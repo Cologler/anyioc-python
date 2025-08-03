@@ -19,6 +19,7 @@ from ._internal import Disposable, LockedMapping
 from ._service_info import (
     BindedServiceInfo,
     GetAttrServiceInfo,
+    GetGroupServiceInfo,
     IServiceInfo,
     ProviderServiceInfo,
     ValueServiceInfo,
@@ -26,7 +27,6 @@ from ._service_info import (
 from ._service_info.extra import CallerFrameServiceInfo, create_lifetime_service_info
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as wrap_signature
-from .annotations import InjectByGroup
 from .err import ServiceNotFoundError
 from .ioc_resolver import ServiceInfoChainResolver
 from .symbols import Symbols, TypedSymbol
@@ -292,7 +292,7 @@ class ServiceProvider(IServiceProvider):
 
         Is equals `register_transient(key, lambda ioc: tuple(ioc[k] for k in keys))`
         '''
-        return self.register_service_info(key, InjectByGroup(*keys))
+        return self.register_service_info(key, GetGroupServiceInfo(keys))
 
     def register_bind(self, new_key, target_key) -> Disposable:
         '''

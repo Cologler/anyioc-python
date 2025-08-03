@@ -5,47 +5,32 @@
 # 
 # ----------
 
-from typing import Any, override
+from dataclasses import dataclass, field
+from typing import Any, Iterable
 
-from ._bases import IServiceInfo, IServiceProvider, LifeTime
-from ._service_info import GetOrDefaultServiceInfo, LifetimeServiceInfo, ValueServiceInfo
+from ._bases import LifeTime
+from ._service_info import GetOrDefaultServiceInfo
 
 
-class InjectBy(IServiceInfo[Any]):
-    _UNSET = object()
-    __slots__ = ('key', 'default', '_service_info')
+@dataclass(frozen=True, slots=True)
+class InjectBy:
+    key: Any
+    default: Any = field(default=GetOrDefaultServiceInfo._UNSET)
+    lifetime: LifeTime = field(default=LifeTime.transient, kw_only=True)
 
-    def __init__(self, key: Any, default: Any=_UNSET, *,
-            lifetime: LifeTime = LifeTime.transient,
-        ) -> None:
-
-        if lifetime == LifeTime.singleton:
+    def __post_init__(self):
+        if self.lifetime == LifeTime.singleton:
             # we don't known which IServiceProvider own this.
             raise RuntimeError(
                 'Singleton lifetime for InjectBy is not allowed.'
             )
 
-        if default is self._UNSET:
-            service_info = GetOrDefaultServiceInfo(key)
-        else:
-            service_info = GetOrDefaultServiceInfo(key, default)
-
-        if lifetime != LifeTime.transient:
-            service_info = LifetimeServiceInfo(
-                service_provider=None,
-                key=None,
-                service_info=service_info,
-                lifetime=lifetime,
-            )
-
-        self._service_info = service_info
-
-    @override
-    def get_service(self, provider: IServiceProvider):
-        return self._service_info.get_service(provider)
+    def has_default(self):
+        return self.default is not GetOrDefaultServiceInfo._UNSET
 
 
-class InjectByGroup(IServiceInfo[tuple[Any, ...]]):
+@dataclass(frozen=True, slots=True)
+class InjectByGroup:
     '''
     Inject args as tuple group.
 
@@ -55,21 +40,15 @@ class InjectByGroup(IServiceInfo[tuple[Any, ...]]):
     tuple(provider[k] for k in keys)
     ```
     '''
-    __slots__ = ('_keys',)
-
-    def __init__(self, *keys: Any):
-        self._keys = keys
-
-    @override
-    def get_service(self, provider: IServiceProvider):
-        return tuple(provider[k] for k in self._keys)
+    keys: Iterable[Any]
 
 
-class InjectWithValue[T](ValueServiceInfo[T]):
+@dataclass(frozen=True, slots=True)
+class InjectWithValue:
     '''
     Inject with the fixed value.
     '''
-    __slots__ = ()
+    value: Any
 
 
 __all__ = [

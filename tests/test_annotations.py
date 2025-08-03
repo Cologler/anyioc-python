@@ -92,7 +92,7 @@ def test_inject_func_by_annotated_injectbygroup():
     sv = 'ffw'
     iv = 46656
 
-    def func(x: Annotated[tuple[str, int], InjectByGroup(str, int)]):
+    def func(x: Annotated[tuple[str, int], InjectByGroup([str, int])]):
         return x
 
     sp = ServiceProvider()

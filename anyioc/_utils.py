@@ -16,17 +16,18 @@ from inspect import Parameter
 from logging import getLogger
 from typing import Annotated, Any, Callable, cast, get_args, get_origin
 
-from ._bases import Factory, IServiceInfo, IServiceProvider, SupportsContext
+from ._bases import Factory, IServiceInfo, IServiceProvider, LifeTime, SupportsContext
 from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
 from ._internal import Disposable, ProviderOptions
 from ._service_info import (
+    GetGroupServiceInfo,
     GetManyServiceInfo,
     GetOrDefaultServiceInfo,
     LifetimeServiceInfo,
     ProviderServiceInfo,
     ValueServiceInfo,
 )
-from .annotations import InjectBy
+from .annotations import InjectBy, InjectByGroup, InjectWithValue
 from .err import ServiceNotFoundError
 from .symbols import Symbols
 
@@ -68,8 +69,8 @@ class FollowedInjectBy(GetOrDefaultServiceInfo):
         try:
             return super().get_service(provider)
         except ServiceNotFoundError:
-            if callable(self.key):
-                return wrap_signature(self.key, follow=True)(provider)
+            if callable(self._key):
+                return wrap_signature(self._key, follow=True)(provider)
             raise
 
 class UnpackingServiceInfo[T](IServiceInfo[T]):
@@ -85,6 +86,14 @@ class UnpackingServiceInfo[T](IServiceInfo[T]):
 
     def get_packed_services(self, provider):
         return tuple(self.service_info.get_service(provider))
+
+def get_type_and_metadatas(annotation: Any) -> tuple[Any, tuple[Any, ...]]:
+    assert annotation is not Parameter.empty
+    if get_origin(annotation) is Annotated:
+        args = get_args(annotation)
+        return args[0], args[1:]
+    else:
+        return annotation, ()
 
 def wrap_signature[R](func: Callable[..., R], *,
         follow: bool = False,
@@ -103,13 +112,14 @@ def wrap_signature[R](func: Callable[..., R], *,
     if len(params) > 1:
         params = [p for p in params if p.kind != Parameter.VAR_POSITIONAL]
 
-    def get_serviceinfo_from_annotation(annotation: Any, default: Any) -> IServiceInfo | None:
-        if get_origin(annotation) is Annotated:
-            metadatas = get_args(annotation)[1:]
-            if sis := [x for x in metadatas if isinstance(x, IServiceInfo)]:
-                if len(sis) > 1:
-                    _logger.warning('Too many annotated InjectBy')
-                return sis[0]
+    def get_injectinfo_from_annotation(metadatas: Iterable[Any]):
+        '''
+        Get Inject annotation from parameter annotation.
+        '''
+        if sis := [x for x in metadatas if isinstance(x, (InjectBy, InjectByGroup, InjectWithValue))]:
+            if len(sis) > 1:
+                _logger.warning('Too many annotated InjectBy')
+            return sis[0]
 
     def get_serviceinfo(param: Parameter) -> IServiceInfo | None:
         if param.kind == Parameter.VAR_KEYWORD:
@@ -117,31 +127,43 @@ def wrap_signature[R](func: Callable[..., R], *,
 
         elif param.kind == Parameter.VAR_POSITIONAL:
             if param.annotation is not Parameter.empty:
-                if si := get_serviceinfo_from_annotation(param.annotation, param.default):
-                    if isinstance(si, InjectBy):
-                        if isinstance(si._service_info, LifetimeServiceInfo):
+                tp, md = get_type_and_metadatas(param.annotation)
+                if ji := get_injectinfo_from_annotation(md):
+                    if isinstance(ji, InjectBy):
+                        if ji.lifetime != LifeTime.transient:
                             raise RuntimeError('lifetime is invalid for VAR_POSITIONAL parameter.')
-                        else:
-                            god = si._service_info
-                        assert isinstance(god, GetOrDefaultServiceInfo)
-                        if god.has_default():
+                        if ji.has_default():
                             _logger.warning('default is invalid for VAR_POSITIONAL parameter.')
-                        return UnpackingServiceInfo(GetManyServiceInfo(god.key))
-                    return si
+                        return UnpackingServiceInfo(GetManyServiceInfo(ji.key))
+                    raise NotImplementedError
 
                 # create ServiceInfo for type annotation
-                return UnpackingServiceInfo(GetManyServiceInfo(param.annotation))
+                return UnpackingServiceInfo(GetManyServiceInfo(tp))
 
         elif param.annotation is not Parameter.empty:
-            if si := get_serviceinfo_from_annotation(param.annotation, param.default):
-                return si
+            tp, md = get_type_and_metadatas(param.annotation)
+            if ji := get_injectinfo_from_annotation(md):
+                if isinstance(ji, InjectBy):
+                    si = GetOrDefaultServiceInfo(ji.key, ji.default)
+                    if ji.lifetime != LifeTime.transient:
+                        si = LifetimeServiceInfo(service_provider=None, key=None,
+                            service_info=si,
+                            lifetime=ji.lifetime,
+                            scoped_key=ji,
+                        )
+                    return si
+                elif isinstance(ji, InjectWithValue):
+                    return ValueServiceInfo(ji.value)
+                elif isinstance(ji, InjectByGroup):
+                    return GetGroupServiceInfo(ji.keys)
+                raise NotImplementedError
 
             # create ServiceInfo for type annotation
             ServiceInfoType = FollowedInjectBy if follow else GetOrDefaultServiceInfo
             if param.default is Parameter.empty:
-                return ServiceInfoType(param.annotation)
+                return ServiceInfoType(tp)
             else:
-                return ServiceInfoType(param.annotation, param.default)
+                return ServiceInfoType(tp, param.default)
 
         elif param.name in SERVICEPROVIDER_NAMING_CONVENTION:
             return GetOrDefaultServiceInfo(Symbols.provider)
