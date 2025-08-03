@@ -14,6 +14,22 @@ from ._service_info import GetOrDefaultServiceInfo
 
 @dataclass(frozen=True, slots=True)
 class InjectBy:
+    '''
+    Inject args by key.
+
+    Equals:
+
+    ```
+    provider.get(key, default) if has_default() else provider[key]
+    ```
+
+    For VAR_POSITIONAL parameter, this equals:
+
+    ```
+    * provider.get_many(key)
+    ```
+    '''
+
     key: Any
     default: Any = field(default=GetOrDefaultServiceInfo._UNSET)
     lifetime: LifeTime = field(default=LifeTime.transient, kw_only=True)
@@ -39,6 +55,12 @@ class InjectByGroup:
     ```
     tuple(provider[k] for k in keys)
     ```
+
+    For VAR_POSITIONAL parameter, this equals:
+
+    ```
+    * tuple(provider[k] for k in keys)
+    ```
     '''
     keys: Iterable[Any]
 
@@ -47,6 +69,18 @@ class InjectByGroup:
 class InjectWithValue:
     '''
     Inject with the fixed value.
+
+    Equals:
+
+    ```
+    value
+    ```
+
+    For VAR_POSITIONAL parameter, this equals:
+
+    ```
+    * (value, )
+    ```
     '''
     value: Any
 

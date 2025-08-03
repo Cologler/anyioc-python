@@ -108,7 +108,7 @@ def wrap_signature[R](func: Callable[..., R], *,
                 _logger.warning('Too many annotated InjectBy')
             return sis[0]
 
-    def get_info(param: Parameter) -> IServiceInfo | ParameterAdapter | None:
+    def get_adapter(param: Parameter) -> IServiceInfo | ParameterAdapter | None:
         if param.kind == Parameter.VAR_KEYWORD:
             return
 
@@ -122,7 +122,12 @@ def wrap_signature[R](func: Callable[..., R], *,
                         if ji.has_default():
                             _logger.warning('default is invalid for VAR_POSITIONAL parameter.')
                         return ParameterAdapter(GetManyServiceInfo(ji.key), unpack=True)
-                    raise NotImplementedError
+                    elif isinstance(ji, InjectByGroup):
+                        return ParameterAdapter(GetGroupServiceInfo(ji.keys), unpack=True)
+                    elif isinstance(ji, InjectWithValue):
+                        return ValueServiceInfo(ji.value)
+                    else:
+                        raise NotImplementedError
 
                 # create ServiceInfo for type annotation
                 return ParameterAdapter(GetManyServiceInfo(tp), unpack=True)
@@ -143,7 +148,8 @@ def wrap_signature[R](func: Callable[..., R], *,
                     return ValueServiceInfo(ji.value)
                 elif isinstance(ji, InjectByGroup):
                     return GetGroupServiceInfo(ji.keys)
-                raise NotImplementedError
+                else:
+                    raise NotImplementedError
 
             # create ServiceInfo for type annotation
             ServiceInfoType = FollowedInjectBy if follow else GetOrDefaultServiceInfo
@@ -155,39 +161,40 @@ def wrap_signature[R](func: Callable[..., R], *,
         elif param.name in SERVICEPROVIDER_NAMING_CONVENTION:
             return GetOrDefaultServiceInfo(Symbols.provider)
 
-    params_with_extra = [(p, get_info(p)) for p in params]
+    param_adapters = [get_adapter(p) for p in params]
 
     if not params:
         return create_adapter(func)
 
-    elif all(p[1] for p in params_with_extra):
+    elif all(param_adapters):
         # all params are annotated with InjectBy(key=...)
+        param_adapters = cast(list[IServiceInfo | ParameterAdapter], param_adapters)
         return create_adapter(
             func,
             p_params=[
-                cast(IServiceInfo, p[1]) for p in params_with_extra
-                if p[0].kind in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL)
+                pa for p, pa in zip(params, param_adapters, strict=True)
+                if p.kind in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL)
             ],
             k_params={
-                p[0].name: cast(IServiceInfo, p[1]) for p in params_with_extra
-                if p[0].kind not in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL)
+                p.name: pa for p, pa in zip(params, param_adapters, strict=True)
+                if p.kind not in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL)
             },
             override_kwargs=override_kwargs,
         )
 
     elif len(params) == 1:
-        arg_0, = params
+        param_0, = params
 
-        if arg_0.kind in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL):
+        if param_0.kind in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL):
             # does not need to wrap.
             return create_adapter(func, p_params=(ProviderServiceInfo.get_singleton_instance(),),
                 override_kwargs=override_kwargs)
 
-        elif arg_0.kind in (Parameter.KEYWORD_ONLY, Parameter.POSITIONAL_OR_KEYWORD):
-            return create_adapter(func, k_params={arg_0.name: ProviderServiceInfo.get_singleton_instance()},
+        elif param_0.kind in (Parameter.KEYWORD_ONLY, Parameter.POSITIONAL_OR_KEYWORD):
+            return create_adapter(func, k_params={param_0.name: ProviderServiceInfo.get_singleton_instance()},
                 override_kwargs=override_kwargs)
 
-        elif arg_0.kind == Parameter.VAR_KEYWORD:
+        elif param_0.kind == Parameter.VAR_KEYWORD:
             return create_adapter(func, k_params={'provider': ProviderServiceInfo.get_singleton_instance()},
                 override_kwargs=override_kwargs)
 
@@ -286,8 +293,8 @@ class FactoryAdapter[R](Factory[R]):
 
 def create_adapter[R](
         func: Callable[..., R],
-        p_params: Iterable[tuple[Any] | tuple[Any, Any] | IServiceInfo | ParameterAdapter] = _EMPTY_P_PARAMS,
-        k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | IServiceInfo | ParameterAdapter] = _EMPTY_K_PARAMS,
+        p_params: Iterable[IServiceInfo | ParameterAdapter] = _EMPTY_P_PARAMS,
+        k_params: Mapping[str, IServiceInfo | ParameterAdapter] = _EMPTY_K_PARAMS,
         override_kwargs: Mapping[str, Any] | None = None,
     ) -> Factory[R]:
 

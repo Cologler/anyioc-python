@@ -100,14 +100,33 @@ def test_inject_func_by_annotated_injectbygroup():
     sp.register_value(int, iv)
     assert sp.resolve(func) == (sv, iv)
 
+def test_inject_func_by_annotated_injectbygroup_for_args():
+    sv = 'ffw'
+    iv = 46656
+
+    def func(*args: Annotated[str| int, InjectByGroup([str, int])]):
+        return args
+
+    sp = ServiceProvider()
+    sp.register_value(str, sv)
+    sp.register_value(int, iv)
+    assert sp.resolve(func) == (sv, iv)
+
+
 def test_inject_func_by_annotated_injectwithvalue():
     def func(inject_from_ioc: Annotated[int, InjectWithValue(1)] = 0):
         return inject_from_ioc
 
-    sp = ServiceProvider()
-    sp.register_value(int, 2)
     assert func() == 0
-    assert sp.resolve(func) == 1
+    assert ServiceProvider().resolve(func) == 1
+
+def test_inject_func_by_annotated_injectwithvalue_for_args():
+    def func(*args: Annotated[int, InjectWithValue(1)]):
+        return args
+
+    assert func() == ()
+    assert ServiceProvider().resolve(func) == (1, )
+
 
 def test_inject_class_by_typed():
     val = 444
