@@ -12,7 +12,7 @@ from ._bases import LifeTime
 from ._service_info import GetOrDefaultServiceInfo
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, eq=False)
 class InjectBy:
     '''
     Inject args by key.
@@ -45,7 +45,7 @@ class InjectBy:
         return self.default is not GetOrDefaultServiceInfo._UNSET
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, eq=False)
 class InjectByGroup:
     '''
     Inject args as tuple group.
@@ -65,7 +65,7 @@ class InjectByGroup:
     keys: Iterable[Any]
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(frozen=True, slots=True, eq=False)
 class InjectWithValue:
     '''
     Inject with the fixed value.

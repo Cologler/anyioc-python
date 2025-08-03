@@ -49,19 +49,24 @@ def test_inject_func_by_annotated_injectby():
     assert sp.resolve(func) == val
 
 def test_inject_func_by_annotated_injectby_with_lifetime():
-    key = 'the_key'
+    key = 'djiaoshfoia'
 
     def get_transient(x: Annotated[object, InjectBy(key, lifetime=LifeTime.transient)]):
         return x
 
-    def get_scoped(x: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]):
+    def get_scoped_1(x: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]):
+        return x
+
+    def get_scoped_2(x: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]):
         return x
 
     sp = ServiceProvider()
     sp.register_transient(key, lambda: object())
 
-    assert sp.resolve(get_transient) is not sp.resolve(get_transient)
-    assert sp.resolve(get_scoped) is sp.resolve(get_scoped)
+    assert sp.resolve(get_transient) is not sp.resolve(get_transient), 'transient should never cached'
+    assert sp.resolve(get_scoped_1) is sp.resolve(get_scoped_1), 'scoped should cached'
+    assert sp.resolve(get_scoped_2) is sp.resolve(get_scoped_2), 'scoped should cached'
+    assert sp.resolve(get_scoped_1) is not sp.resolve(get_scoped_2), 'should not cache cross function'
 
 def test_inject_func_by_annotated_injectby_with_default():
     key = 'the_int_key'
