@@ -73,19 +73,6 @@ class FollowedInjectBy(GetOrDefaultServiceInfo):
                 return wrap_signature(self._key, follow=True)(provider)
             raise
 
-class UnpackingServiceInfo[T](IServiceInfo[T]):
-    __slots__ = (
-        'service_info',
-    )
-
-    def __init__(self, service_info: IServiceInfo[Iterable[T]]):
-        self.service_info = service_info
-
-    def get_service(self, provider):
-        raise NotImplementedError
-
-    def get_packed_services(self, provider):
-        return tuple(self.service_info.get_service(provider))
 
 def get_type_and_metadatas(annotation: Any) -> tuple[Any, tuple[Any, ...]]:
     assert annotation is not Parameter.empty
@@ -121,7 +108,7 @@ def wrap_signature[R](func: Callable[..., R], *,
                 _logger.warning('Too many annotated InjectBy')
             return sis[0]
 
-    def get_serviceinfo(param: Parameter) -> IServiceInfo | None:
+    def get_info(param: Parameter) -> IServiceInfo | ParameterAdapter | None:
         if param.kind == Parameter.VAR_KEYWORD:
             return
 
@@ -134,11 +121,11 @@ def wrap_signature[R](func: Callable[..., R], *,
                             raise RuntimeError('lifetime is invalid for VAR_POSITIONAL parameter.')
                         if ji.has_default():
                             _logger.warning('default is invalid for VAR_POSITIONAL parameter.')
-                        return UnpackingServiceInfo(GetManyServiceInfo(ji.key))
+                        return ParameterAdapter(GetManyServiceInfo(ji.key), unpack=True)
                     raise NotImplementedError
 
                 # create ServiceInfo for type annotation
-                return UnpackingServiceInfo(GetManyServiceInfo(tp))
+                return ParameterAdapter(GetManyServiceInfo(tp), unpack=True)
 
         elif param.annotation is not Parameter.empty:
             tp, md = get_type_and_metadatas(param.annotation)
@@ -168,21 +155,21 @@ def wrap_signature[R](func: Callable[..., R], *,
         elif param.name in SERVICEPROVIDER_NAMING_CONVENTION:
             return GetOrDefaultServiceInfo(Symbols.provider)
 
-    params_with_serviceinfo = [(p, get_serviceinfo(p)) for p in params]
+    params_with_extra = [(p, get_info(p)) for p in params]
 
     if not params:
         return create_adapter(func)
 
-    elif all(p[1] for p in params_with_serviceinfo):
+    elif all(p[1] for p in params_with_extra):
         # all params are annotated with InjectBy(key=...)
         return create_adapter(
             func,
             p_params=[
-                cast(IServiceInfo, p[1]) for p in params_with_serviceinfo
+                cast(IServiceInfo, p[1]) for p in params_with_extra
                 if p[0].kind in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL)
             ],
             k_params={
-                p[0].name: cast(IServiceInfo, p[1]) for p in params_with_serviceinfo
+                p[0].name: cast(IServiceInfo, p[1]) for p in params_with_extra
                 if p[0].kind not in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL)
             },
             override_kwargs=override_kwargs,
@@ -211,11 +198,32 @@ def wrap_signature[R](func: Callable[..., R], *,
         raise TypeError('factory has too many parameters.')
 
 
-_EMPTY_P_PARAMS: tuple[IServiceInfo, ...] = ()
-_EMPTY_K_PARAMS: Mapping[str, IServiceInfo] = {}
+class ParameterAdapter:
+    __slots__ = (
+        '_service_info',
+        '_unpack',
+    )
+
+    def __init__(self, service_info: IServiceInfo, *, unpack: bool = False) -> None:
+        self._service_info = service_info
+        self._unpack = unpack
+
+    def append_args(self, ioc, args: list[Any], /):
+        val = self._service_info.get_service(ioc)
+        if self._unpack:
+            args.extend(val)
+        else:
+            args.append(val)
+
+    def append_kwargs(self, ioc, name: str, kwargs: dict[str, Any], /):
+        kwargs[name] = self._service_info.get_service(ioc)
+
+
+_EMPTY_P_PARAMS: tuple[ParameterAdapter, ...] = ()
+_EMPTY_K_PARAMS: Mapping[str, ParameterAdapter] = {}
 _EMPTY_K_ARGS: Mapping[str, Any] = {}
 
-class Adapter[R](Factory[R]):
+class FactoryAdapter[R](Factory[R]):
     __slots__ = (
         'func',
         'p_params',
@@ -224,19 +232,30 @@ class Adapter[R](Factory[R]):
     )
 
     def __init__(self, func: Callable[..., R],
-            p_params: Iterable[IServiceInfo],
-            k_params: Mapping[str, IServiceInfo]
+            p_params: Iterable[ParameterAdapter],
+            k_params: Mapping[str, ParameterAdapter]
         ) -> None:
         self.func = func
         self.p_params = p_params
         self.k_params = k_params
-        self.origin_func = func.func if isinstance(func, Adapter) else func
+        self.origin_func = func.func if isinstance(func, FactoryAdapter) else func
 
     def __call__(self, ioc, /) -> Any:
-        return self.func(
-            *(v for si in self.p_params for v in si.get_packed_services(ioc)),
-            **{k: v.get_service(ioc) for k, v in self.k_params.items()}
-        )
+        if self.p_params:
+            args = []
+            for param in self.p_params:
+                param.append_args(ioc, args)
+        else:
+            args = ()
+
+        if self.k_params:
+            kwargs = {}
+            for name, param in self.k_params.items():
+                param.append_kwargs(ioc, name, kwargs)
+        else:
+            kwargs = _EMPTY_K_ARGS
+
+        return self.func(*args, **kwargs)
 
     def __str__(self) -> str:
         out = io.StringIO()
@@ -267,30 +286,32 @@ class Adapter[R](Factory[R]):
 
 def create_adapter[R](
         func: Callable[..., R],
-        p_params: Iterable[tuple[Any] | tuple[Any, Any] | IServiceInfo] = _EMPTY_P_PARAMS,
-        k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | IServiceInfo] = _EMPTY_K_PARAMS,
+        p_params: Iterable[tuple[Any] | tuple[Any, Any] | IServiceInfo | ParameterAdapter] = _EMPTY_P_PARAMS,
+        k_params: Mapping[str, tuple[Any] | tuple[Any, Any] | IServiceInfo | ParameterAdapter] = _EMPTY_K_PARAMS,
         override_kwargs: Mapping[str, Any] | None = None,
     ) -> Factory[R]:
 
-    def to_serviceinfo(arg: tuple[Any] | tuple[Any, Any] | IServiceInfo) -> IServiceInfo:
-        if isinstance(arg, tuple):
+    def to_parameter_adapter(arg: tuple[Any] | tuple[Any, Any] | IServiceInfo | ParameterAdapter) -> ParameterAdapter:
+        if isinstance(arg, ParameterAdapter):
+            return arg
+        elif isinstance(arg, IServiceInfo):
+            return ParameterAdapter(arg)
+        elif isinstance(arg, tuple):
             if len(arg) not in (1, 2):
                 raise ValueError('tuple should contains 1 or 2 elements')
-            return GetOrDefaultServiceInfo(*arg)
-        elif isinstance(arg, IServiceInfo):
-            return arg
+            return ParameterAdapter(GetOrDefaultServiceInfo(*arg))
         raise TypeError(f'excepted tuple or IServiceInfo, got {type(arg)}')
 
     if override_kwargs is None:
         override_kwargs = _EMPTY_K_ARGS
 
-    p_params_si = [to_serviceinfo(v) for v in p_params] if p_params else _EMPTY_P_PARAMS
+    p_params_si = [to_parameter_adapter(v) for v in p_params] if p_params else _EMPTY_P_PARAMS
     k_params_si = {
-        k: ValueServiceInfo(override_kwargs[k]) if k in override_kwargs else to_serviceinfo(v)
+        k: ParameterAdapter(ValueServiceInfo(override_kwargs[k])) if k in override_kwargs else to_parameter_adapter(v)
         for k, v in k_params.items()
     } if k_params else _EMPTY_K_PARAMS
 
-    return Adapter(func, p_params_si, k_params_si)
+    return FactoryAdapter(func, p_params_si, k_params_si)
 
 
 def create_service[T](
