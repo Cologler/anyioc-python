@@ -92,6 +92,9 @@ def wrap_signature[R](func: Callable[..., R], *,
     unlike the `inject*` series of utils, this is used for implicit convert.
     '''
 
+    if override_kwargs is None:
+        override_kwargs = _EMPTY_K_ARGS
+
     sign = inspect.signature(func)
     params = list(sign.parameters.values())
     if len(params) > 1:
@@ -108,73 +111,83 @@ def wrap_signature[R](func: Callable[..., R], *,
                 _logger.warning('Too many annotated InjectBy')
             return sis[0]
 
-    def get_adapter(param: Parameter) -> IServiceInfo | ParameterAdapter | None:
+    def get_adapter(param: Parameter) -> ParameterAdapter | None:
         if param.kind == Parameter.VAR_KEYWORD:
             return
 
-        elif param.kind == Parameter.VAR_POSITIONAL:
-            if param.annotation is not Parameter.empty:
+        if param.kind in (Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY):
+            try:
+                return ParameterAdapter(ValueServiceInfo(override_kwargs[param.name]))
+            except KeyError:
+                pass
+
+        if param.annotation is not Parameter.empty:
+            if param.kind == Parameter.VAR_POSITIONAL:
                 tp, md = get_type_and_metadatas(param.annotation)
-                if ji := get_injectinfo_from_annotation(md):
-                    if isinstance(ji, InjectBy):
-                        if ji.has_default():
+                match get_injectinfo_from_annotation(md):
+                    case None:
+                        # create ServiceInfo for type annotation
+                        return ParameterAdapter(GetManyServiceInfo(tp), unpack=True)
+                    case InjectBy(key, _, lifetime=lifetime) as jb:
+                        if jb.has_default():
                             _logger.warning('default is invalid for VAR_POSITIONAL parameter.')
-                        si = GetManyServiceInfo(ji.key)
-                        if ji.lifetime != LifeTime.transient:
+                        si = GetManyServiceInfo(key)
+                        if lifetime != LifeTime.transient:
                             si = LifetimeServiceInfo(service_provider=None, key=None,
                                 service_info=si,
-                                lifetime=ji.lifetime,
-                                scoped_key=ji,
+                                lifetime=lifetime,
+                                scoped_key=jb,
                             )
                         return ParameterAdapter(si, unpack=True)
-                    elif isinstance(ji, InjectByGroup):
-                        return ParameterAdapter(GetGroupServiceInfo(ji.keys), unpack=True)
-                    elif isinstance(ji, InjectWithValue):
+                    case InjectByGroup(keys):
+                        return ParameterAdapter(GetGroupServiceInfo(keys), unpack=True)
+                    case InjectWithValue():
                         raise TypeError('InjectWithValue is not allowed on VAR_POSITIONAL parameter')
-                    else:
+                    case _:
                         raise NotImplementedError
 
-                # create ServiceInfo for type annotation
-                return ParameterAdapter(GetManyServiceInfo(tp), unpack=True)
-
-        elif param.annotation is not Parameter.empty:
-            tp, md = get_type_and_metadatas(param.annotation)
-            if ji := get_injectinfo_from_annotation(md):
-                if isinstance(ji, InjectBy):
-                    si = GetOrDefaultServiceInfo(ji.key, ji.default)
-                    if ji.lifetime != LifeTime.transient:
-                        si = LifetimeServiceInfo(service_provider=None, key=None,
-                            service_info=si,
-                            lifetime=ji.lifetime,
-                            scoped_key=ji,
-                        )
-                    return si
-                elif isinstance(ji, InjectWithValue):
-                    return ValueServiceInfo(ji.value)
-                elif isinstance(ji, InjectByGroup):
-                    return GetGroupServiceInfo(ji.keys)
-                else:
-                    raise NotImplementedError
-
-            # create ServiceInfo for type annotation
-            ServiceInfoType = FollowedInjectBy if follow else GetOrDefaultServiceInfo
-            if param.default is Parameter.empty:
-                return ServiceInfoType(tp)
             else:
-                return ServiceInfoType(tp, param.default)
+                tp, md = get_type_and_metadatas(param.annotation)
+                match get_injectinfo_from_annotation(md):
+                    case None:
+                        # create ServiceInfo for type annotation
+                        ServiceInfoType = FollowedInjectBy if follow else GetOrDefaultServiceInfo
+                        return ParameterAdapter(
+                            ServiceInfoType(tp) if param.default is Parameter.empty
+                            else ServiceInfoType(tp, param.default)
+                        )
+
+                    case InjectBy(key, default, lifetime=lifetime) as jb:
+                        si = GetOrDefaultServiceInfo(key, default)
+                        if lifetime != LifeTime.transient:
+                            si = LifetimeServiceInfo(service_provider=None, key=None,
+                                service_info=si,
+                                lifetime=lifetime,
+                                scoped_key=jb,
+                            )
+                        return ParameterAdapter(si)
+
+                    case InjectWithValue(value):
+                        return ParameterAdapter(ValueServiceInfo(value))
+
+                    case InjectByGroup(keys):
+                        return ParameterAdapter(GetGroupServiceInfo(keys))
+
+                    case _:
+                        raise NotImplementedError
 
         elif param.name in SERVICEPROVIDER_NAMING_CONVENTION:
-            return GetOrDefaultServiceInfo(Symbols.provider)
+            return _GET_PROVIDER_PARAM_ADAPTER
 
     param_adapters = [get_adapter(p) for p in params]
 
     if not params:
-        return create_adapter(func)
+        return FactoryAdapter(func)
 
     elif all(param_adapters):
         # all params are annotated with InjectBy(key=...)
-        param_adapters = cast(list[IServiceInfo | ParameterAdapter], param_adapters)
-        return create_adapter(
+        param_adapters = cast(list[ParameterAdapter], param_adapters)
+        return FactoryAdapter(
             func,
             p_params=[
                 pa for p, pa in zip(params, param_adapters, strict=True)
@@ -184,7 +197,6 @@ def wrap_signature[R](func: Callable[..., R], *,
                 p.name: pa for p, pa in zip(params, param_adapters, strict=True)
                 if p.kind not in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL)
             },
-            override_kwargs=override_kwargs,
         )
 
     elif len(params) == 1:
@@ -192,16 +204,15 @@ def wrap_signature[R](func: Callable[..., R], *,
 
         if param_0.kind in (Parameter.POSITIONAL_ONLY, Parameter.VAR_POSITIONAL):
             # does not need to wrap.
-            return create_adapter(func, p_params=(ProviderServiceInfo.get_singleton_instance(),),
-                override_kwargs=override_kwargs)
+            return FactoryAdapter(func, p_params=(_GET_PROVIDER_PARAM_ADAPTER,))
 
-        elif param_0.kind in (Parameter.KEYWORD_ONLY, Parameter.POSITIONAL_OR_KEYWORD):
-            return create_adapter(func, k_params={param_0.name: ProviderServiceInfo.get_singleton_instance()},
-                override_kwargs=override_kwargs)
-
-        elif param_0.kind == Parameter.VAR_KEYWORD:
-            return create_adapter(func, k_params={'provider': ProviderServiceInfo.get_singleton_instance()},
-                override_kwargs=override_kwargs)
+        elif param_0.kind in (Parameter.KEYWORD_ONLY, Parameter.POSITIONAL_OR_KEYWORD, Parameter.VAR_KEYWORD):
+            param_name = 'provider' if param_0.kind == Parameter.VAR_KEYWORD else param_0.name
+            try:
+                adapter = ParameterAdapter(ValueServiceInfo(override_kwargs[param_name]))
+            except KeyError:
+                adapter = _GET_PROVIDER_PARAM_ADAPTER
+            return FactoryAdapter(func, k_params={param_name: adapter})
 
         else:
             raise ValueError(f'unsupported factory signature: {sign}')
@@ -230,6 +241,7 @@ class ParameterAdapter:
     def append_kwargs(self, ioc, name: str, kwargs: dict[str, Any], /):
         kwargs[name] = self._service_info.get_service(ioc)
 
+_GET_PROVIDER_PARAM_ADAPTER = ParameterAdapter(ProviderServiceInfo.get_singleton_instance())
 
 _EMPTY_P_PARAMS: tuple[ParameterAdapter, ...] = ()
 _EMPTY_K_PARAMS: Mapping[str, ParameterAdapter] = {}
@@ -244,8 +256,8 @@ class FactoryAdapter[R](Factory[R]):
     )
 
     def __init__(self, func: Callable[..., R],
-            p_params: Iterable[ParameterAdapter],
-            k_params: Mapping[str, ParameterAdapter]
+            p_params: Iterable[ParameterAdapter] = _EMPTY_P_PARAMS,
+            k_params: Mapping[str, ParameterAdapter] = _EMPTY_K_PARAMS,
         ) -> None:
         self.func = func
         self.p_params = p_params
@@ -294,36 +306,6 @@ class FactoryAdapter[R](Factory[R]):
 
         level -= 1
         write(')')
-
-
-def create_adapter[R](
-        func: Callable[..., R],
-        p_params: Iterable[IServiceInfo | ParameterAdapter] = _EMPTY_P_PARAMS,
-        k_params: Mapping[str, IServiceInfo | ParameterAdapter] = _EMPTY_K_PARAMS,
-        override_kwargs: Mapping[str, Any] | None = None,
-    ) -> Factory[R]:
-
-    def to_parameter_adapter(arg: tuple[Any] | tuple[Any, Any] | IServiceInfo | ParameterAdapter) -> ParameterAdapter:
-        if isinstance(arg, ParameterAdapter):
-            return arg
-        elif isinstance(arg, IServiceInfo):
-            return ParameterAdapter(arg)
-        elif isinstance(arg, tuple):
-            if len(arg) not in (1, 2):
-                raise ValueError('tuple should contains 1 or 2 elements')
-            return ParameterAdapter(GetOrDefaultServiceInfo(*arg))
-        raise TypeError(f'excepted tuple or IServiceInfo, got {type(arg)}')
-
-    if override_kwargs is None:
-        override_kwargs = _EMPTY_K_ARGS
-
-    p_params_si = [to_parameter_adapter(v) for v in p_params] if p_params else _EMPTY_P_PARAMS
-    k_params_si = {
-        k: ParameterAdapter(ValueServiceInfo(override_kwargs[k])) if k in override_kwargs else to_parameter_adapter(v)
-        for k, v in k_params.items()
-    } if k_params else _EMPTY_K_PARAMS
-
-    return FactoryAdapter(func, p_params_si, k_params_si)
 
 
 def create_service[T](
