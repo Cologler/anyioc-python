@@ -9,6 +9,7 @@ import pytest
 
 from anyioc._servicesmap import ServicesMap
 
+
 def test_servicesmap_get_many():
     srvmap = ServicesMap()
 

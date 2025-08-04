@@ -10,7 +10,7 @@ from typing import Annotated, Any
 
 from pytest import raises
 
-from anyioc import LifeTime, ServiceProvider, ServiceNotFoundError
+from anyioc import LifeTime, ServiceNotFoundError, ServiceProvider
 from anyioc.annotations import InjectBy, InjectByGroup, InjectFrom, InjectWithValue
 
 

@@ -18,6 +18,16 @@ ruff = "^0.12.7"
 [tool.poetry-dynamic-versioning]
 enable = true
 
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    # default value
+    "E4", "E7", "E9", "F",
+    "I" # isort
+]
+
 [build-system]
 requires = [ "poetry-core>=1.0.0", "poetry-dynamic-versioning" ]
 build-backend = "poetry_dynamic_versioning.backend"

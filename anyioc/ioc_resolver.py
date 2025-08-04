@@ -5,11 +5,12 @@
 #
 # ----------
 
+import sys
 import types
 from contextlib import nullcontext
 from threading import RLock
 from typing import Any, override
-import sys
+
 from ._bases import IServiceInfo, IServiceProvider
 from ._service_info import FactoryServiceInfo, ValueServiceInfo
 from ._utils import wrap_signature
