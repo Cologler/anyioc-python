@@ -10,7 +10,7 @@ from typing import Annotated, Any
 
 from pytest import raises
 
-from anyioc import LifeTime, ServiceProvider
+from anyioc import LifeTime, ServiceProvider, ServiceNotFoundError
 from anyioc.annotations import InjectBy, InjectByGroup, InjectFrom, InjectWithValue
 
 
@@ -123,9 +123,8 @@ def test_inject_func_by_annotated_injectby_for_args_with_lifetime():
         'objects are cached on different scoped function'
 
 
-def test_inject_func_by_annotated_():
+def test_inject_func_by_annotated_injectfrom():
     sp = ServiceProvider()
-    sp.register_value(int, 100)
 
     def func_callee(val: int):
         return val
@@ -133,6 +132,27 @@ def test_inject_func_by_annotated_():
     def func_caller(val_from_callee: Annotated[Any, InjectFrom(func_callee)]):
         return val_from_callee
 
+    with raises(ServiceNotFoundError) as se:
+        sp.resolve(func_caller)
+    assert se.value.resolve_chain == (int, )
+
+    sp.register_value(int, 100)
+    assert sp.resolve(func_caller) == 100
+
+def test_inject_func_by_annotated_injectfrom_with_default():
+    sp = ServiceProvider()
+
+    def func_callee(val: int):
+        return val
+
+    def func_caller(val_from_callee: Annotated[Any, InjectFrom(func_callee)] = 200):
+        return val_from_callee
+
+    with raises(ServiceNotFoundError) as se:
+        sp.resolve(func_caller)
+    assert se.value.resolve_chain == (int, )
+
+    sp.register_value(int, 100)
     assert sp.resolve(func_caller) == 100
 
 
