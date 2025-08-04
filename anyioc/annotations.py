@@ -6,7 +6,7 @@
 # ----------
 
 from dataclasses import dataclass, field
-from typing import Any, Iterable
+from typing import Any, Callable, Iterable
 
 from ._bases import LifeTime
 from ._service_info import GetOrDefaultServiceInfo
@@ -81,8 +81,18 @@ class InjectWithValue:
     value: Any
 
 
+@dataclass(frozen=True, slots=True, eq=False)
+class InjectFrom:
+    '''
+    Inject from a callable.
+    '''
+
+    func: Callable[..., Any]
+
+
 __all__ = [
     'InjectBy',
     'InjectByGroup',
-    'InjectWithValue'
+    'InjectFrom',
+    'InjectWithValue',
 ]

@@ -8,7 +8,6 @@
 
 import atexit
 import inspect
-import io
 import itertools
 import sys
 from collections.abc import Iterable, Mapping
@@ -27,7 +26,7 @@ from ._service_info import (
     ProviderServiceInfo,
     ValueServiceInfo,
 )
-from .annotations import InjectBy, InjectByGroup, InjectWithValue
+from .annotations import InjectBy, InjectByGroup, InjectFrom, InjectWithValue
 from .err import ServiceNotFoundError
 from .symbols import Symbols
 
@@ -106,7 +105,7 @@ def wrap_signature[R](func: Callable[..., R], *,
         '''
         Get Inject annotation from parameter annotation.
         '''
-        if sis := [x for x in metadatas if isinstance(x, (InjectBy, InjectByGroup, InjectWithValue))]:
+        if sis := [x for x in metadatas if isinstance(x, (InjectBy, InjectByGroup, InjectWithValue, InjectFrom))]:
             if len(sis) > 1:
                 _logger.warning('Too many annotated InjectBy')
             return sis[0]
@@ -141,8 +140,8 @@ def wrap_signature[R](func: Callable[..., R], *,
                         return ParameterAdapter(si, unpack=True)
                     case InjectByGroup(keys):
                         return ParameterAdapter(GetGroupServiceInfo(keys), unpack=True)
-                    case InjectWithValue():
-                        raise TypeError('InjectWithValue is not allowed on VAR_POSITIONAL parameter')
+                    case InjectWithValue() | InjectFrom() as rj:
+                        raise TypeError(f'{type(rj)} is not allowed on VAR_POSITIONAL parameter')
                     case _:
                         raise NotImplementedError
 
@@ -172,6 +171,10 @@ def wrap_signature[R](func: Callable[..., R], *,
 
                     case InjectByGroup(keys):
                         return ParameterAdapter(GetGroupServiceInfo(keys))
+
+                    case InjectFrom(func=func):
+                        from ._service_info.extra import TransientServiceInfo
+                        return ParameterAdapter(TransientServiceInfo(func, service_provider=None, key=None))
 
                     case _:
                         raise NotImplementedError
@@ -281,31 +284,8 @@ class FactoryAdapter[R](Factory[R]):
 
         return self.func(*args, **kwargs)
 
-    def __str__(self) -> str:
-        out = io.StringIO()
-        self.write_str(out)
-        return out.getvalue()
-
-    def write_str(self, out: io.StringIO,
-            *, init_indent: str = '',
-            level_indent: str = '  '):
-
-        level = 0
-        def write(s: str):
-            out.write(init_indent)
-            out.write(level_indent * level + s)
-
-        write(f'{self.func}(\n')
-        level += 1
-
-        for i, s in enumerate(self.p_params):
-            write(f'args.{i} = {s},\n')
-
-        for k, s in self.k_params.items():
-            write(f'{k} = {s},\n')
-
-        level -= 1
-        write(')')
+    def __repr__(self) -> str:
+        return f'<Adapter of {self.origin_func!r} at {hex(id(self))}>'
 
 
 def create_service[T](

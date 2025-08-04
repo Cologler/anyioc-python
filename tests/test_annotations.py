@@ -6,12 +6,12 @@
 # ----------
 
 import inspect
-from typing import Annotated
+from typing import Annotated, Any
 
 from pytest import raises
 
 from anyioc import LifeTime, ServiceProvider
-from anyioc.annotations import InjectBy, InjectByGroup, InjectWithValue
+from anyioc.annotations import InjectBy, InjectByGroup, InjectFrom, InjectWithValue
 
 
 def test_inject_class_by_annotated_injectby():
@@ -123,6 +123,19 @@ def test_inject_func_by_annotated_injectby_for_args_with_lifetime():
         'objects are cached on different scoped function'
 
 
+def test_inject_func_by_annotated_():
+    sp = ServiceProvider()
+    sp.register_value(int, 100)
+
+    def func_callee(val: int):
+        return val
+
+    def func_caller(val_from_callee: Annotated[Any, InjectFrom(func_callee)]):
+        return val_from_callee
+
+    assert sp.resolve(func_caller) == 100
+
+
 def test_inject_func_by_annotated_injectbygroup():
     sv = 'ffw'
     iv = 46656
@@ -177,14 +190,14 @@ def test_inject_class_by_typed():
     assert sp.resolve(A).val == val
 
 def test_inject_class_by_typed_with_default():
-    val = 444
-
     class A:
-        def __init__(self, x: int = val) -> None:
+        def __init__(self, x: int = 200) -> None:
             self.val = x
 
     sp = ServiceProvider()
-    assert sp.resolve(A).val == val
+    assert sp.resolve(A).val == 200
+    sp.register_value(int, 300)
+    assert sp.resolve(A).val == 300
 
 def test_inject_types_for_service_provider():
     def get_value(val: ServiceProvider):

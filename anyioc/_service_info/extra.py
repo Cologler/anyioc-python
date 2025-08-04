@@ -25,13 +25,13 @@ class TransientServiceInfo[T](IServiceInfo[T]):
         Symbols.provider_options,
     ])
 
-    def __init__(self, service_provider: IServiceProvider, key: Any, factory: Callable[..., T]):
+    def __init__(self, factory: Callable[..., T], key: Any, service_provider: IServiceProvider | None):
         if key in self._NOT_ALLOWED_KEYS:
             raise ValueError(f'Key {key!r} is not allowed')
 
         self._factory_origin = factory
         self._factory = wrap_signature(factory)
-        self._options = service_provider[Symbols.provider_options]
+        self._options = service_provider[Symbols.provider_options] if service_provider is not None else None
 
     def __repr__(self) -> str:
         return f'<Service from {self._factory_origin!r}>'
