@@ -9,10 +9,10 @@ from collections.abc import Generator, Hashable
 from contextlib import nullcontext
 from logging import getLogger
 from threading import Lock
-from typing import Any, overload
+from typing import Any
 
 from ._internal import Disposable
-from ._primitive_symbol import TypedSymbol, _Symbol
+from ._primitive_symbol import _Symbol
 from ._service_info import IServiceInfo
 
 _NULL_CONTEXT = nullcontext()
@@ -20,13 +20,13 @@ _logger = getLogger(__name__)
 
 _MAP_TYPE = dict[Hashable, list[tuple[_Symbol, IServiceInfo]]]
 
-class ServicesMap:
-    def __init__(self, *maps: _MAP_TYPE, use_lock: bool=True) -> None:
+class ServicesMap[TK: Hashable, TV]:
+    def __init__(self, *maps: dict[TK, list[tuple[_Symbol, TV]]], use_lock: bool=True) -> None:
         self._lock = Lock() if use_lock else _NULL_CONTEXT
         self._frozen_keys = set()
-        self.maps: list[_MAP_TYPE] = list(maps) or [{}]
+        self.maps: list[dict[TK, list[tuple[_Symbol, TV]]]] = list(maps) or [{}]
 
-    def resolve(self, key: Hashable) -> Generator[IServiceInfo[Any], Any, None]:
+    def resolve(self, key: TK) -> Generator[TV, Any, None]:
         '''
         Resolve values with reversed order.
         '''
@@ -34,7 +34,7 @@ class ServicesMap:
             for mapping in self.maps:
                 yield from (v for _, v in reversed(mapping.get(key, ())))
 
-    def add(self, key: Hashable, value: IServiceInfo) -> Disposable:
+    def add(self, key: TK, value: TV) -> Disposable:
 
         with self._lock:
             if key in self._frozen_keys:
@@ -52,34 +52,26 @@ class ServicesMap:
 
         return Disposable(dispose)
 
-    def freeze_key(self, key: Hashable) -> None:
+    def freeze_key(self, key: TK) -> None:
         with self._lock:
             self._frozen_keys.add(key)
 
-    def __setitem__(self, key: Hashable, value: IServiceInfo) -> None:
+    def __setitem__(self, key: TK, value: TV) -> None:
         self.add(key, value)
 
-    @overload
-    def __getitem__[T](self, key: TypedSymbol[T]) -> IServiceInfo[T]: ...
-    @overload
-    def __getitem__(self, key: Hashable) -> IServiceInfo[Any]: ...
-    def __getitem__(self, key: Hashable) -> IServiceInfo[Any]:
+    def __getitem__(self, key: TK) -> TV:
         'get item or raise `KeyError`` if not found'
         for value in self.resolve(key):
             return value
         raise KeyError(key)
 
-    @overload
-    def get[T, TD](self, key: TypedSymbol[T], default: TD=None) -> IServiceInfo[T] | TD: ...
-    @overload
-    def get[TD](self, key: Hashable, default: TD=None) -> IServiceInfo[Any] | TD: ...
-    def get[TD](self, key: Hashable, default: TD=None) -> IServiceInfo[Any] | TD:
+    def get[TD](self, key: TK, default: TD=None) -> TV | TD:
         'get item or `default` if not found'
         for value in self.resolve(key):
             return value
         return default
 
-    def get_many(self, key: Hashable) -> list[IServiceInfo[Any]]:
+    def get_many(self, key: TK) -> list[TV]:
         'get items as list'
         return list(self.resolve(key))
 

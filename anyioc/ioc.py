@@ -41,7 +41,7 @@ class ServiceProvider(IServiceProvider):
     def __init__(self,
             auto_enter: bool=False, *,
             # internal uses:
-            _services: Optional[ServicesMap]=None,
+            _services: Optional[ServicesMap[Hashable, IServiceInfo]]=None,
             _parent: Optional['ServiceProvider']=None,
             _use_lock: bool=True,
         ) -> None:

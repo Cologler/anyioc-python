@@ -10,7 +10,7 @@ import pytest
 from anyioc._servicesmap import ServicesMap
 
 
-def test_servicesmap_get_many():
+def test_servicesmap_get_many() -> None:
     srvmap = ServicesMap()
 
     key = 1
@@ -25,7 +25,7 @@ def test_servicesmap_get_many():
     assert srvmap.get(key) is item3
     assert list(srvmap.get_many(key)) == [item3, item2, item1]
 
-def test_servicesmap_with_context():
+def test_servicesmap_with_context() -> None:
     srvmap = ServicesMap()
 
     key = 1
@@ -36,7 +36,7 @@ def test_servicesmap_with_context():
 
     assert srvmap.get(key) is None
 
-def test_servicesmap_with_context_release_ordered():
+def test_servicesmap_with_context_release_ordered() -> None:
     srvmap = ServicesMap()
 
     key = 1
@@ -52,7 +52,7 @@ def test_servicesmap_with_context_release_ordered():
     pop_last()
     assert list(srvmap.get_many(key)) == [item2]
 
-def test_servicesmap_with_context_release_ordered_reversed():
+def test_servicesmap_with_context_release_ordered_reversed() -> None:
     srvmap = ServicesMap()
 
     key = 1
@@ -68,7 +68,7 @@ def test_servicesmap_with_context_release_ordered_reversed():
     pop_first()
     assert list(srvmap.get_many(key)) == [item2]
 
-def test_servicesmap_with_context_release_multi_times_should_ok():
+def test_servicesmap_with_context_release_multi_times_should_ok() -> None:
     srvmap = ServicesMap()
 
     with srvmap.add(1, object()) as disposable:
@@ -78,7 +78,7 @@ def test_servicesmap_with_context_release_multi_times_should_ok():
     with disposable:
         pass
 
-def test_servicesmap_freeze():
+def test_servicesmap_freeze() -> None:
     srvmap = ServicesMap()
 
     srvmap.add(1, object())
