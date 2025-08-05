@@ -13,6 +13,7 @@ import sys
 from collections.abc import Iterable, Mapping
 from inspect import Parameter
 from logging import getLogger
+from types import MappingProxyType
 from typing import Annotated, Any, Callable, cast, get_args, get_origin
 
 from ._bases import Factory, IServiceInfo, IServiceProvider, LifeTime, SupportsContext
@@ -92,7 +93,7 @@ def wrap_signature[R](func: Callable[..., R], *,
     '''
 
     if override_kwargs is None:
-        override_kwargs = _EMPTY_K_ARGS
+        override_kwargs = _EMPTY_STR_MAPPING
 
     sign = inspect.signature(func)
     params = list(sign.parameters.values())
@@ -124,9 +125,11 @@ def wrap_signature[R](func: Callable[..., R], *,
             if param.kind == Parameter.VAR_POSITIONAL:
                 tp, md = get_type_and_metadatas(param.annotation)
                 match get_injectinfo_from_annotation(md):
+
                     case None:
                         # create ServiceInfo for type annotation
-                        return ParameterAdapter(GetManyServiceInfo(tp), unpack=True)
+                        si = GetManyServiceInfo(tp)
+
                     case InjectBy(key, _, lifetime=lifetime) as jb:
                         if jb.has_default():
                             _logger.warning('default is invalid for VAR_POSITIONAL parameter.')
@@ -137,13 +140,17 @@ def wrap_signature[R](func: Callable[..., R], *,
                                 lifetime=lifetime,
                                 scoped_key=jb,
                             )
-                        return ParameterAdapter(si, unpack=True)
+
                     case InjectByGroup(keys):
-                        return ParameterAdapter(GetGroupServiceInfo(keys), unpack=True)
+                        si = GetGroupServiceInfo(keys)
+
                     case InjectWithValue() | InjectFrom() as rj:
                         raise TypeError(f'{type(rj)} is not allowed on VAR_POSITIONAL parameter')
+
                     case _:
                         raise NotImplementedError
+
+                return ParameterAdapter(si, unpack=True)
 
             else:
                 tp, md = get_type_and_metadatas(param.annotation)
@@ -151,7 +158,7 @@ def wrap_signature[R](func: Callable[..., R], *,
                     case None:
                         # create ServiceInfo for type annotation
                         ServiceInfoType = FollowedInjectBy if follow else GetOrDefaultServiceInfo
-                        return ParameterAdapter(
+                        si = (
                             ServiceInfoType(tp) if param.default is Parameter.empty
                             else ServiceInfoType(tp, param.default)
                         )
@@ -164,20 +171,21 @@ def wrap_signature[R](func: Callable[..., R], *,
                                 lifetime=lifetime,
                                 scoped_key=jb,
                             )
-                        return ParameterAdapter(si)
 
                     case InjectWithValue(value):
-                        return ParameterAdapter(ValueServiceInfo(value))
+                        si = ValueServiceInfo(value)
 
                     case InjectByGroup(keys):
-                        return ParameterAdapter(GetGroupServiceInfo(keys))
+                        si = GetGroupServiceInfo(keys)
 
                     case InjectFrom(func=func):
                         from ._service_info.extra import TransientServiceInfo
-                        return ParameterAdapter(TransientServiceInfo(func, service_provider=None, key=None))
+                        si = TransientServiceInfo(func, service_provider=None, key=None)
 
                     case _:
                         raise NotImplementedError
+
+                return ParameterAdapter(si, unpack=False)
 
         elif param.name in SERVICEPROVIDER_NAMING_CONVENTION:
             return _GET_PROVIDER_PARAM_ADAPTER
@@ -246,9 +254,7 @@ class ParameterAdapter:
 
 _GET_PROVIDER_PARAM_ADAPTER = ParameterAdapter(ProviderServiceInfo.get_singleton_instance())
 
-_EMPTY_P_PARAMS: tuple[ParameterAdapter, ...] = ()
-_EMPTY_K_PARAMS: Mapping[str, ParameterAdapter] = {}
-_EMPTY_K_ARGS: Mapping[str, Any] = {}
+_EMPTY_STR_MAPPING: Mapping[str, Any] = MappingProxyType({})
 
 class FactoryAdapter[R](Factory[R]):
     __slots__ = (
@@ -259,8 +265,8 @@ class FactoryAdapter[R](Factory[R]):
     )
 
     def __init__(self, func: Callable[..., R],
-            p_params: Iterable[ParameterAdapter] = _EMPTY_P_PARAMS,
-            k_params: Mapping[str, ParameterAdapter] = _EMPTY_K_PARAMS,
+            p_params: Iterable[ParameterAdapter] = (),
+            k_params: Mapping[str, ParameterAdapter] = _EMPTY_STR_MAPPING,
         ) -> None:
         self.func = func
         self.p_params = p_params
@@ -280,7 +286,7 @@ class FactoryAdapter[R](Factory[R]):
             for name, param in self.k_params.items():
                 param.append_kwargs(ioc, name, kwargs)
         else:
-            kwargs = _EMPTY_K_ARGS
+            kwargs = _EMPTY_STR_MAPPING
 
         return self.func(*args, **kwargs)
 
