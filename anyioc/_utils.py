@@ -163,6 +163,9 @@ def wrap_signature[R](func: Callable[..., R], *,
                         # create ServiceInfo for type annotation
                         si = GetManyServiceInfo(tp)
 
+                    case InjectBy() as jb if jb.has_name():
+                        raise ValueError('name is invalid for VAR_POSITIONAL parameter.')
+
                     case InjectBy(key, _, lifetime=lifetime) as jb:
                         if jb.has_default():
                             _logger.warning('default is invalid for VAR_POSITIONAL parameter.')
@@ -197,8 +200,12 @@ def wrap_signature[R](func: Callable[..., R], *,
                             else ServiceInfoType(named_type, param.default)
                         )
 
-                    case InjectBy(key, default, lifetime=lifetime) as jb:
-                        si = GetOrDefaultServiceInfo(key, default)
+                    case InjectBy(default=default, lifetime=lifetime) as jb:
+                        if jb.has_key():
+                            si = GetOrDefaultServiceInfo(jb.key, default)
+                        else:
+                            assert jb.has_name()
+                            si = NamedTypeGetOrDefaultServiceInfo(NamedType(cast(str, jb.name), tp), default)
                         if lifetime != LifeTime.transient:
                             si = LifetimeServiceInfo(service_provider=None, key=None,
                                 service_info=si,

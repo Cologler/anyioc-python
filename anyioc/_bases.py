@@ -13,6 +13,7 @@ from enum import Enum
 from typing import Any, Protocol, Self, overload, runtime_checkable
 
 from ._primitive_symbol import TypedSymbol
+from .keys import NamedType
 
 
 class LifeTime(Enum):
@@ -65,6 +66,8 @@ class IServiceProvider:
         ) -> None: ...
 
     @overload
+    def __getitem__[T](self, key: NamedType[T]) -> T: ...
+    @overload
     def __getitem__[T](self, key: TypedSymbol[T]) -> T: ...
     @overload
     def __getitem__(self, key: Hashable) -> object: ...
@@ -76,6 +79,8 @@ class IServiceProvider:
         raise NotImplementedError
 
     @overload
+    def get[T, TD](self, key: NamedType[T], d: TD=None) -> T | TD: ...
+    @overload
     def get[T, TD](self, key: TypedSymbol[T], d: TD=None) -> T | TD: ...
     @overload
     def get(self, key: Hashable, d: object=None) -> object: ...
@@ -86,6 +91,8 @@ class IServiceProvider:
         '''
         raise NotImplementedError
 
+    @overload
+    def get_many[T](self, key: NamedType[T]) -> list[T]: ...
     @overload
     def get_many[T](self, key: TypedSymbol[T]) -> list[T]: ...
     @overload

@@ -12,7 +12,7 @@ from contextlib import ExitStack, nullcontext
 from logging import getLogger
 from threading import RLock
 from types import MappingProxyType
-from typing import Any, Callable, Iterable, Optional, Self, overload, override
+from typing import Any, Callable, Iterable, Optional, Self, Type, overload, override
 
 from ._bases import AllSupportsContext, IServiceProvider, LifeTime
 from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
@@ -136,11 +136,13 @@ class ServiceProvider(IServiceProvider):
         return resolver.get(self, key)
 
     @overload
+    def __getitem__[T](self, key: NamedType[T]) -> T: ...
+    @overload
     def __getitem__[T](self, key: TypedSymbol[T]) -> T: ...
     @overload
     def __getitem__(self, key: Hashable) -> object: ...
     @override
-    def __getitem__(self, key: Hashable) -> object:
+    def __getitem__(self, key: Hashable) -> object: # type: ignore
         _logger.debug('get service by key: %r', key)
         self._root.__ensure_init_hooks_called()
         service_info = self._get_service_info(key)
@@ -150,11 +152,13 @@ class ServiceProvider(IServiceProvider):
             raise ServiceNotFoundError(key, *err.resolve_chain)
 
     @overload
+    def get[T, TD](self, key: NamedType[T], d: TD=None) -> T | TD: ...
+    @overload
     def get[T, TD](self, key: TypedSymbol[T], d: TD=None) -> T | TD: ...
     @overload
     def get(self, key: Hashable, d: object=None) -> object: ...
     @override
-    def get(self, key: Hashable, d: object=None) -> object:
+    def get(self, key: Hashable, d: object=None) -> object: # type: ignore
         '''
         Get a service by key with default value.
         '''
@@ -166,11 +170,13 @@ class ServiceProvider(IServiceProvider):
             raise
 
     @overload
+    def get_many[T](self, key: NamedType[T]) -> list[T]: ...
+    @overload
     def get_many[T](self, key: TypedSymbol[T]) -> list[T]: ...
     @overload
     def get_many(self, key: Hashable) -> list[Any]: ...
     @override
-    def get_many(self, key: Hashable) -> list[Any]:
+    def get_many(self, key: Hashable) -> list[Any]: # type: ignore
         '''
         Get services by key.
 
@@ -246,6 +252,10 @@ class ServiceProvider(IServiceProvider):
 
         return disposable
 
+    @overload
+    def register[T](self, key: NamedType[T], factory: Type[T], lifetime: LifeTime) -> Disposable: ...
+    @overload
+    def register(self, key: Hashable, factory: Callable[..., Any], lifetime: LifeTime) -> Disposable: ...
     def register(self, key: Hashable, factory: Callable[..., Any], lifetime: LifeTime) -> Disposable:
         '''
         register a service factory by key.
@@ -255,6 +265,10 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register_service_info(key, create_lifetime_service_info(self, key, factory, lifetime))
 
+    @overload
+    def register_singleton[T](self, key: NamedType[T], factory: Type[T]) -> Disposable: ...
+    @overload
+    def register_singleton(self, key: Hashable, factory: Callable[..., Any]) -> Disposable: ...
     def register_singleton(self, key: Hashable, factory: Callable[..., Any]) -> Disposable:
         '''
         register a service factory by key.
@@ -264,6 +278,10 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register(key, factory, LifeTime.singleton)
 
+    @overload
+    def register_scoped[T](self, key: NamedType[T], factory: Type[T]) -> Disposable: ...
+    @overload
+    def register_scoped(self, key: Hashable, factory: Callable[..., Any]) -> Disposable: ...
     def register_scoped(self, key: Hashable, factory: Callable[..., Any]) -> Disposable:
         '''
         register a service factory by key.
@@ -273,6 +291,10 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register(key, factory, LifeTime.scoped)
 
+    @overload
+    def register_transient[T](self, key: NamedType[T], factory: Type[T]) -> Disposable: ...
+    @overload
+    def register_transient(self, key: Hashable, factory: Callable[..., Any]) -> Disposable: ...
     def register_transient(self, key: Hashable, factory: Callable[..., Any]) -> Disposable:
         '''
         register a service factory by key.
@@ -282,6 +304,10 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register(key, factory, LifeTime.transient)
 
+    @overload
+    def register_value[T](self, key: NamedType[T], value: T) -> Disposable: ...
+    @overload
+    def register_value(self, key: Hashable, value: object) -> Disposable: ...
     def register_value(self, key: Hashable, value: object) -> Disposable:
         '''
         register a value by key.

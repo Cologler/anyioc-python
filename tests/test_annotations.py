@@ -6,12 +6,13 @@
 # ----------
 
 import inspect
-from typing import Annotated, Any
+from typing import Annotated
 
 from pytest import raises
 
 from anyioc import LifeTime, ServiceNotFoundError, ServiceProvider
 from anyioc.annotations import InjectBy, InjectByGroup, InjectFrom, InjectWithValue
+from anyioc.keys import NamedType
 
 
 def test_inject_class_by_annotated_injectby() -> None:
@@ -42,7 +43,7 @@ def test_inject_func_by_annotated_injectby() -> None:
     key = 'the_int_key'
     val = 444
 
-    def func(x: Annotated[int, InjectBy(key)]):
+    def func(x: Annotated[int, InjectBy(key)]) -> int:
         return x
 
     sp = ServiceProvider()
@@ -50,16 +51,28 @@ def test_inject_func_by_annotated_injectby() -> None:
 
     assert sp.resolve(func) == val
 
+def test_inject_func_by_annotated_injectby_with_name() -> None:
+    def func(x: Annotated[int, InjectBy(name='name2')]) -> int:
+        return x
+
+    sp = ServiceProvider()
+    sp.register_transient(NamedType('name1', int), lambda: 1)
+    sp.register_transient(NamedType('name2', int), lambda: 2)
+    sp.register_transient(NamedType('name3', int), lambda: 3)
+    sp.register_transient(NamedType('name4', int), lambda: 4)
+
+    assert sp.resolve(func) == 2
+
 def test_inject_func_by_annotated_injectby_with_lifetime() -> None:
     key = 'djiaoshfoia'
 
-    def get_transient(x: Annotated[object, InjectBy(key, lifetime=LifeTime.transient)]):
+    def get_transient(x: Annotated[object, InjectBy(key, lifetime=LifeTime.transient)]) -> object:
         return x
 
-    def get_scoped_1(x: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]):
+    def get_scoped_1(x: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]) -> object:
         return x
 
-    def get_scoped_2(x: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]):
+    def get_scoped_2(x: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]) -> object:
         return x
 
     sp = ServiceProvider()
@@ -74,7 +87,7 @@ def test_inject_func_by_annotated_injectby_with_default() -> None:
     key = 'the_int_key'
     val = 444
 
-    def func(x: Annotated[int, InjectBy(key, val)]):
+    def func(x: Annotated[int, InjectBy(key, val)]) -> int:
         return x
 
     sp = ServiceProvider()
@@ -84,7 +97,7 @@ def test_inject_func_by_annotated_injectby_with_default() -> None:
 def test_inject_func_by_annotated_injectby_for_args() -> None:
     key = 'the_int_key'
 
-    def func(*args: Annotated[int, InjectBy(key)]):
+    def func(*args: Annotated[int, InjectBy(key)]) -> tuple[int, ...]:
         return args
 
     sp = ServiceProvider()
@@ -97,13 +110,13 @@ def test_inject_func_by_annotated_injectby_for_args() -> None:
 def test_inject_func_by_annotated_injectby_for_args_with_lifetime() -> None:
     key = 'jioerwjherhg'
 
-    def get_transient(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.transient)]):
+    def get_transient(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.transient)]) -> tuple[object, ...]:
         return args
 
-    def get_scoped_1(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]):
+    def get_scoped_1(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]) -> tuple[object, ...]:
         return args
 
-    def get_scoped_2(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]):
+    def get_scoped_2(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]) -> tuple[object, ...]:
         return args
 
     sp = ServiceProvider()
@@ -126,10 +139,10 @@ def test_inject_func_by_annotated_injectby_for_args_with_lifetime() -> None:
 def test_inject_func_by_annotated_injectfrom() -> None:
     sp = ServiceProvider()
 
-    def func_callee(val: int):
+    def func_callee(val: int) -> int:
         return val
 
-    def func_caller(val_from_callee: Annotated[Any, InjectFrom(func_callee)]):
+    def func_caller(val_from_callee: Annotated[object, InjectFrom(func_callee)]) -> object:
         return val_from_callee
 
     with raises(ServiceNotFoundError) as se:
@@ -142,10 +155,10 @@ def test_inject_func_by_annotated_injectfrom() -> None:
 def test_inject_func_by_annotated_injectfrom_with_default() -> None:
     sp = ServiceProvider()
 
-    def func_callee(val: int):
+    def func_callee(val: int) -> int:
         return val
 
-    def func_caller(val_from_callee: Annotated[Any, InjectFrom(func_callee)] = 200):
+    def func_caller(val_from_callee: Annotated[object, InjectFrom(func_callee)] = 200) -> object:
         return val_from_callee
 
     with raises(ServiceNotFoundError) as se:
@@ -160,7 +173,7 @@ def test_inject_func_by_annotated_injectbygroup() -> None:
     sv = 'ffw'
     iv = 46656
 
-    def func(x: Annotated[tuple[str, int], InjectByGroup([str, int])]):
+    def func(x: Annotated[tuple[str, int], InjectByGroup([str, int])]) -> tuple[str, int]:
         return x
 
     sp = ServiceProvider()
@@ -172,7 +185,7 @@ def test_inject_func_by_annotated_injectbygroup_for_args() -> None:
     sv = 'ffw'
     iv = 46656
 
-    def func(*args: Annotated[str| int, InjectByGroup([str, int])]):
+    def func(*args: Annotated[str | int, InjectByGroup([str, int])]) -> tuple[str | int, ...]:
         return args
 
     sp = ServiceProvider()
@@ -182,14 +195,14 @@ def test_inject_func_by_annotated_injectbygroup_for_args() -> None:
 
 
 def test_inject_func_by_annotated_injectwithvalue() -> None:
-    def func(inject_from_ioc: Annotated[int, InjectWithValue(1)] = 0):
+    def func(inject_from_ioc: Annotated[int, InjectWithValue(1)] = 0) -> int:
         return inject_from_ioc
 
     assert func() == 0
     assert ServiceProvider().resolve(func) == 1
 
 def test_inject_func_by_annotated_injectwithvalue_for_args() -> None:
-    def func(*args: Annotated[int, InjectWithValue(1)]):
+    def func(*args: Annotated[int, InjectWithValue(1)]) -> tuple[int, ...]:
         return args
 
     assert func() == ()
@@ -220,14 +233,14 @@ def test_inject_class_by_typed_with_default() -> None:
     assert sp.resolve(A).val == 300
 
 def test_inject_types_for_service_provider() -> None:
-    def get_value(val: ServiceProvider):
+    def get_value(val: ServiceProvider) -> ServiceProvider:
         return val
 
     sp = ServiceProvider()
     assert sp.resolve(get_value) is sp
 
 def test_inject_types_for_frameinfo() -> None:
-    def get_value(val: inspect.FrameInfo):
+    def get_value(val: inspect.FrameInfo) -> inspect.FrameInfo:
         return val
 
     sp = ServiceProvider()
