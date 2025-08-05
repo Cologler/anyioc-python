@@ -74,3 +74,11 @@ class Disposable:
         if dispose := self.dispose:
             self.dispose = None
             dispose()
+
+    def __add__(self, other: 'Disposable') -> 'Disposable':
+        if isinstance(other, Disposable):
+            def dispose() -> None:
+                self()
+                other()
+            return Disposable(dispose)
+        return NotImplemented

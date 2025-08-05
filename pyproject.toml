@@ -35,7 +35,8 @@ exclude_lines = [
 ]
 
 [tool.poe.tasks]
-test = "python -m pytest --cov=anyioc --cov-report=html"
+test = "python -m pytest"
+test-cov = "python -m pytest --cov=anyioc --cov-report=html"
 
 [build-system]
 requires = [ "poetry-core>=1.0.0", "poetry-dynamic-versioning" ]

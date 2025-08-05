@@ -14,7 +14,7 @@ from anyioc import LifeTime, ServiceNotFoundError, ServiceProvider
 from anyioc.annotations import InjectBy, InjectByGroup, InjectFrom, InjectWithValue
 
 
-def test_inject_class_by_annotated_injectby():
+def test_inject_class_by_annotated_injectby() -> None:
     key = 'the_int_key'
     val = 444
 
@@ -27,7 +27,7 @@ def test_inject_class_by_annotated_injectby():
 
     assert sp.resolve(A).val == val
 
-def test_inject_class_by_annotated_injectby_with_default():
+def test_inject_class_by_annotated_injectby_with_default() -> None:
     key = 'the_int_key'
     val = 444
 
@@ -38,7 +38,7 @@ def test_inject_class_by_annotated_injectby_with_default():
     sp = ServiceProvider()
     assert sp.resolve(A).val == val
 
-def test_inject_func_by_annotated_injectby():
+def test_inject_func_by_annotated_injectby() -> None:
     key = 'the_int_key'
     val = 444
 
@@ -50,7 +50,7 @@ def test_inject_func_by_annotated_injectby():
 
     assert sp.resolve(func) == val
 
-def test_inject_func_by_annotated_injectby_with_lifetime():
+def test_inject_func_by_annotated_injectby_with_lifetime() -> None:
     key = 'djiaoshfoia'
 
     def get_transient(x: Annotated[object, InjectBy(key, lifetime=LifeTime.transient)]):
@@ -70,7 +70,7 @@ def test_inject_func_by_annotated_injectby_with_lifetime():
     assert sp.resolve(get_scoped_2) is sp.resolve(get_scoped_2), 'scoped should cached'
     assert sp.resolve(get_scoped_1) is not sp.resolve(get_scoped_2), 'should not cache cross function'
 
-def test_inject_func_by_annotated_injectby_with_default():
+def test_inject_func_by_annotated_injectby_with_default() -> None:
     key = 'the_int_key'
     val = 444
 
@@ -81,7 +81,7 @@ def test_inject_func_by_annotated_injectby_with_default():
 
     assert sp.resolve(func) == val
 
-def test_inject_func_by_annotated_injectby_for_args():
+def test_inject_func_by_annotated_injectby_for_args() -> None:
     key = 'the_int_key'
 
     def func(*args: Annotated[int, InjectBy(key)]):
@@ -94,7 +94,7 @@ def test_inject_func_by_annotated_injectby_for_args():
 
     assert sp.resolve(func) == (3, 2, 1)
 
-def test_inject_func_by_annotated_injectby_for_args_with_lifetime():
+def test_inject_func_by_annotated_injectby_for_args_with_lifetime() -> None:
     key = 'jioerwjherhg'
 
     def get_transient(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.transient)]):
@@ -123,7 +123,7 @@ def test_inject_func_by_annotated_injectby_for_args_with_lifetime():
         'objects are cached on different scoped function'
 
 
-def test_inject_func_by_annotated_injectfrom():
+def test_inject_func_by_annotated_injectfrom() -> None:
     sp = ServiceProvider()
 
     def func_callee(val: int):
@@ -139,7 +139,7 @@ def test_inject_func_by_annotated_injectfrom():
     sp.register_value(int, 100)
     assert sp.resolve(func_caller) == 100
 
-def test_inject_func_by_annotated_injectfrom_with_default():
+def test_inject_func_by_annotated_injectfrom_with_default() -> None:
     sp = ServiceProvider()
 
     def func_callee(val: int):
@@ -156,7 +156,7 @@ def test_inject_func_by_annotated_injectfrom_with_default():
     assert sp.resolve(func_caller) == 100
 
 
-def test_inject_func_by_annotated_injectbygroup():
+def test_inject_func_by_annotated_injectbygroup() -> None:
     sv = 'ffw'
     iv = 46656
 
@@ -168,7 +168,7 @@ def test_inject_func_by_annotated_injectbygroup():
     sp.register_value(int, iv)
     assert sp.resolve(func) == (sv, iv)
 
-def test_inject_func_by_annotated_injectbygroup_for_args():
+def test_inject_func_by_annotated_injectbygroup_for_args() -> None:
     sv = 'ffw'
     iv = 46656
 
@@ -181,14 +181,14 @@ def test_inject_func_by_annotated_injectbygroup_for_args():
     assert sp.resolve(func) == (sv, iv)
 
 
-def test_inject_func_by_annotated_injectwithvalue():
+def test_inject_func_by_annotated_injectwithvalue() -> None:
     def func(inject_from_ioc: Annotated[int, InjectWithValue(1)] = 0):
         return inject_from_ioc
 
     assert func() == 0
     assert ServiceProvider().resolve(func) == 1
 
-def test_inject_func_by_annotated_injectwithvalue_for_args():
+def test_inject_func_by_annotated_injectwithvalue_for_args() -> None:
     def func(*args: Annotated[int, InjectWithValue(1)]):
         return args
 
@@ -198,7 +198,7 @@ def test_inject_func_by_annotated_injectwithvalue_for_args():
         ServiceProvider().resolve(func)
 
 
-def test_inject_class_by_typed():
+def test_inject_class_by_typed() -> None:
     val = 444
 
     class A:
@@ -209,7 +209,7 @@ def test_inject_class_by_typed():
     sp.register_value(int, val)
     assert sp.resolve(A).val == val
 
-def test_inject_class_by_typed_with_default():
+def test_inject_class_by_typed_with_default() -> None:
     class A:
         def __init__(self, x: int = 200) -> None:
             self.val = x
@@ -219,14 +219,14 @@ def test_inject_class_by_typed_with_default():
     sp.register_value(int, 300)
     assert sp.resolve(A).val == 300
 
-def test_inject_types_for_service_provider():
+def test_inject_types_for_service_provider() -> None:
     def get_value(val: ServiceProvider):
         return val
 
     sp = ServiceProvider()
     assert sp.resolve(get_value) is sp
 
-def test_inject_types_for_frameinfo():
+def test_inject_types_for_frameinfo() -> None:
     def get_value(val: inspect.FrameInfo):
         return val
 

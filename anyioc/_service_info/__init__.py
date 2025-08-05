@@ -229,10 +229,13 @@ class GetOrDefaultServiceInfo[TD](IServiceInfo[object | TD]):
 
     @override
     def get_service(self, provider: IServiceProvider) -> object | TD:
+        return self.get_service_by_key(provider, self._key)
+
+    def get_service_by_key(self, provider: IServiceProvider, key: Hashable) -> object | TD:
         if self.has_default():
-            return provider.get(self._key, self._default)
+            return provider.get(key, self._default)
         else:
-            return provider[self._key]
+            return provider[key]
 
     def has_default(self) -> bool:
         return self._default is not self._UNSET

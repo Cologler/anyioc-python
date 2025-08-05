@@ -30,6 +30,7 @@ from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as wrap_signature
 from .err import ServiceNotFoundError
 from .ioc_resolver import ServiceInfoChainResolver
+from .keys import NamedType, _NamedTypeListKey
 from .symbols import Symbols, TypedSymbol
 
 _NULL_CONTEXT = nullcontext()
@@ -237,7 +238,13 @@ class ServiceProvider(IServiceProvider):
         if not isinstance(service_info, IServiceInfo):
             raise TypeError('service_info must be instance of IServiceInfo.')
         _logger.debug('register %r with key %r', service_info, key)
-        return self._services.add(key, service_info)
+
+        disposable = self._services.add(key, service_info)
+        match key:
+            case NamedType(type=k):
+                disposable += self._services.add(_NamedTypeListKey(k), ValueServiceInfo(key))
+
+        return disposable
 
     def register(self, key: Hashable, factory: Callable[..., Any], lifetime: LifeTime) -> Disposable:
         '''
