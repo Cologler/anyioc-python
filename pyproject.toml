@@ -19,11 +19,13 @@ ruff = "^0.12.7"
 enable = true
 
 [tool.ruff]
+include = ["anyioc/**/*.py"]
 line-length = 120
 
 [tool.ruff.lint]
 extend-select = [
-    "I" # isort
+    "I", # isort
+    "ANN", # flake8-annotations
 ]
 
 [tool.poe.tasks]

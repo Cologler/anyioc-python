@@ -30,10 +30,10 @@ def _is_module_exists(module_name: str) -> bool:
     except ModuleNotFoundError:
         return False
 
-def _get_module_provider(module_name: str):
+def _get_module_provider(module_name: str) -> ServiceProvider:
     'Get or create module provider'
 
-    def init_hook(provider):
+    def init_hook(provider: ServiceProvider) -> None:
         # auto init ioc
         initioc_module_name = module_name + '.init_ioc'
         _logger.debug('Looking for init_ioc module: %s', initioc_module_name)
@@ -95,7 +95,7 @@ def get_pkgroot_provider(pkgroot: Optional[str]=None) -> ServiceProvider:
     pkgroot = pkgroot.partition('.')[0]
     return _get_module_provider(pkgroot)
 
-def reset():
+def reset() -> None:
     '''
     Clear all module (or pkgroot) providers.
     '''

@@ -10,7 +10,7 @@ class ServiceNotFoundError(LookupError):
     raise when a service is unable to resolve.
     '''
 
-    def __init__(self, *resolve_chain):
+    def __init__(self, *resolve_chain: object) -> None:
         self.resolve_chain = resolve_chain
         msg = f'unknown service: {repr(resolve_chain[-1])}'
         if len(resolve_chain) > 1:

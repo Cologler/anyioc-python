@@ -33,7 +33,7 @@ from .symbols import Symbols
 
 _logger = getLogger(__name__)
 
-def get_module_name(fr: inspect.FrameInfo):
+def get_module_name(fr: inspect.FrameInfo) -> str:
     '''
     Get module name from frame info
     '''
@@ -43,21 +43,21 @@ def get_module_name(fr: inspect.FrameInfo):
 
 def get_frameinfos(*,
         context: int=1, exclude_anyioc_frames: bool=True
-    ):
+    ) -> list[inspect.FrameInfo]:
     frs = inspect.stack(context=context)[1:] # exclude get_frameinfos
     if exclude_anyioc_frames:
         frs = list(itertools.dropwhile(lambda f: get_module_name(f).partition('.')[0] == 'anyioc', frs))
     return frs
 
-def dispose_at_exit(provider):
+def dispose_at_exit(provider: IServiceProvider) -> Disposable:
     '''
     Register `provider.__exit__()` into `atexit` module.
 
     Returns a `Disposable` object to unregister and call `provider.__exit__()`.
     '''
-    def callback():
+    def callback() -> None:
         provider.__exit__(*sys.exc_info())
-    def unregister():
+    def unregister() -> None:
         callback()
         atexit.unregister(callback)
     atexit.register(callback)
@@ -65,7 +65,7 @@ def dispose_at_exit(provider):
 
 
 class FollowedInjectBy(GetOrDefaultServiceInfo):
-    def get_service(self, provider: IServiceProvider):
+    def get_service(self, provider: IServiceProvider) -> object:
         try:
             return super().get_service(provider)
         except ServiceNotFoundError:
@@ -74,7 +74,7 @@ class FollowedInjectBy(GetOrDefaultServiceInfo):
             raise
 
 
-def get_type_and_metadatas(annotation: Any) -> tuple[Any, tuple[Any, ...]]:
+def get_type_and_metadatas(annotation: object) -> tuple[Any, tuple[Any, ...]]:
     assert annotation is not Parameter.empty
     if get_origin(annotation) is Annotated:
         args = get_args(annotation)
@@ -102,7 +102,8 @@ def wrap_signature[R](func: Callable[..., R], *,
     if len(params) > 1:
         params = [p for p in params if p.kind != Parameter.VAR_POSITIONAL]
 
-    def get_injectinfo_from_annotation(metadatas: Iterable[Any]):
+    def get_injectinfo_from_annotation(metadatas: Iterable[Any]) \
+            -> InjectBy | InjectByGroup | InjectWithValue | InjectFrom | None:
         '''
         Get Inject annotation from parameter annotation.
         '''
@@ -242,14 +243,14 @@ class ParameterAdapter:
         self._service_info = service_info
         self._unpack = unpack
 
-    def append_args(self, ioc, args: list[Any], /):
+    def append_args(self, ioc: IServiceProvider, args: list[Any], /) -> None:
         val = self._service_info.get_service(ioc)
         if self._unpack:
             args.extend(val)
         else:
             args.append(val)
 
-    def append_kwargs(self, ioc, name: str, kwargs: dict[str, Any], /):
+    def append_kwargs(self, ioc: IServiceProvider, name: str, kwargs: dict[str, Any], /) -> None:
         kwargs[name] = self._service_info.get_service(ioc)
 
 _GET_PROVIDER_PARAM_ADAPTER = ParameterAdapter(ProviderServiceInfo.get_singleton_instance())
@@ -273,7 +274,7 @@ class FactoryAdapter[R](Factory[R]):
         self.k_params = k_params
         self.origin_func = func.func if isinstance(func, FactoryAdapter) else func
 
-    def __call__(self, ioc, /) -> Any:
+    def __call__(self, ioc: IServiceProvider, /) -> R:
         if self.p_params:
             args = []
             for param in self.p_params:

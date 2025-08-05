@@ -17,13 +17,13 @@ class _Symbol:
 
     __slots__ = ('_name', )
 
-    def __init__(self, name: str=''):
+    def __init__(self, name: str='') -> None:
         self._name = name
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f'Symbol({self._name})'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return f'Symbol({self._name!r})'
 
 
@@ -39,12 +39,12 @@ class TypedSymbol[T](_Symbol):
         '_type', # for cached property
     )
 
-    def __str__(self):
+    def __str__(self) -> str:
         ta = self._get_type_args()
         tn = ta.__forward_arg__ if isinstance(ta, ForwardRef) else ta.__name__
         return f'TypedSymbol[{tn}]({self._name})'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         ta = self._get_type_args()
         tn = repr(ta) if isinstance(ta, ForwardRef) else ta.__name__
         return f'TypedSymbol[{tn}]({self._name!r})'
@@ -54,7 +54,7 @@ class TypedSymbol[T](_Symbol):
             return get_args(oc)[0]
         raise TypeError('TypedSymbol is created without type args')
 
-    def get_type(self):
+    def get_type(self) -> type:
         '''
         Get the type of this symbol
         '''

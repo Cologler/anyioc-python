@@ -5,11 +5,12 @@
 # 
 # ----------
 
+import types
 from abc import ABC, abstractmethod
-from collections.abc import Callable
+from collections.abc import Callable, Hashable
 from contextlib import AbstractContextManager
 from enum import Enum
-from typing import Any, Protocol, overload, runtime_checkable
+from typing import Any, Protocol, Self, overload, runtime_checkable
 
 from ._primitive_symbol import TypedSymbol
 
@@ -35,7 +36,11 @@ class LifeTime(Enum):
 @runtime_checkable
 class SupportsContext[T](Protocol):
     def __enter__(self) -> T: ...
-    def __exit__(self, exc_type, exc_val, exc_tb) -> Any: ...
+    def __exit__(self,
+            exc_type: type | None,
+            exc_val: BaseException | None,
+            exc_tb: types.TracebackType | None, /
+        ) -> None: ...
 
 type AllSupportsContext[T] = SupportsContext[T] | AbstractContextManager[T]
 
@@ -44,7 +49,7 @@ class IServiceInfo[T](ABC):
     __slots__ = ()
 
     @abstractmethod
-    def get_service(self, provider, /) -> T:
+    def get_service(self, provider: 'IServiceProvider', /) -> T:
         raise NotImplementedError
 
 
@@ -52,13 +57,19 @@ class IServiceProvider:
     '''
     the base interface for `ServiceProvider`.
     '''
+    def __enter__(self) -> Self: ...
+    def __exit__(self,
+            exc_type: type | None,
+            exc_val: BaseException | None,
+            exc_tb: types.TracebackType | None, /
+        ) -> None: ...
 
     @overload
     def __getitem__[T](self, key: TypedSymbol[T]) -> T: ...
     @overload
-    def __getitem__(self, key) -> Any: ...
+    def __getitem__(self, key: Hashable) -> object: ...
     @abstractmethod
-    def __getitem__(self, key) -> Any:
+    def __getitem__(self, key: Hashable) -> object:
         '''
         Get a service by key.
         '''
@@ -67,9 +78,9 @@ class IServiceProvider:
     @overload
     def get[T, TD](self, key: TypedSymbol[T], d: TD=None) -> T | TD: ...
     @overload
-    def get(self, key, d=None) -> Any: ...
+    def get(self, key: Hashable, d: object=None) -> object: ...
     @abstractmethod
-    def get(self, key, d=None) -> Any:
+    def get(self, key: Hashable, d: object=None) -> object:
         '''
         Get a service by key with default value.
         '''
@@ -78,9 +89,9 @@ class IServiceProvider:
     @overload
     def get_many[T](self, key: TypedSymbol[T]) -> list[T]: ...
     @overload
-    def get_many(self, key) -> list[Any]: ...
+    def get_many(self, key: Hashable) -> list[Any]: ...
     @abstractmethod
-    def get_many(self, key) -> list[Any]:
+    def get_many(self, key: Hashable) -> list[Any]:
         '''
         Get services by key.
         '''
@@ -115,4 +126,4 @@ class IServiceProvider:
 
 class Factory[T](Protocol):
     __slots__ = ()
-    def __call__(self, IServiceProvider, /) -> T: ...
+    def __call__(self, provider: IServiceProvider, /) -> T: ...

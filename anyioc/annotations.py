@@ -34,14 +34,14 @@ class InjectBy:
     default: Any = field(default=GetOrDefaultServiceInfo._UNSET)
     lifetime: LifeTime = field(default=LifeTime.transient, kw_only=True)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.lifetime == LifeTime.singleton:
             # we don't known which IServiceProvider own this.
             raise RuntimeError(
                 'Singleton lifetime for InjectBy is not allowed.'
             )
 
-    def has_default(self):
+    def has_default(self) -> bool:
         return self.default is not GetOrDefaultServiceInfo._UNSET
 
 

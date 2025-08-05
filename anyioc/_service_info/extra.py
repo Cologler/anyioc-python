@@ -6,7 +6,8 @@
 # ----------
 
 import inspect
-from typing import Any, Callable, override
+from collections.abc import Hashable
+from typing import Callable, override
 
 from .._bases import IServiceInfo, IServiceProvider, LifeTime
 from .._utils import create_service, get_frameinfos, wrap_signature
@@ -25,7 +26,7 @@ class TransientServiceInfo[T](IServiceInfo[T]):
         Symbols.provider_options,
     ])
 
-    def __init__(self, factory: Callable[..., T], key: Any, service_provider: IServiceProvider | None):
+    def __init__(self, factory: Callable[..., T], key: Hashable, service_provider: IServiceProvider | None) -> None:
         if key in self._NOT_ALLOWED_KEYS:
             raise ValueError(f'Key {key!r} is not allowed')
 
@@ -42,8 +43,8 @@ class TransientServiceInfo[T](IServiceInfo[T]):
 
 
 def create_lifetime_service_info[T](
-        service_provider: IServiceProvider, key: Any, factory: Callable[..., T], lifetime: LifeTime
-    ):
+        service_provider: IServiceProvider, key: Hashable, factory: Callable[..., T], lifetime: LifeTime
+    ) -> LifetimeServiceInfo[T]:
     base_service_info = TransientServiceInfo(
         service_provider=service_provider,
         key=key,
@@ -63,6 +64,6 @@ class CallerFrameServiceInfo(IServiceInfo[inspect.FrameInfo | None]):
     __slots__ = ()
 
     @override
-    def get_service(self, provider: IServiceProvider):
+    def get_service(self, provider: IServiceProvider) -> inspect.FrameInfo | None:
         for f in get_frameinfos(exclude_anyioc_frames=True):
             return f

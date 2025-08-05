@@ -6,12 +6,13 @@
 # ----------
 
 import inspect
-from collections.abc import Mapping
+import types
+from collections.abc import Hashable, Mapping
 from contextlib import ExitStack, nullcontext
 from logging import getLogger
 from threading import RLock
 from types import MappingProxyType
-from typing import Any, Callable, Iterable, Optional, overload, override
+from typing import Any, Callable, Iterable, Optional, Self, overload, override
 
 from ._bases import AllSupportsContext, IServiceProvider, LifeTime
 from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
@@ -37,12 +38,13 @@ _logger = getLogger(__name__)
 
 
 class ServiceProvider(IServiceProvider):
-    def __init__(self, auto_enter=False, *,
-                # internal uses:
-                _services: Optional[ServicesMap]=None,
-                _parent: Optional['ServiceProvider']=None,
-                _use_lock: bool=True,
-            ):
+    def __init__(self,
+            auto_enter: bool=False, *,
+            # internal uses:
+            _services: Optional[ServicesMap]=None,
+            _parent: Optional['ServiceProvider']=None,
+            _use_lock: bool=True,
+        ) -> None:
 
         self._exit_stack = None
         self._scoped_cache = LockedMapping(use_lock=_use_lock)
@@ -94,7 +96,7 @@ class ServiceProvider(IServiceProvider):
 
         assert self._root is not None
 
-    def add_init_hook(self, func: Callable):
+    def add_init_hook(self, func: Callable) -> None:
         func = wrap_signature(func)
         if self.__init_hooks is not None:
             with self._lock:
@@ -103,7 +105,7 @@ class ServiceProvider(IServiceProvider):
                     return
         raise RuntimeError('Cannot add init hook after initialized.')
 
-    def __ensure_init_hooks_called(self):
+    def __ensure_init_hooks_called(self) -> None:
         if self.__init_hooks is not None or self.__init_exc is not None:
             with self._lock:
                 if self.__init_exc is not None:
@@ -123,7 +125,7 @@ class ServiceProvider(IServiceProvider):
                     disposable()
                     self._services.add(Symbols.at_init, ValueServiceInfo(False))
 
-    def _get_service_info(self, key) -> IServiceInfo:
+    def _get_service_info(self, key: Hashable) -> IServiceInfo:
         try:
             return self._services[key]
         except KeyError:
@@ -135,9 +137,9 @@ class ServiceProvider(IServiceProvider):
     @overload
     def __getitem__[T](self, key: TypedSymbol[T]) -> T: ...
     @overload
-    def __getitem__(self, key) -> Any: ...
+    def __getitem__(self, key: Hashable) -> object: ...
     @override
-    def __getitem__(self, key) -> Any:
+    def __getitem__(self, key: Hashable) -> object:
         _logger.debug('get service by key: %r', key)
         self._root.__ensure_init_hooks_called()
         service_info = self._get_service_info(key)
@@ -149,9 +151,9 @@ class ServiceProvider(IServiceProvider):
     @overload
     def get[T, TD](self, key: TypedSymbol[T], d: TD=None) -> T | TD: ...
     @overload
-    def get(self, key, d=None) -> Any: ...
+    def get(self, key: Hashable, d: object=None) -> object: ...
     @override
-    def get(self, key, d=None) -> Any:
+    def get(self, key: Hashable, d: object=None) -> object:
         '''
         Get a service by key with default value.
         '''
@@ -165,9 +167,9 @@ class ServiceProvider(IServiceProvider):
     @overload
     def get_many[T](self, key: TypedSymbol[T]) -> list[T]: ...
     @overload
-    def get_many(self, key) -> list[Any]: ...
+    def get_many(self, key: Hashable) -> list[Any]: ...
     @override
-    def get_many(self, key) -> list[Any]:
+    def get_many(self, key: Hashable) -> list[Any]:
         '''
         Get services by key.
 
@@ -206,17 +208,21 @@ class ServiceProvider(IServiceProvider):
                 self._exit_stack = ExitStack()
             return self._exit_stack.enter_context(context)
 
-    def __enter__(self):
+    def __enter__(self) -> Self:
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self,
+            exc_type: type | None,
+            exc_val: BaseException | None,
+            exc_tb: types.TracebackType | None, /
+        ) -> None:
         with self._lock:
             if self._exit_stack is not None:
                 self._exit_stack.__exit__(exc_type, exc_val, exc_tb)
                 self._exit_stack = None
         _logger.debug('%r is exited.', self)
 
-    def freeze_key(self, key):
+    def freeze_key(self, key: Hashable) -> None:
         '''
         Freeze key to avoid registering it later.
 
@@ -224,7 +230,7 @@ class ServiceProvider(IServiceProvider):
         '''
         self._services.freeze_key(key)
 
-    def register_service_info(self, key, service_info: IServiceInfo) -> Disposable:
+    def register_service_info(self, key: Hashable, service_info: IServiceInfo) -> Disposable:
         '''
         register a `IServiceInfo` by key.
         '''
@@ -233,7 +239,7 @@ class ServiceProvider(IServiceProvider):
         _logger.debug('register %r with key %r', service_info, key)
         return self._services.add(key, service_info)
 
-    def register(self, key, factory, lifetime) -> Disposable:
+    def register(self, key: Hashable, factory: Callable[..., Any], lifetime: LifeTime) -> Disposable:
         '''
         register a service factory by key.
 
@@ -242,7 +248,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register_service_info(key, create_lifetime_service_info(self, key, factory, lifetime))
 
-    def register_singleton(self, key, factory) -> Disposable:
+    def register_singleton(self, key: Hashable, factory: Callable[..., Any]) -> Disposable:
         '''
         register a service factory by key.
 
@@ -251,7 +257,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register(key, factory, LifeTime.singleton)
 
-    def register_scoped(self, key, factory) -> Disposable:
+    def register_scoped(self, key: Hashable, factory: Callable[..., Any]) -> Disposable:
         '''
         register a service factory by key.
 
@@ -260,7 +266,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register(key, factory, LifeTime.scoped)
 
-    def register_transient(self, key, factory) -> Disposable:
+    def register_transient(self, key: Hashable, factory: Callable[..., Any]) -> Disposable:
         '''
         register a service factory by key.
 
@@ -269,7 +275,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register(key, factory, LifeTime.transient)
 
-    def register_value(self, key, value) -> Disposable:
+    def register_value(self, key: Hashable, value: object) -> Disposable:
         '''
         register a value by key.
 
@@ -277,7 +283,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register_service_info(key, ValueServiceInfo(value))
 
-    def register_group(self, key: Any, keys: Iterable[Any]) -> Disposable:
+    def register_group(self, key: Hashable, keys: Iterable[Hashable]) -> Disposable:
         '''
         Register a group `key` for get other `keys`.
 
@@ -294,7 +300,7 @@ class ServiceProvider(IServiceProvider):
         '''
         return self.register_service_info(key, GetGroupServiceInfo(keys))
 
-    def register_bind(self, new_key, target_key) -> Disposable:
+    def register_bind(self, new_key: Hashable, target_key: Hashable) -> Disposable:
         '''
         bind `new_key` to `target_key` so
         you can use `new_key` as key to get value from service provider.

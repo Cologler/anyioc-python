@@ -5,8 +5,9 @@
 # 
 # ----------
 
-from collections.abc import MutableMapping
-from contextlib import nullcontext
+import types
+from collections.abc import Hashable, Iterator, MutableMapping
+from contextlib import AbstractContextManager, nullcontext
 from threading import RLock
 from typing import Callable, TypedDict
 
@@ -18,7 +19,7 @@ class ProviderOptions(TypedDict):
     auto_enter: ReadOnly[bool]
 
 
-class LockedMapping[TK, TV](MutableMapping[TK, TV]):
+class LockedMapping[TK: Hashable, TV](MutableMapping[TK, TV]):
     def __init__(self, use_lock: bool) -> None:
         super().__init__()
         self._dict: dict[TK, TV] = dict()
@@ -27,10 +28,10 @@ class LockedMapping[TK, TV](MutableMapping[TK, TV]):
         self._lock = RLock() if use_lock else _NULL_CONTEXT
 
     @property
-    def lock(self):
+    def lock(self) -> AbstractContextManager:
         return self._lock
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[TK]:
         with self._lock:
             return iter(self._dict)
 
@@ -38,15 +39,15 @@ class LockedMapping[TK, TV](MutableMapping[TK, TV]):
         with self._lock:
             return len(self._dict)
 
-    def __getitem__(self, key):
+    def __getitem__(self, key: TK) -> TV:
         with self._lock:
             return self._dict[key]
 
-    def __setitem__(self, key, value) -> None:
+    def __setitem__(self, key: TK, value: TV) -> None:
         with self._lock:
             self._dict[key] = value
 
-    def __delitem__(self, key) -> None:
+    def __delitem__(self, key: TK) -> None:
         with self._lock:
             del self._dict[key]
 
@@ -57,15 +58,19 @@ class Disposable:
     def __init__(self, dispose: Callable[[], None]) -> None:
         self.dispose = dispose
 
-    def __call__(self):
+    def __call__(self) -> None:
         if dispose := self.dispose:
             self.dispose = None
             dispose()
 
-    def __enter__(self):
+    def __enter__(self) -> 'Disposable':
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(self,
+            exc_type: type | None,
+            exc_val: BaseException | None,
+            exc_tb: types.TracebackType | None, /
+        ) -> None:
         if dispose := self.dispose:
             self.dispose = None
             dispose()

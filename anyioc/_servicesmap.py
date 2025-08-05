@@ -5,6 +5,7 @@
 #
 # ----------
 
+from collections.abc import Generator, Hashable
 from contextlib import nullcontext
 from logging import getLogger
 from threading import Lock
@@ -17,13 +18,15 @@ from ._service_info import IServiceInfo
 _NULL_CONTEXT = nullcontext()
 _logger = getLogger(__name__)
 
+_MAP_TYPE = dict[Hashable, list[tuple[_Symbol, IServiceInfo]]]
+
 class ServicesMap:
-    def __init__(self, *maps, use_lock: bool=True):
+    def __init__(self, *maps: _MAP_TYPE, use_lock: bool=True) -> None:
         self._lock = Lock() if use_lock else _NULL_CONTEXT
         self._frozen_keys = set()
-        self.maps: list[dict[Any, list[tuple[_Symbol, IServiceInfo]]]] = list(maps) or [{}]
+        self.maps: list[_MAP_TYPE] = list(maps) or [{}]
 
-    def resolve(self, key: Any):
+    def resolve(self, key: Hashable) -> Generator[IServiceInfo[Any], Any, None]:
         '''
         Resolve values with reversed order.
         '''
@@ -31,7 +34,7 @@ class ServicesMap:
             for mapping in self.maps:
                 yield from (v for _, v in reversed(mapping.get(key, ())))
 
-    def add(self, key, value):
+    def add(self, key: Hashable, value: IServiceInfo) -> Disposable:
 
         with self._lock:
             if key in self._frozen_keys:
@@ -40,7 +43,7 @@ class ServicesMap:
             internal_value = (_Symbol(), value) # ensure dispose the right value
             self.maps[0].setdefault(key, []).append(internal_value)
 
-        def dispose():
+        def dispose() -> None:
             try:
                 with self._lock:
                     self.maps[0][key].remove(internal_value)
@@ -50,18 +53,18 @@ class ServicesMap:
 
         return Disposable(dispose)
 
-    def freeze_key(self, key):
+    def freeze_key(self, key: Hashable) -> None:
         with self._lock:
             self._frozen_keys.add(key)
 
-    def __setitem__(self, key, value):
+    def __setitem__(self, key: Hashable, value: IServiceInfo) -> None:
         self.add(key, value)
 
     @overload
     def __getitem__[T](self, key: TypedSymbol[T]) -> IServiceInfo[T]: ...
     @overload
-    def __getitem__(self, key): ...
-    def __getitem__(self, key):
+    def __getitem__(self, key: Hashable) -> IServiceInfo[Any]: ...
+    def __getitem__(self, key: Hashable) -> IServiceInfo[Any]:
         'get item or raise `KeyError`` if not found'
         for value in self.resolve(key):
             return value
@@ -70,16 +73,16 @@ class ServicesMap:
     @overload
     def get[T, TD](self, key: TypedSymbol[T], default: TD=None) -> IServiceInfo[T] | TD: ...
     @overload
-    def get(self, key, default=None): ...
-    def get(self, key, default=None):
+    def get[TD](self, key: Hashable, default: TD=None) -> IServiceInfo[Any] | TD: ...
+    def get[TD](self, key: Hashable, default: TD=None) -> IServiceInfo[Any] | TD:
         'get item or `default` if not found'
         for value in self.resolve(key):
             return value
         return default
 
-    def get_many(self, key):
+    def get_many(self, key: Hashable) -> list[IServiceInfo[Any]]:
         'get items as list'
         return list(self.resolve(key))
 
-    def scope(self, use_lock: bool=False):
+    def scope(self, use_lock: bool=False) -> 'ServicesMap':
         return self.__class__({}, *self.maps, use_lock=use_lock)

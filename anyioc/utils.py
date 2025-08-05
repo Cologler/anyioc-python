@@ -6,25 +6,27 @@
 # ----------
 
 import logging
+from typing import Callable
 
 from ._utils import get_module_name as _get_module_name
 from .ioc import IServiceProvider
 from .symbols import Symbols
 
 
-def auto_enter(func):
+def auto_enter[R](func: Callable[..., R]) -> Callable[[IServiceProvider], R]:
     '''
     auto enter the context manager when it created.
 
     the signature of func should be `(ioc) => any`.
     '''
-    def new_func(ioc):
-        item = func(ioc)
-        ioc.enter(item)
-        return item
+    def new_func(ioc: IServiceProvider, /) -> R:
+        mgr = func(ioc)
+        rv = ioc.enter(mgr) # type: ignore
+        return rv
+
     return new_func
 
-def get_logger(ioc):
+def get_logger(ioc: IServiceProvider, /) -> logging.Logger:
     '''
     a helper that use to get logger from ioc.
 
@@ -40,13 +42,13 @@ def get_logger(ioc):
     name = _get_module_name(fr)
     return logging.getLogger(name)
 
-def is_root(provider: IServiceProvider):
+def is_root(provider: IServiceProvider) -> bool:
     '''
     Test is the IServiceProvider is the root provider or not.
     '''
     return provider[Symbols.provider_root] is provider
 
-def get_scope_depth(provider: IServiceProvider):
+def get_scope_depth(provider: IServiceProvider) -> int:
     '''
     Get the depth of scopes.
 

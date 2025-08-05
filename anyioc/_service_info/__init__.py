@@ -7,7 +7,7 @@
 
 from contextlib import nullcontext
 from threading import RLock
-from typing import Any, Iterable, final, override
+from typing import Any, Hashable, Iterable, final, override
 
 from .._bases import Factory, IServiceInfo, IServiceProvider, LifeTime
 from ..symbols import Symbols
@@ -27,17 +27,17 @@ class ProviderServiceInfo(IServiceInfo[IServiceProvider]):
         return '<(ioc) => ioc>'
 
     @override
-    def get_service(self, provider: IServiceProvider):
+    def get_service(self, provider: IServiceProvider) -> IServiceProvider:
         return provider
 
     @classmethod
-    def get_singleton_instance(cls):
+    def get_singleton_instance(cls) -> 'ProviderServiceInfo':
         return cls._INSTANCE
 
 ProviderServiceInfo._INSTANCE = ProviderServiceInfo()
 
 
-class GetAttrServiceInfo(IServiceInfo[Any]):
+class GetAttrServiceInfo[T, TD](IServiceInfo[T | TD]):
     '''
     Call `getattr()` from current `ServiceProvider`.
     '''
@@ -45,7 +45,7 @@ class GetAttrServiceInfo(IServiceInfo[Any]):
     __slots__ = ('_getattr_args',)
     _UNSET = object()
 
-    def __init__(self, attr_name: str, attr_default: Any=_UNSET):
+    def __init__(self, attr_name: str, attr_default: TD=_UNSET) -> None:
         super().__init__()
         self._getattr_args = (attr_name,) if attr_default is self._UNSET else (attr_name, attr_default)
 
@@ -54,8 +54,8 @@ class GetAttrServiceInfo(IServiceInfo[Any]):
         return f'<(ioc) => getattr(ioc, {getattr_args})>'
 
     @override
-    def get_service(self, provider: IServiceProvider):
-        return getattr(provider, *self._getattr_args)
+    def get_service(self, provider: IServiceProvider) -> T | TD:
+        return getattr(provider, *self._getattr_args) # type: ignore
 
 
 class ValueServiceInfo[T](IServiceInfo[T]):
@@ -63,7 +63,7 @@ class ValueServiceInfo[T](IServiceInfo[T]):
 
     __slots__ = ('_value',)
 
-    def __init__(self, value: T):
+    def __init__(self, value: T) -> None:
         self._value = value
 
     def __repr__(self) -> str:
@@ -74,26 +74,26 @@ class ValueServiceInfo[T](IServiceInfo[T]):
         return self._value
 
 
-class BindedServiceInfo(IServiceInfo[Any]):
+class BindedServiceInfo(IServiceInfo[object]):
     '''a `IServiceInfo` use for get value from target key.'''
 
     __slots__ = ('_target_key',)
 
-    def __init__(self, target_key: Any):
+    def __init__(self, target_key: Hashable) -> None:
         self._target_key = target_key
 
     def __repr__(self) -> str:
         return f'<(ioc) => ioc[{self._target_key!r}]>'
 
     @override
-    def get_service(self, provider: IServiceProvider):
+    def get_service(self, provider: IServiceProvider) -> object:
         return provider[self._target_key]
 
 
 class FactoryServiceInfo[T](IServiceInfo[T]):
     __slots__ = ('_factory')
 
-    def __init__(self, factory: Factory[T]):
+    def __init__(self, factory: Factory[T]) -> None:
         self._factory = factory
 
     @override
@@ -107,7 +107,7 @@ class BoundServiceInfo[T](IServiceInfo[T]):
         '_service_provider'
     )
 
-    def __init__(self, service_provider: IServiceProvider, service_info: IServiceInfo[T]):
+    def __init__(self, service_provider: IServiceProvider, service_info: IServiceInfo[T]) -> None:
         self._service_info = service_info
         self._service_provider = service_provider
 
@@ -119,7 +119,7 @@ class BoundServiceInfo[T](IServiceInfo[T]):
         return self._service_info.get_service(self._service_provider)
 
     @staticmethod
-    def wrap(service_provider: IServiceProvider, service_info: IServiceInfo[T]):
+    def wrap(service_provider: IServiceProvider, service_info: IServiceInfo[T]) -> 'BoundServiceInfo[T]':
         if type(service_info) is BoundServiceInfo:
             service_info = service_info._service_info
         return BoundServiceInfo(service_provider, service_info)
@@ -143,10 +143,10 @@ class LifetimeServiceInfo[T](IServiceInfo[T]):
     def __init__(self, *,
             lifetime: LifeTime,
             service_provider: IServiceProvider | None,
-            key: Any,
+            key: Hashable,
             service_info: IServiceInfo[T],
-            scoped_key: Any | None = None,
-        ):
+            scoped_key: Hashable | None = None,
+        ) -> None:
 
         if key in self._NOT_ALLOWED_KEYS:
             raise ValueError(f'Key {key!r} is not allowed')
@@ -213,11 +213,11 @@ class LifetimeServiceInfo[T](IServiceInfo[T]):
         return self._service_info.get_service(provider)
 
 
-class GetOrDefaultServiceInfo(IServiceInfo[Any]):
+class GetOrDefaultServiceInfo[TD](IServiceInfo[object | TD]):
     _UNSET = object()
     __slots__ = ('_key', '_default')
 
-    def __init__(self, key: Any, default: Any=_UNSET) -> None:
+    def __init__(self, key: Hashable, default: TD=_UNSET) -> None:
         self._key = key
         self._default = default
 
@@ -228,40 +228,40 @@ class GetOrDefaultServiceInfo(IServiceInfo[Any]):
             return f'<(ioc) => ioc.get({self._key!r}, {self._default!r})>'
 
     @override
-    def get_service(self, provider: IServiceProvider) -> Any:
+    def get_service(self, provider: IServiceProvider) -> object | TD:
         if self._default is self._UNSET:
             return provider[self._key]
         else:
             return provider.get(self._key, self._default)
 
-    def has_default(self):
+    def has_default(self) -> bool:
         return self._default is not self._UNSET
 
 
-class GetManyServiceInfo(IServiceInfo[list[Any]]):
+class GetManyServiceInfo[T](IServiceInfo[list[T]]):
     '''
     Get many services from single key.
     '''
     __slots__ = ('_key',)
 
-    def __init__(self, key: Any) -> None:
+    def __init__(self, key: Hashable) -> None:
         self._key = key
 
     def __repr__(self) -> str:
         return f'<(ioc) => ioc.get_many({self._key!r})>'
 
     @override
-    def get_service(self, provider: IServiceProvider) -> list[Any]:
+    def get_service(self, provider: IServiceProvider) -> list[T]:
         return provider.get_many(self._key)
 
 
-class GetGroupServiceInfo(IServiceInfo[tuple[Any]]):
+class GetGroupServiceInfo(IServiceInfo[tuple[Any, ...]]):
     __slots__ = ('_keys',)
 
-    def __init__(self, keys: Iterable[Any]) -> None:
+    def __init__(self, keys: Iterable[Hashable]) -> None:
         super().__init__()
         self._keys = tuple(keys)
 
     @override
-    def get_service(self, provider: IServiceProvider):
+    def get_service(self, provider: IServiceProvider) -> tuple[Any, ...]:
         return tuple(provider[k] for k in self._keys)
