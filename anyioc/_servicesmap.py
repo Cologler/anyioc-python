@@ -13,12 +13,9 @@ from typing import Any
 
 from ._internal import Disposable
 from ._primitive_symbol import _Symbol
-from ._service_info import IServiceInfo
 
 _NULL_CONTEXT = nullcontext()
 _logger = getLogger(__name__)
-
-_MAP_TYPE = dict[Hashable, list[tuple[_Symbol, IServiceInfo]]]
 
 class ServicesMap[TK: Hashable, TV]:
     def __init__(self, *maps: dict[TK, list[tuple[_Symbol, TV]]], use_lock: bool=True) -> None:
