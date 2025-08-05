@@ -31,8 +31,8 @@ class Symbols:
     # the root `IServiceProvider`
     provider_root = TypedSymbol[IServiceProvider]('provider_root')
 
-    # the parent of current `IServiceProvider`
-    provider_parent = TypedSymbol[IServiceProvider]('provider_parent')
+    # the parent of current `IServiceProvider`, or `None` for the root `IServiceProvider`.
+    provider_parent = TypedSymbol[IServiceProvider | None]('provider_parent')
 
     # the cache dict to store scoped instances
     cache = TypedSymbol[LockedMapping[Any, Any]]('cache')

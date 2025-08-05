@@ -49,7 +49,6 @@ class ServicesMap:
                     self.maps[0][key].remove(internal_value)
             except ValueError:
                 _logger.warning('dispose() is called after the key be removed.')
-                pass
 
         return Disposable(dispose)
 

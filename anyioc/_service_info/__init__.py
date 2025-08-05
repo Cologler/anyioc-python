@@ -222,17 +222,17 @@ class GetOrDefaultServiceInfo[TD](IServiceInfo[object | TD]):
         self._default = default
 
     def __repr__(self) -> str:
-        if self._default is self._UNSET:
-            return f'<(ioc) => ioc[{self._key!r}]>'
-        else:
+        if self.has_default():
             return f'<(ioc) => ioc.get({self._key!r}, {self._default!r})>'
+        else:
+            return f'<(ioc) => ioc[{self._key!r}]>'
 
     @override
     def get_service(self, provider: IServiceProvider) -> object | TD:
-        if self._default is self._UNSET:
-            return provider[self._key]
-        else:
+        if self.has_default():
             return provider.get(self._key, self._default)
+        else:
+            return provider[self._key]
 
     def has_default(self) -> bool:
         return self._default is not self._UNSET
