@@ -28,6 +28,12 @@ extend-select = [
     "ANN", # flake8-annotations
 ]
 
+[tool.coverage.report]
+exclude_lines = [
+    'pragma: no cover',
+    'raise NotImplementedError',
+]
+
 [tool.poe.tasks]
 test = "python -m pytest --cov=anyioc --cov-report=html"
 
