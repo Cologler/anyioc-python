@@ -31,7 +31,7 @@ class TypedSymbol[T](_Symbol):
     '''
     Symbol with type.
 
-    Must use `TypedSymbol[int](...)` instead of `TypedSymbol(...)` directly.
+    MUST use `TypedSymbol[...](...)` instead of `TypedSymbol(...)` directly.
     '''
 
     __slots__ = (
