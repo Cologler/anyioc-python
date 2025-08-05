@@ -10,10 +10,10 @@ import types
 from collections.abc import Hashable
 from contextlib import nullcontext
 from threading import RLock
-from typing import Any, override
+from typing import Any, get_args, get_origin, override
 
 from ._bases import IServiceInfo, IServiceProvider
-from ._service_info import FactoryServiceInfo, ValueServiceInfo
+from ._service_info import FactoryServiceInfo, GetManyServiceInfo, ValueServiceInfo
 from ._utils import wrap_signature
 from .err import ServiceNotFoundError
 
@@ -164,4 +164,23 @@ class TypeNameServiceInfoResolver(IServiceInfoResolver):
         klass = self._get_type(str)
         if klass is not None:
             return FactoryServiceInfo(wrap_signature(klass))
+        return super().get(provider, key)
+
+
+class GenericListAsGetManyServiceInfoResolver(IServiceInfoResolver):
+    '''
+    Dynamic resolve `IServiceInfo` for `list[T]` to `.get_many(T)`
+    '''
+    def __init__(self,
+            for_list: bool=True,
+            for_tuple: bool=False,
+        ) -> None:
+        super().__init__()
+        self._for_list = for_list
+        self._for_tuple = for_tuple
+
+    @override
+    def get(self, provider: IServiceProvider, key: Hashable) -> IServiceInfo[Any]:
+        if isinstance(key, types.GenericAlias) and get_origin(key) is list:
+            return GetManyServiceInfo(get_args(key)[0])
         return super().get(provider, key)

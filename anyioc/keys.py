@@ -5,6 +5,7 @@
 #
 # ----------
 
+import types
 from dataclasses import dataclass
 from typing import Type
 
@@ -28,8 +29,8 @@ class NamedType[T]:
     type: Type[T]
 
     def __post_init__(self) -> None:
-        if not isinstance(self.type, type):
-            raise TypeError
+        if not isinstance(self.type, (type, types.GenericAlias)):
+            raise TypeError(self.type)
 
 
 __all__ = [
