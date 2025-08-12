@@ -65,7 +65,9 @@ def get_scope_depth(provider: IServiceProvider) -> int:
     '''
     depth = 0
     root = provider[Symbols.provider_root]
-    while provider is not root:
-        provider = provider[Symbols.provider_parent]
+    current: IServiceProvider | None = provider
+    while current is not root:
+        assert current is not None
+        current = current[Symbols.provider_parent]
         depth += 1
     return depth

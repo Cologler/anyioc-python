@@ -12,8 +12,8 @@ from pytest import raises
 
 from anyioc import InjectBy, ServiceNotFoundError, ServiceProvider
 from anyioc.ioc_resolver import (
-    ImportServiceInfoResolver,
     GenericListAsGetManyServiceInfoResolver,
+    ImportServiceInfoResolver,
     TypesServiceInfoResolver,
 )
 from anyioc.symbols import Symbols
