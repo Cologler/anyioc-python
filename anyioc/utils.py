@@ -38,8 +38,17 @@ def get_logger(ioc: IServiceProvider, /) -> logging.Logger:
     assert logger.name == __name__ # the logger should have module name
     ```
     '''
-    fr = ioc[Symbols.caller_frame]
-    name = _get_module_name(fr)
+    name = None
+
+    if callable(dependent := ioc.get(Symbols.dependent)):
+        module = dependent.__module__
+        qualname = getattr(dependent, '__qualname__', '')
+        name = f'{module}.{qualname}'
+
+    if not name:
+        fr = ioc[Symbols.caller_frame]
+        name = _get_module_name(fr)
+
     return logging.getLogger(name)
 
 def is_root(provider: IServiceProvider) -> bool:

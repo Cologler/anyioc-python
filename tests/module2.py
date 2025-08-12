@@ -5,3 +5,13 @@
 # 
 # ----------
 
+from logging import Logger
+
+
+class LoggerDependentClass:
+    def __init__(self, logger: Logger) -> None:
+        self.logger = logger
+
+
+def loggerDependentFunc(logger: Logger) -> Logger:
+    return logger

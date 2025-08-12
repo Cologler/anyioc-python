@@ -324,19 +324,21 @@ class FactoryAdapter[R](Factory[R]):
         self.origin_func = func.func if isinstance(func, FactoryAdapter) else func
 
     def __call__(self, ioc: IServiceProvider, /) -> R:
-        if self.p_params:
-            args = []
-            for param in self.p_params:
-                param.append_args(ioc, args)
-        else:
-            args = ()
+        with cast(Any, ioc).register_value(Symbols.dependent, self.origin_func):
 
-        if self.k_params:
-            kwargs = {}
-            for param in self.k_params.values():
-                param.append_kwargs(ioc, kwargs)
-        else:
-            kwargs = _EMPTY_STR_MAPPING
+            if self.p_params:
+                args = []
+                for param in self.p_params:
+                    param.append_args(ioc, args)
+            else:
+                args = ()
+
+            if self.k_params:
+                kwargs = {}
+                for param in self.k_params.values():
+                    param.append_kwargs(ioc, kwargs)
+            else:
+                kwargs = _EMPTY_STR_MAPPING
 
         return self.func(*args, **kwargs)
 

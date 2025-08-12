@@ -49,5 +49,7 @@ class Symbols:
     # is current stage of the `IServiceProvider` is initializing
     at_init = TypedSymbol[bool]('at_init')
 
+    dependent = TypedSymbol[object | None]('dependent')
+
 
 __all__ = ['Symbols']

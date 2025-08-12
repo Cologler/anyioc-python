@@ -5,6 +5,7 @@
 #
 # ----------
 
+from logging import Logger
 
 from anyioc.ioc import ServiceProvider
 from anyioc.utils import (
@@ -14,20 +15,32 @@ from anyioc.utils import (
 )
 
 
-def test_helper_get_logger():
+def test_get_logger() -> None:
     provider = ServiceProvider()
     provider.register_transient('logger', get_logger)
-    logger = provider['logger']
+    logger: Logger = provider['logger']
     assert logger.name == __name__
     assert logger.name == 'test_utils'
 
-def test_is_root():
+def test_get_logger_from_external_module() -> None:
+    provider = ServiceProvider()
+    provider.register_transient(Logger, get_logger)
+
+    from module2 import LoggerDependentClass, loggerDependentFunc
+
+    class_logger = provider.resolve(LoggerDependentClass).logger
+    assert class_logger.name == 'module2.LoggerDependentClass'
+
+    func_logger = provider.resolve(loggerDependentFunc)
+    assert func_logger.name == 'module2.loggerDependentFunc'
+
+def test_is_root() -> None:
     provider = ServiceProvider()
     assert is_root(provider)
     with provider.scope() as scoped:
         assert not is_root(scoped)
 
-def test_get_scope_depth():
+def test_get_scope_depth() -> None:
     root = ServiceProvider()
     assert get_scope_depth(root) == 0
     with root.scope() as s1:
