@@ -24,7 +24,7 @@ def test_symbol_str() -> None:
     assert repr(TypedSymbol[int]('test')) == "TypedSymbol[int]('test')"
 
     assert str(TypedSymbol['int']('test')) == "TypedSymbol[int](test)"
-    assert repr(TypedSymbol['int']('test')) == "TypedSymbol[ForwardRef('int')]('test')"
+    assert repr(TypedSymbol['int']('test')) == "TypedSymbol[int]('test')"
 
 def test_symbols_has_no_vars() -> None:
     assert not hasattr(_Symbol(), '__dict__')

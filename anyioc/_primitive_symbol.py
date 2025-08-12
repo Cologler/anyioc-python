@@ -5,6 +5,7 @@
 #
 # ----------
 
+import types
 from typing import ForwardRef, Type, get_args
 
 # symbol is primitive type, import any modules from . is not allowed.
@@ -41,18 +42,30 @@ class TypedSymbol[T](_Symbol):
 
     def __str__(self) -> str:
         ta = self._get_type_args()
-        tn = ta.__forward_arg__ if isinstance(ta, ForwardRef) else ta.__name__
+        tn = self._get_type_args_repr(ta)
         return f'TypedSymbol[{tn}]({self._name})'
 
     def __repr__(self) -> str:
         ta = self._get_type_args()
-        tn = repr(ta) if isinstance(ta, ForwardRef) else ta.__name__
+        tn = self._get_type_args_repr(ta)
         return f'TypedSymbol[{tn}]({self._name!r})'
 
     def _get_type_args(self) -> Type[T]:
         if (oc := getattr(self, '__orig_class__', None)) is not None:
             return get_args(oc)[0]
         raise TypeError('TypedSymbol is created without type args')
+
+    @classmethod
+    def _get_type_args_repr(cls, o: object) -> str:
+        try:
+            if isinstance(o, ForwardRef):
+                return o.__forward_arg__
+            elif isinstance(o, types.UnionType):
+                return ' | '.join(cls._get_type_args_repr(x) for x in get_args(o))
+            else:
+                return getattr(o, '__name__', str(o))
+        except AttributeError:
+            return str(o)
 
     def get_type(self) -> type:
         '''
