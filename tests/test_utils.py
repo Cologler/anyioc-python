@@ -34,6 +34,23 @@ def test_get_logger_from_external_module() -> None:
     func_logger = provider.resolve(loggerDependentFunc)
     assert func_logger.name == 'module2.loggerDependentFunc'
 
+    # bool params should not inject into the function:
+    provider.register_value(bool, True)
+    assert provider.resolve(loggerDependentFunc).name == 'module2.loggerDependentFunc'
+
+def test_get_logger_from_external_module_with_module_name_only() -> None:
+    provider = ServiceProvider()
+    provider.register_transient(Logger, get_logger(module_name_only=True))
+
+    from module2 import LoggerDependentClass, loggerDependentFunc
+
+    class_logger = provider.resolve(LoggerDependentClass).logger
+    assert class_logger.name == 'module2'
+
+    func_logger = provider.resolve(loggerDependentFunc)
+    assert func_logger.name == 'module2'
+
+
 def test_is_root() -> None:
     provider = ServiceProvider()
     assert is_root(provider)

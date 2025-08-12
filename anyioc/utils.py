@@ -5,10 +5,12 @@
 #
 # ----------
 
+import inspect
 import logging
-from typing import Callable
+from typing import Annotated, Callable, overload
 
 from ._utils import get_module_name as _get_module_name
+from .annotations import DontInject
 from .ioc import IServiceProvider
 from .symbols import Symbols
 
@@ -26,7 +28,16 @@ def auto_enter[R](func: Callable[..., R]) -> Callable[[IServiceProvider], R]:
 
     return new_func
 
+@overload
 def get_logger(ioc: IServiceProvider, /) -> logging.Logger:
+    ...
+@overload
+def get_logger(*, module_name_only: bool) -> Callable[[IServiceProvider], logging.Logger]:
+    ...
+def get_logger(
+        ioc: IServiceProvider | None = None, /,
+        module_name_only: Annotated[bool, DontInject()] = False,
+    ) -> logging.Logger | Callable[[IServiceProvider], logging.Logger]:
     '''
     a helper that use to get logger from ioc.
 
@@ -38,18 +49,30 @@ def get_logger(ioc: IServiceProvider, /) -> logging.Logger:
     assert logger.name == __name__ # the logger should have module name
     ```
     '''
-    name = None
 
-    if callable(dependent := ioc.get(Symbols.dependent)):
-        module = dependent.__module__
-        qualname = getattr(dependent, '__qualname__', '')
-        name = f'{module}.{qualname}'
+    def internal_get_logger(ioc: IServiceProvider) -> logging.Logger:
+        name = None
 
-    if not name:
-        fr = ioc[Symbols.caller_frame]
-        name = _get_module_name(fr)
+        if callable(dependent := ioc.get(Symbols.dependent)):
+            module = inspect.getmodule(dependent)
+            module_name = module.__name__ if module else '<stdin>'
+            if module_name_only:
+                name = module_name
+            else:
+                qualname = getattr(dependent, '__qualname__', '')
+                name = f'{module_name}.{qualname}'
 
-    return logging.getLogger(name)
+        if not name:
+            fr = ioc[Symbols.caller_frame]
+            name = _get_module_name(fr)
+
+        return logging.getLogger(name)
+
+    if ioc:
+        assert module_name_only is False, 'module_name_only should not injected'
+
+    return internal_get_logger(ioc) if ioc else internal_get_logger
+
 
 def is_root(provider: IServiceProvider) -> bool:
     '''
