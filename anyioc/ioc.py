@@ -247,9 +247,8 @@ class ServiceProvider(IServiceProvider):
 
         disposable = self._services.add(key, service_info)
         match key:
-            case NamedType() as nt:
-                for tp in nt.get_types():
-                    disposable += self._services.add(_NamedTypeListKey(tp), ValueServiceInfo(key))
+            case NamedType(type=k):
+                disposable += self._services.add(_NamedTypeListKey(k), ValueServiceInfo(key))
 
         return disposable
 

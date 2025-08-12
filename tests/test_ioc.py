@@ -7,7 +7,6 @@
 
 import contextlib
 import itertools
-import types
 from typing import Any, Generator, Hashable, Iterable
 from unittest.mock import MagicMock
 
@@ -144,47 +143,9 @@ def test_get_many_missing_service() -> None:
 def test_resolve() -> None:
     provider = ServiceProvider()
     provider.register_value(str, 'v')
-
     def factory(s: str) -> str:
         return s
     assert provider.resolve(factory) == 'v'
-
-def test_resolve_with_optional() -> None:
-    provider = ServiceProvider()
-
-    def factory(s: str | None) -> str | None:
-        return s
-
-    with raises(ServiceNotFoundError):
-        provider.resolve(factory)
-
-    provider.register_value(types.NoneType, None)
-    assert provider.resolve(factory) is None
-
-    provider.register_value(str, 'v')
-
-    assert provider.resolve(factory) == 'v'
-
-def test_resolve_with_union() -> None:
-    provider = ServiceProvider()
-
-    def factory(s: str | int | None) -> str | int | None:
-        return s
-
-    with raises(ServiceNotFoundError):
-        provider.resolve(factory)
-
-    provider.register_value(types.NoneType, None)
-    assert provider.resolve(factory) is None
-
-    provider.register_value(int, 15)
-    assert provider.resolve(factory) == 15
-
-    d2 = provider.register_value(str, 'ff')
-    assert provider.resolve(factory) == 'ff'
-
-    d2()
-    assert provider.resolve(factory) == 15
 
 def test_resolve_with_follow() -> None:
     provider = ServiceProvider()

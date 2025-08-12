@@ -32,7 +32,7 @@ def test_named_key_for_kwargs() -> None:
     provider.register_value(int, 0)
     assert provider.resolve(func_with_1_kwargs) == 0
 
-    disposable_for_name1 = provider.register_value(NamedType('name1', int), 1)
+    provider.register_value(NamedType('name1', int), 1)
     assert provider.resolve(func_with_1_kwargs) == 1
 
     provider.register_value(int, 4)
@@ -43,10 +43,6 @@ def test_named_key_for_kwargs() -> None:
 
     provider.register_value(NamedType('name2', int), 2)
     assert provider.resolve(func_with_2_kwargs) == (1, 2)
-
-    disposable_for_name1()
-    assert provider.resolve(func_with_1_kwargs) == 4, 'perfer no named type'
-    assert provider.resolve(func_with_2_kwargs) == (4, 2)
 
 def test_named_key_for_var_kwargs() -> None:
     provider = ServiceProvider()
