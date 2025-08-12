@@ -11,8 +11,50 @@ from typing import Annotated
 from pytest import raises
 
 from anyioc import LifeTime, ServiceNotFoundError, ServiceProvider
-from anyioc.annotations import InjectBy, InjectByGroup, InjectFrom, InjectWithValue
+from anyioc.annotations import DontInject, InjectBy, InjectByGroup, InjectFrom, InjectWithValue
 from anyioc.keys import NamedType
+
+
+def test_inject_func_by_annotated_dontinject() -> None:
+    def param_without_default_func(x: Annotated[int, DontInject()]) -> None:
+        pass
+
+    def param_with_default_func(x: Annotated[int, DontInject()] = 2) -> int:
+        return x
+
+    sp = ServiceProvider()
+    sp.register_value(int, 1)
+
+    with raises(TypeError):
+        assert sp.resolve(param_without_default_func)
+
+    assert 2 == sp.resolve(param_with_default_func)
+
+def test_inject_func_by_annotated_dontinject_for_args() -> None:
+    def param_without_default_func(*args: Annotated[int, DontInject()]) -> tuple:
+        return args
+
+    sp = ServiceProvider()
+    sp.register_value(int, 1)
+
+    assert () == sp.resolve(param_without_default_func)
+
+def test_inject_func_by_annotated_dontinject_for_kwargs() -> None:
+    def default_kwargs_func(**kwargs) -> dict[str, object]:  # noqa: ANN003
+        return kwargs
+
+    def default_typed_kwargs_func(**kwargs: int) -> dict[str, int]:
+        return kwargs
+
+    def kwargs_annotated_dontinject_func(**kwargs: Annotated[int, DontInject()]) -> dict[str, int]:
+        return kwargs
+
+    sp = ServiceProvider()
+    sp.register_value(NamedType('val', int), 1)
+
+    assert sp.resolve(default_kwargs_func) == {'provider': sp}
+    assert sp.resolve(default_typed_kwargs_func) == {'val': 1}
+    assert sp.resolve(kwargs_annotated_dontinject_func) == {}
 
 
 def test_inject_class_by_annotated_injectby() -> None:

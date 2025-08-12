@@ -27,7 +27,7 @@ from ._service_info import (
     ProviderServiceInfo,
     ValueServiceInfo,
 )
-from .annotations import InjectBy, InjectByGroup, InjectFrom, InjectWithValue
+from .annotations import DontInject, InjectBy, InjectByGroup, InjectFrom, InjectWithValue
 from .err import ServiceNotFoundError
 from .keys import NamedType, _NamedTypeListKey
 from .symbols import Symbols
@@ -84,11 +84,24 @@ class NamedTypeGetOrDefaultServiceInfo(GetOrDefaultServiceInfo):
 class FallbackToAutoCallTypeInit(NamedTypeGetOrDefaultServiceInfo):
     __slots__ = ()
 
+    @override
     def get_service(self, provider: IServiceProvider) -> object:
         try:
             return super().get_service(provider)
         except ServiceNotFoundError:
             return wrap_signature(cast(NamedType, self._key).type, follow=True)(provider)
+
+
+class DontInjectServiceInfo(IServiceInfo):
+    __slots__ = ('_msg')
+
+    def __init__(self, msg: str) -> None:
+        super().__init__()
+        self._msg = msg
+
+    @override
+    def get_service(self, provider: IServiceProvider) -> NoReturn:
+        raise TypeError(self._msg)
 
 
 def get_type_and_metadatas(annotation: object) -> tuple[Any, tuple[Any, ...]]:
@@ -127,11 +140,11 @@ def wrap_signature[R](func: Callable[..., R], *,
         params = [p for p in params if p.kind != Parameter.VAR_POSITIONAL]
 
     def get_injectinfo_from_annotation(metadatas: Iterable[Any]) \
-            -> InjectBy | InjectByGroup | InjectWithValue | InjectFrom | None:
+            -> DontInject | InjectBy | InjectByGroup | InjectWithValue | InjectFrom | None:
         '''
         Get Inject annotation from parameter annotation.
         '''
-        if sis := [x for x in metadatas if isinstance(x, (InjectBy, InjectByGroup, InjectWithValue, InjectFrom))]:
+        if sis := [x for x in metadatas if isinstance(x, (DontInject, InjectBy, InjectByGroup, InjectWithValue, InjectFrom))]:
             if len(sis) > 1:
                 _logger.warning('Too many annotated InjectBy')
             return sis[0]
@@ -152,12 +165,20 @@ def wrap_signature[R](func: Callable[..., R], *,
                 raise TypeError(f'{type(ji)} is not allowed on {param.kind.name} parameter')
 
             if param.kind is Parameter.VAR_KEYWORD:
-                if ji:
-                    raises_for_parameter()
-                return ParameterAdapter(param.name, ValueServiceInfo(tp), unpack=True)
+                match ji:
+                    case DontInject():
+                        return ParameterAdapter(param.name, ValueServiceInfo(DontInject), unpack=True)
+
+                    case None:
+                        return ParameterAdapter(param.name, ValueServiceInfo(tp), unpack=True)
+
+                    case _:
+                        raises_for_parameter()
 
             elif param.kind == Parameter.VAR_POSITIONAL:
                 match ji:
+                    case DontInject():
+                        si = ValueServiceInfo(()) # empty args
 
                     case None:
                         # create ServiceInfo for type annotation
@@ -191,9 +212,15 @@ def wrap_signature[R](func: Callable[..., R], *,
             else:
                 assert param.kind in _PARAMETER_KINDS_SINGLE_VALUE
                 match ji:
+                    case DontInject():
+                        if param.default is Parameter.empty:
+                            si = DontInjectServiceInfo(f'Missing required argument: {param!r}')
+                        else:
+                            si = ValueServiceInfo(param.default)
+
                     case None:
                         # create ServiceInfo for type annotation
-                        named_type = NamedType(param.name, tp)
+                        named_type = NamedType.create(param.name, tp)
                         ServiceInfoType = FallbackToAutoCallTypeInit if follow else NamedTypeGetOrDefaultServiceInfo
                         si = (
                             ServiceInfoType(named_type) if param.default is Parameter.empty
@@ -205,7 +232,7 @@ def wrap_signature[R](func: Callable[..., R], *,
                             si = GetOrDefaultServiceInfo(jb.key, default)
                         else:
                             assert jb.has_name()
-                            si = NamedTypeGetOrDefaultServiceInfo(NamedType(cast(str, jb.name), tp), default)
+                            si = NamedTypeGetOrDefaultServiceInfo(NamedType.create(cast(str, jb.name), tp), default)
                         if lifetime != LifeTime.transient:
                             si = LifetimeServiceInfo(service_provider=None, key=None,
                                 service_info=si,
@@ -287,22 +314,27 @@ class ParameterAdapter:
 
     def append_args(self, ioc: IServiceProvider, args: list[Any], /) -> None:
         val = self.service_info.get_service(ioc)
-        if self.unpack:
+        if self.unpack: # var args
             args.extend(val)
         else:
             args.append(val)
 
     def append_kwargs(self, ioc: IServiceProvider, kwargs: dict[str, Any], /) -> None:
         name = self.param_name
-        if self.unpack:
+        if self.unpack: # var kwargs
             assert type(self.service_info) is ValueServiceInfo
-            types: list[NamedType] = ioc.get_many(_NamedTypeListKey(self.service_info._value))
-            for tp in types:
-                if tp.name not in kwargs:
-                    kwargs[tp.name] = ioc[tp]
+            value = self.service_info._value
+            if value is DontInject: # DontInject()
+                pass
+            else:
+                types: list[NamedType] = ioc.get_many(_NamedTypeListKey(self.service_info._value))
+                for tp in types:
+                    if tp.name not in kwargs:
+                        kwargs[tp.name] = ioc[tp]
         else:
             if name not in kwargs: # do not overwrite
                 kwargs[name] = self.service_info.get_service(ioc)
+
 
 _EMPTY_STR_MAPPING: Mapping[str, Any] = MappingProxyType({})
 

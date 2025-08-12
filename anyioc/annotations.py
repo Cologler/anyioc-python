@@ -104,9 +104,15 @@ class InjectFrom:
     func: Callable[..., object]
 
 
+@dataclass(frozen=True, slots=True, eq=False)
+class DontInject:
+    pass
+
+
 __all__ = [
     'InjectBy',
     'InjectByGroup',
     'InjectFrom',
     'InjectWithValue',
+    'DontInject',
 ]
