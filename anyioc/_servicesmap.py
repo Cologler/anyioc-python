@@ -12,16 +12,15 @@ from threading import Lock
 from typing import Any
 
 from ._internal import Disposable
-from ._primitive_symbol import _Symbol
 
 _NULL_CONTEXT = nullcontext()
 _logger = getLogger(__name__)
 
 class ServicesMap[TK: Hashable, TV]:
-    def __init__(self, *maps: dict[TK, list[tuple[_Symbol, TV]]], use_lock: bool=True) -> None:
+    def __init__(self, *maps: dict[TK, list[tuple[TV]]], use_lock: bool=True) -> None:
         self._lock = Lock() if use_lock else _NULL_CONTEXT
         self._frozen_keys = set()
-        self.maps: list[dict[TK, list[tuple[_Symbol, TV]]]] = list(maps) or [{}]
+        self.maps: list[dict[TK, list[tuple[TV]]]] = list(maps) or [{}]
 
     def resolve(self, key: TK) -> Generator[TV, Any, None]:
         '''
@@ -29,7 +28,7 @@ class ServicesMap[TK: Hashable, TV]:
         '''
         with self._lock:
             for mapping in self.maps:
-                yield from (v for _, v in reversed(mapping.get(key, ())))
+                yield from (t[0] for t in reversed(mapping.get(key, ())))
 
     def add(self, key: TK, value: TV) -> Disposable:
 
@@ -37,13 +36,18 @@ class ServicesMap[TK: Hashable, TV]:
             if key in self._frozen_keys:
                 raise RuntimeError(f'Key {key!r} is frozen.')
 
-            internal_value = (_Symbol(), value) # ensure dispose the right value
-            self.maps[0].setdefault(key, []).append(internal_value)
+            record = (value,) # ensure dispose the right value
+            vec = self.maps[0].setdefault(key, [])
+            inserted_index = len(vec) # no insert func, so we can cache this index
+            vec.append(record)
 
         def dispose() -> None:
             try:
                 with self._lock:
-                    self.maps[0][key].remove(internal_value)
+                    # in most case, the del is del from end.
+                    for i in range(min(inserted_index, len(vec) - 1), -1, -1):
+                        if vec[i] is record:
+                            del vec[i]
             except ValueError:
                 _logger.warning('dispose() is called after the key be removed.')
 
