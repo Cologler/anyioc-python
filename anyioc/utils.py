@@ -10,7 +10,7 @@ import logging
 from typing import Annotated, Callable, overload
 
 from ._utils import get_module_name as _get_module_name
-from .annotations import DontInject
+from .annotations import DontInject, InjectBy
 from .ioc import IServiceProvider
 from .symbols import Symbols
 
@@ -35,7 +35,7 @@ def get_logger(ioc: IServiceProvider, /) -> logging.Logger:
 def get_logger(*, module_name_only: bool) -> Callable[[IServiceProvider], logging.Logger]:
     ...
 def get_logger(
-        ioc: IServiceProvider | None = None, /,
+        ioc: Annotated[IServiceProvider | None, InjectBy(Symbols.provider)] = None, /,
         module_name_only: Annotated[bool, DontInject()] = False,
     ) -> logging.Logger | Callable[[IServiceProvider], logging.Logger]:
     '''

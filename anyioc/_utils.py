@@ -78,7 +78,7 @@ class NamedTypeGetOrDefaultServiceInfo(GetOrDefaultServiceInfo):
             return provider[key]
         except ServiceNotFoundError:
             # fallback to type only.
-            return self.get_service_by_key(provider, cast(NamedType, key).type)
+            return self.get_service_by_key(provider, key.type)
 
 
 class FallbackToAutoCallTypeInit(NamedTypeGetOrDefaultServiceInfo):
@@ -220,7 +220,7 @@ def wrap_signature[R](func: Callable[..., R], *,
 
                     case None:
                         # create ServiceInfo for type annotation
-                        named_type = NamedType.create(param.name, tp)
+                        named_type = NamedType(param.name, tp)
                         ServiceInfoType = FallbackToAutoCallTypeInit if follow else NamedTypeGetOrDefaultServiceInfo
                         si = (
                             ServiceInfoType(named_type) if param.default is Parameter.empty
@@ -232,7 +232,7 @@ def wrap_signature[R](func: Callable[..., R], *,
                             si = GetOrDefaultServiceInfo(jb.key, default)
                         else:
                             assert jb.has_name()
-                            si = NamedTypeGetOrDefaultServiceInfo(NamedType.create(cast(str, jb.name), tp), default)
+                            si = NamedTypeGetOrDefaultServiceInfo(NamedType(cast(str, jb.name), tp), default)
                         if lifetime != LifeTime.transient:
                             si = LifetimeServiceInfo(service_provider=None, key=None,
                                 service_info=si,
