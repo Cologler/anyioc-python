@@ -14,7 +14,7 @@ from collections.abc import Iterable, Mapping
 from inspect import Parameter
 from logging import getLogger
 from types import MappingProxyType
-from typing import Annotated, Any, Callable, NoReturn, cast, get_args, get_origin, override
+from typing import Annotated, Any, Callable, Generator, Hashable, NoReturn, cast, get_args, get_origin, override
 
 from ._bases import Factory, IServiceInfo, IServiceProvider, LifeTime, SupportsContext
 from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
@@ -74,11 +74,26 @@ class NamedTypeGetOrDefaultServiceInfo(GetOrDefaultServiceInfo):
     @override
     def get_service(self, provider: IServiceProvider) -> object:
         key = cast(NamedType, self._key)
-        try:
-            return provider[key]
-        except ServiceNotFoundError:
-            # fallback to type only.
-            return self.get_service_by_key(provider, cast(NamedType, key).type)
+        union_types = key.get_types()
+
+        def iter_keys() -> Generator[Hashable, Any, None]:
+            yield key
+            yield key.type
+            if len(union_types) > 1:
+                yield from (NamedType(name=key.name, type=ut) for ut in union_types)
+                # fallback to type only.
+                yield from union_types
+
+        for k in iter_keys():
+            try:
+                return provider[k]
+            except ServiceNotFoundError:
+                pass
+
+        if self.has_default():
+            return self._default
+
+        return provider[key.type] # for raise
 
 
 class FallbackToAutoCallTypeInit(NamedTypeGetOrDefaultServiceInfo):
@@ -89,7 +104,10 @@ class FallbackToAutoCallTypeInit(NamedTypeGetOrDefaultServiceInfo):
         try:
             return super().get_service(provider)
         except ServiceNotFoundError:
-            return wrap_signature(cast(NamedType, self._key).type, follow=True)(provider)
+            func = cast(NamedType, self._key).type
+            if callable(func):
+                return wrap_signature(func, follow=True)(provider)
+            raise
 
 
 class DontInjectServiceInfo(IServiceInfo):
@@ -220,7 +238,7 @@ def wrap_signature[R](func: Callable[..., R], *,
 
                     case None:
                         # create ServiceInfo for type annotation
-                        named_type = NamedType.create(param.name, tp)
+                        named_type = NamedType(param.name, tp)
                         ServiceInfoType = FallbackToAutoCallTypeInit if follow else NamedTypeGetOrDefaultServiceInfo
                         si = (
                             ServiceInfoType(named_type) if param.default is Parameter.empty
@@ -232,7 +250,7 @@ def wrap_signature[R](func: Callable[..., R], *,
                             si = GetOrDefaultServiceInfo(jb.key, default)
                         else:
                             assert jb.has_name()
-                            si = NamedTypeGetOrDefaultServiceInfo(NamedType.create(cast(str, jb.name), tp), default)
+                            si = NamedTypeGetOrDefaultServiceInfo(NamedType(cast(str, jb.name), tp), default)
                         if lifetime != LifeTime.transient:
                             si = LifetimeServiceInfo(service_provider=None, key=None,
                                 service_info=si,
