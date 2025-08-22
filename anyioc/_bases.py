@@ -8,7 +8,6 @@
 import types
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Hashable
-from contextlib import AbstractContextManager
 from enum import Enum
 from typing import Any, Protocol, Self, overload, runtime_checkable
 
@@ -41,9 +40,7 @@ class SupportsContext[T](Protocol):
             exc_type: type | None,
             exc_val: BaseException | None,
             exc_tb: types.TracebackType | None, /
-        ) -> None: ...
-
-type AllSupportsContext[T] = SupportsContext[T] | AbstractContextManager[T]
+        ) -> bool | None: ...
 
 
 class IServiceInfo[T](ABC):
@@ -122,7 +119,7 @@ class IServiceProvider:
         raise NotImplementedError
 
     @abstractmethod
-    def enter[T](self, context: AllSupportsContext[T]) -> T:
+    def enter[T](self, context: SupportsContext[T]) -> T:
         '''
         Enter the context, so that this context exits together when the current provider exits.
 

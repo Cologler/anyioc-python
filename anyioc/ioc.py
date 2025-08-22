@@ -14,7 +14,7 @@ from threading import RLock
 from types import MappingProxyType
 from typing import Any, Callable, Iterable, Optional, Self, Type, overload, override
 
-from ._bases import AllSupportsContext, IServiceProvider, LifeTime
+from ._bases import IServiceProvider, LifeTime, SupportsContext
 from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
 from ._internal import Disposable, LockedMapping
 from ._service_info import (
@@ -209,7 +209,7 @@ class ServiceProvider(IServiceProvider):
         return wrap_signature(factory, follow=follow, override_kwargs=kwargs)(self)
 
     @override
-    def enter[T](self, context: AllSupportsContext[T]) -> T:
+    def enter[T](self, context: SupportsContext[T]) -> T:
         with self._lock:
             if self._exit_stack is None:
                 self._exit_stack = ExitStack()
