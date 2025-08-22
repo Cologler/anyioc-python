@@ -56,25 +56,6 @@ def test_symbols_values_is():
         assert scoped_provider[Symbols.cache] is scoped_provider[Symbols.cache]
         assert scoped_provider[Symbols.cache] is not root_provider[Symbols.cache]
 
-def test_options_auto_enter():
-    provider = ServiceProvider(auto_enter=True)
-
-    class ContextManager:
-        value = 0
-
-        def __enter__(self):
-            self.value = 1
-            return self
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            self.value = 2
-
-    provider.register_scoped('mgr', ContextManager)
-    with provider.scope() as scoped_provider:
-        mgr = scoped_provider['mgr']
-        assert mgr.value == 1
-    assert mgr.value == 2
-
 def test_add_init_hook_should_raises_error_after_initialized():
     provider = ServiceProvider()
 

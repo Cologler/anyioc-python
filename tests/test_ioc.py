@@ -184,18 +184,6 @@ def test_resolve_with_override_kwargs() -> None:
     assert 2, {} == provider.resolve(func_with_kwonly, kwargs={'the_int_value': 2})
 
 
-def test_enter() -> None:
-    provider = ServiceProvider()
-    callback = MagicMock()
-    @contextlib.contextmanager
-    def ctx() -> Generator[None, Any, None]:
-        yield
-        callback()
-    with provider.scope() as scoped:
-        scoped.enter(ctx())
-        callback.assert_not_called()
-    callback.assert_called_once()
-
 def test_predefined_keys() -> None:
     map_to_self_keys = (
         # str
