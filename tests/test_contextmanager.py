@@ -7,7 +7,7 @@
 
 import contextlib
 import types
-from typing import Iterator, Self, cast
+from typing import Iterator, Self, assert_type, cast
 from unittest.mock import MagicMock
 
 from anyioc import ServiceProvider
@@ -36,6 +36,16 @@ def test_enter() -> None:
         scoped.enter(ctx())
         callback.assert_not_called()
     callback.assert_called_once()
+
+def test_enter_return_type() -> None:
+    provider = ServiceProvider()
+
+    @contextlib.contextmanager
+    def ctx() -> Iterator[int]:
+        yield 42
+
+    assert_type(provider.enter(ctx()), int)
+    assert_type(provider.enter(ContextManager()), ContextManager)
 
 
 def test_options_auto_enter_is_false() -> None:
