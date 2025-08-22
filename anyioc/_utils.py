@@ -7,13 +7,14 @@
 # ----------
 
 import atexit
+import contextlib
 import inspect
 import itertools
 import sys
 from collections.abc import Iterable, Mapping
 from inspect import Parameter
 from logging import getLogger
-from types import MappingProxyType
+from types import GeneratorType, MappingProxyType
 from typing import Annotated, Any, Callable, NoReturn, cast, get_args, get_origin, override
 
 from ._bases import Factory, IServiceInfo, IServiceProvider, LifeTime, SupportsContext
@@ -390,7 +391,16 @@ def create_service[T](
 
     if enter_context is not None:
         if enter_context:
-            service = provider.enter(service) # type: ignore
+            try:
+                service = provider.enter(service) # type: ignore
+            except TypeError:
+                if inspect.isgenerator(service):
+                    service = provider.enter(
+                        contextlib.contextmanager(lambda: cast(GeneratorType, service))()
+                    )
+                else:
+                    raise
+
     else:
         options = provider[Symbols.provider_options] if options is None else options
         if options['auto_enter']:

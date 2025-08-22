@@ -80,3 +80,19 @@ def test_injectfrom_with_enter_context_is_true() -> None:
         assert provider.resolve(func_with_inject_from_contextmanager) == 42
         cleanup.assert_not_called()
     cleanup.assert_called_once()
+
+
+def test_injectfrom_with_enter_context_is_true_for_generator() -> None:
+    cleanup = MagicMock()
+    def gen() -> Iterator[int]:
+        yield 42
+        cleanup()
+
+    def func_with_inject_from_contextmanager(val: Annotated[int, InjectFrom(gen, enter_context=True)]) -> int:
+        return val
+
+    root_provider = ServiceProvider()
+    with root_provider.scope() as provider:
+        assert provider.resolve(func_with_inject_from_contextmanager) == 42
+        cleanup.assert_not_called()
+    cleanup.assert_called_once()
