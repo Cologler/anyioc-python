@@ -19,17 +19,22 @@ class TransientServiceInfo[T](IServiceInfo[T]):
     __slots__ = (
         '_factory', '_factory_origin',
         # options
-        '_options',
+        '_options', '_enter_context',
     )
 
     _NOT_ALLOWED_KEYS = frozenset([
         Symbols.provider_options,
     ])
 
-    def __init__(self, factory: Callable[..., T], key: Hashable, service_provider: IServiceProvider | None) -> None:
+    def __init__(self, factory: Callable[..., T],
+            key: Hashable, service_provider: IServiceProvider | None, *,
+            enter_context: bool | None = None
+        ) -> None:
+
         if key in self._NOT_ALLOWED_KEYS:
             raise ValueError(f'Key {key!r} is not allowed')
 
+        self._enter_context = enter_context
         self._factory_origin = factory
         self._factory = wrap_signature(factory)
         self._options = service_provider[Symbols.provider_options] if service_provider is not None else None
@@ -39,7 +44,7 @@ class TransientServiceInfo[T](IServiceInfo[T]):
 
     @override
     def get_service(self, provider: IServiceProvider) -> T:
-        return create_service(provider, self._factory, options=self._options)
+        return create_service(provider, self._factory, enter_context=self._enter_context, options=self._options)
 
 
 def create_lifetime_service_info[T](

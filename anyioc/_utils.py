@@ -246,9 +246,9 @@ def wrap_signature[R](func: Callable[..., R], *,
                     case InjectByGroup(keys):
                         si = GetGroupServiceInfo(keys)
 
-                    case InjectFrom(func=func):
+                    case InjectFrom(func=func, enter_context=enter_context):
                         from ._service_info.extra import TransientServiceInfo
-                        si = TransientServiceInfo(func, service_provider=None, key=None)
+                        si = TransientServiceInfo(func, service_provider=None, key=None, enter_context=enter_context)
 
                     case _:
                         raise NotImplementedError
@@ -381,18 +381,25 @@ class FactoryAdapter[R](Factory[R]):
 def create_service[T](
         provider: IServiceProvider,
         factory: Factory[T],
+        enter_context: bool | None = None,
         options: ProviderOptions | None = None,
     ) -> T:
 
-    options = provider[Symbols.provider_options] if options is None else options
 
     service = factory(provider)
-    if options['auto_enter']:
-        wrapped = getattr(factory, 'origin_func', factory)
-        # We must ensure that the original object is a ContextManager.
-        # If the original object is a factory function and
-        # the ContextManager service is merely the return value of that function,
-        # then __enter__ should not be called automatically.
-        if isinstance(wrapped, SupportsContext) and isinstance(service, SupportsContext):
-            service = provider.enter(service)
+
+    if enter_context is not None:
+        if enter_context:
+            service = provider.enter(service) # type: ignore
+    else:
+        options = provider[Symbols.provider_options] if options is None else options
+        if options['auto_enter']:
+            wrapped = getattr(factory, 'origin_func', factory)
+            # We must ensure that the original object is a ContextManager.
+            # If the original object is a factory function and
+            # the ContextManager service is merely the return value of that function,
+            # then __enter__ should not be called automatically.
+            if isinstance(wrapped, SupportsContext) and isinstance(service, SupportsContext):
+                service = provider.enter(service)
+
     return service # type: ignore

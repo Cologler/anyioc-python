@@ -102,6 +102,7 @@ class InjectFrom:
     '''
 
     func: Callable[..., object]
+    enter_context: bool | None = None
 
 
 @dataclass(frozen=True, slots=True, eq=False)
