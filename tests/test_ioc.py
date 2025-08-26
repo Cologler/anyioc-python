@@ -5,10 +5,8 @@
 #
 # ----------
 
-import contextlib
 import itertools
-from typing import Any, Generator, Hashable, Iterable
-from unittest.mock import MagicMock
+from typing import Hashable, Iterable
 
 from pytest import raises
 
