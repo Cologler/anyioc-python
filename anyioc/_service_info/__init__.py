@@ -246,31 +246,21 @@ class GetOrRaisesServiceInfo(IServiceInfo):
 
 
 class GetOrDefaultServiceInfo[TD](IServiceInfo[object | TD]):
-    _UNSET = object()
     __slots__ = ('_key', '_default')
 
-    def __init__(self, key: Hashable, default: TD=_UNSET) -> None:
+    def __init__(self, key: Hashable, default: TD) -> None:
         self._key = key
         self._default = default
 
     def __repr__(self) -> str:
-        if self.has_default():
-            return f'<(ioc) => ioc.get({self._key!r}, {self._default!r})>'
-        else:
-            return f'<(ioc) => ioc[{self._key!r}]>'
+        return f'<(ioc) => ioc.get({self._key!r}, {self._default!r})>'
 
     @override
     def get_service(self, provider: IServiceProvider) -> object | TD:
         return self.get_service_by_key(provider, self._key)
 
     def get_service_by_key(self, provider: IServiceProvider, key: Hashable) -> object | TD:
-        if self.has_default():
-            return provider.get(key, self._default)
-        else:
-            return provider[key]
-
-    def has_default(self) -> bool:
-        return self._default is not self._UNSET
+        return provider.get(key, self._default)
 
 
 class GetManyServiceInfo[T](IServiceInfo[list[T]]):
