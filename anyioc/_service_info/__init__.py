@@ -5,6 +5,7 @@
 # 
 # ----------
 
+from abc import abstractmethod
 from contextlib import nullcontext
 from threading import RLock
 from typing import Any, Hashable, Iterable, final, override
@@ -13,6 +14,17 @@ from .._bases import Factory, IServiceInfo, IServiceProvider, LifeTime
 from ..symbols import Symbols
 
 _NULL_CONTEXT = nullcontext()
+
+
+class ServiceInfoProxy[TSI: IServiceInfo](IServiceInfo):
+    __slots__ = ('_service_info',)
+
+    def __init__(self, service_info: TSI) -> None:
+        self._service_info = service_info
+
+    @abstractmethod
+    def get_service(self, provider: IServiceProvider) -> object:
+        return self._service_info.get_service(provider)
 
 
 @final
@@ -211,6 +223,26 @@ class LifetimeServiceInfo[T](IServiceInfo[T]):
         return the finally service instance.
         '''
         return self._service_info.get_service(provider)
+
+
+class GetOrRaisesServiceInfo(IServiceInfo):
+    '''
+    Get service by key, if not found, raises `ServiceNotFoundError`.
+    '''
+    __slots__ = ('_key',)
+
+    def __init__(self, key: Hashable) -> None:
+        self._key = key
+
+    def __repr__(self) -> str:
+        return f'<(ioc) => ioc[{self._key!r}]>'
+
+    @override
+    def get_service(self, provider: IServiceProvider) -> object:
+        return self.get_service_by_key(provider, self._key)
+
+    def get_service_by_key(self, provider: IServiceProvider, key: Hashable) -> object:
+        return provider[key]
 
 
 class GetOrDefaultServiceInfo[TD](IServiceInfo[object | TD]):

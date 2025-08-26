@@ -12,6 +12,7 @@ import inspect
 import itertools
 import sys
 from collections.abc import Iterable, Mapping
+from contextlib import suppress
 from inspect import Parameter
 from logging import getLogger
 from types import GeneratorType, MappingProxyType
@@ -24,8 +25,10 @@ from ._service_info import (
     GetGroupServiceInfo,
     GetManyServiceInfo,
     GetOrDefaultServiceInfo,
+    GetOrRaisesServiceInfo,
     LifetimeServiceInfo,
     ProviderServiceInfo,
+    ServiceInfoProxy,
     ValueServiceInfo,
 )
 from .annotations import DontInject, InjectBy, InjectByGroup, InjectFrom, InjectWithValue
@@ -66,31 +69,30 @@ def dispose_at_exit(provider: IServiceProvider) -> Disposable:
     return Disposable(unregister)
 
 
-class NamedTypeGetOrDefaultServiceInfo(GetOrDefaultServiceInfo):
-    __slots__ = ()
+class NamedTypeServiceInfoProxy(ServiceInfoProxy[GetOrDefaultServiceInfo | GetOrRaisesServiceInfo]):
+    __slots__ = ('_key', '_follow')
 
-    def __init__(self, key: NamedType, default: object = GetOrDefaultServiceInfo._UNSET) -> None:
-        super().__init__(key, default)
-
-    @override
-    def get_service(self, provider: IServiceProvider) -> object:
-        key = cast(NamedType, self._key)
-        try:
-            return provider[key]
-        except ServiceNotFoundError:
-            # fallback to type only.
-            return self.get_service_by_key(provider, key.type)
-
-
-class FallbackToAutoCallTypeInit(NamedTypeGetOrDefaultServiceInfo):
-    __slots__ = ()
+    def __init__(self, key: NamedType, service_info: GetOrDefaultServiceInfo | GetOrRaisesServiceInfo, *,
+            follow: bool) -> None:
+        self._key = key
+        super().__init__(service_info)
+        self._follow = follow
 
     @override
     def get_service(self, provider: IServiceProvider) -> object:
+        key = self._key
+        service_info = self._service_info
+
+        with suppress(ServiceNotFoundError):
+            return provider[key] # ignore default
+
+        # fallback to type only.
         try:
-            return super().get_service(provider)
+            return service_info.get_service_by_key(provider, key.type)
         except ServiceNotFoundError:
-            return wrap_signature(cast(NamedType, self._key).type, follow=True)(provider)
+            if self._follow:
+                return wrap_signature(key.type, follow=True)(provider)
+            raise
 
 
 class DontInjectServiceInfo(IServiceInfo):
@@ -220,20 +222,29 @@ def wrap_signature[R](func: Callable[..., R], *,
                             si = ValueServiceInfo(param.default)
 
                     case None:
-                        # create ServiceInfo for type annotation
-                        named_type = NamedType(param.name, tp)
-                        ServiceInfoType = FallbackToAutoCallTypeInit if follow else NamedTypeGetOrDefaultServiceInfo
+                        # create ServiceInfo from type annotation
+                        key = NamedType(param.name, tp)
                         si = (
-                            ServiceInfoType(named_type) if param.default is Parameter.empty
-                            else ServiceInfoType(named_type, param.default)
+                            GetOrRaisesServiceInfo(key) if param.default is Parameter.empty
+                            else GetOrDefaultServiceInfo(key, param.default)
                         )
+                        si = NamedTypeServiceInfoProxy(key, si, follow=follow)
 
                     case InjectBy(default=default, lifetime=lifetime) as jb:
                         if jb.has_key():
-                            si = GetOrDefaultServiceInfo(jb.key, default)
+                            key = jb.key
                         else:
                             assert jb.has_name()
-                            si = NamedTypeGetOrDefaultServiceInfo(NamedType(cast(str, jb.name), tp), default)
+                            key = NamedType(cast(str, jb.name), tp)
+
+                        si = (
+                            GetOrDefaultServiceInfo(key, default) if jb.has_default()
+                            else GetOrRaisesServiceInfo(key)
+                        )
+
+                        if isinstance(key, NamedType):
+                            si = NamedTypeServiceInfoProxy(key, si, follow=follow)
+
                         if lifetime != LifeTime.transient:
                             si = LifetimeServiceInfo(service_provider=None, key=None,
                                 service_info=si,

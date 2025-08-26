@@ -9,9 +9,9 @@ from dataclasses import dataclass, field
 from typing import Callable, Hashable, Iterable
 
 from ._bases import LifeTime
-from ._service_info import GetOrDefaultServiceInfo
 
 _UNSET_KEY = object()
+_UNSET_DEFAULT = object()
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -33,7 +33,7 @@ class InjectBy:
     '''
 
     key: Hashable = field(default=_UNSET_KEY)
-    default: object = field(default=GetOrDefaultServiceInfo._UNSET)
+    default: object = field(default=_UNSET_DEFAULT)
     # kwonly:
     lifetime: LifeTime = field(default=LifeTime.transient, kw_only=True)
     name: str | None = field(default=None, kw_only=True)
@@ -56,7 +56,7 @@ class InjectBy:
         return self.name is not None
 
     def has_default(self) -> bool:
-        return self.default is not GetOrDefaultServiceInfo._UNSET
+        return self.default is not _UNSET_DEFAULT
 
 
 @dataclass(frozen=True, slots=True, eq=False)
