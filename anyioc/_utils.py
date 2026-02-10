@@ -31,7 +31,7 @@ from ._service_info import (
     ServiceInfoProxy,
     ValueServiceInfo,
 )
-from .annotations import DontInject, InjectBy, InjectByGroup, InjectFrom, InjectWithValue
+from .annotations import DontInject, InjectBy, InjectByGroup, InjectFrom, InjectWithValue, _get_injectable_info
 from .err import ServiceNotFoundError
 from .keys import NamedType, _NamedTypeListKey
 from .symbols import Symbols
@@ -90,6 +90,22 @@ class NamedTypeServiceInfoProxy(ServiceInfoProxy[GetOrDefaultServiceInfo | GetOr
         try:
             return service_info.get_service_by_key(provider, key.type)
         except ServiceNotFoundError:
+            if injectable_info := _get_injectable_info(key.type):
+                service_key = injectable_info
+                try:
+                    return provider[service_key]
+                except ServiceNotFoundError:
+                    from anyioc import ServiceProvider
+                    provider_root: ServiceProvider = cast(ServiceProvider, provider[Symbols.provider_root])
+                    provider_root.register(service_key, key.type, injectable_info.lifetime)
+                    injectable_info_key = injectable_info.key
+                    if isinstance(injectable_info_key, list):
+                        for x in injectable_info_key:
+                            provider_root.register_bind(x, service_key)
+                    else:
+                        provider_root.register_bind(injectable_info_key, service_key)
+                    return provider[service_key]
+
             if self._follow:
                 return wrap_signature(key.type, follow=True)(provider)
             raise

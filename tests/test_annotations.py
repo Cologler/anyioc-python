@@ -11,7 +11,7 @@ from typing import Annotated
 from pytest import raises
 
 from anyioc import LifeTime, ServiceNotFoundError, ServiceProvider
-from anyioc.annotations import DontInject, InjectBy, InjectByGroup, InjectFrom, InjectWithValue
+from anyioc.annotations import DontInject, InjectBy, InjectByGroup, InjectFrom, InjectWithValue, injectable
 from anyioc.keys import NamedType
 
 
@@ -252,6 +252,35 @@ def test_inject_func_by_annotated_injectwithvalue_for_args() -> None:
     with raises(TypeError):
         ServiceProvider().resolve(func)
 
+def test_inject_func_by_annotated_injectable() -> None:
+    @injectable(LifeTime.singleton)
+    class S:
+        def __init__(self) -> None:
+            pass
+
+    class T:
+        def __init__(self) -> None:
+            pass
+
+    class A:
+        def __init__(self, s: S, t: T) -> None:
+            self.s = s
+            self.t = t
+
+    class B:
+        def __init__(self, s: S) -> None:
+            self.s = s
+
+    sp = ServiceProvider()
+
+    a1 = sp.resolve(A, follow=True)
+    a2 = sp.resolve(A, follow=True)
+    assert a1.s is a2.s
+    assert a1.t is not a2.t
+
+    b1 = sp.resolve(B, follow=False)
+    b2 = sp.resolve(B, follow=False)
+    assert a1.s is b1.s is b2.s
 
 def test_inject_class_by_typed() -> None:
     val = 444

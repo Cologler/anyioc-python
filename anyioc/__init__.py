@@ -6,7 +6,7 @@
 # ----------
 
 from ._bases import IServiceProvider, LifeTime
-from .annotations import DontInject, InjectBy, InjectByGroup, InjectFrom, InjectWithValue
+from .annotations import DontInject, InjectBy, InjectByGroup, InjectFrom, InjectWithValue, injectable
 from .err import ServiceNotFoundError
 from .ioc import ServiceProvider
 
@@ -20,4 +20,5 @@ __all__ = [
     'LifeTime',
     'ServiceNotFoundError',
     'ServiceProvider',
+    'injectable',
 ]

@@ -110,10 +110,42 @@ class DontInject:
     pass
 
 
+@dataclass(frozen=True, slots=True, eq=False)
+class _InjectableInfo:
+    lifetime: LifeTime
+    key: Hashable | list[Hashable]
+
+
+def injectable[T: type](
+        lifetime: LifeTime,
+        key: Hashable | list[Hashable] = _UNSET_KEY
+    ) -> Callable[[T], T]:
+    '''
+    Indicate that the class is injectable.
+    '''
+
+    if lifetime == LifeTime.transient:
+        raise ValueError('transient is the default lifetime, no need to use this decorator.')
+
+    def decorator(cls: T) -> T:
+        info: _InjectableInfo = _InjectableInfo(
+            lifetime=lifetime,
+            key=key
+        )
+        setattr(cls, '__anyioc_injectable__', info)
+        return cls
+
+    return decorator
+
+def _get_injectable_info(cls: type) -> _InjectableInfo | None:
+    return getattr(cls, '__anyioc_injectable__', None)
+
+
 __all__ = [
     'InjectBy',
     'InjectByGroup',
     'InjectFrom',
     'InjectWithValue',
     'DontInject',
+    'injectable',
 ]
