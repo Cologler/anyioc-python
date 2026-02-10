@@ -12,7 +12,7 @@ from contextlib import ExitStack, nullcontext
 from logging import getLogger
 from threading import RLock
 from types import MappingProxyType
-from typing import Any, Callable, Iterable, Optional, Self, Type, overload, override
+from typing import Any, Callable, Iterable, Optional, Self, Type, cast, overload, override
 
 from ._bases import IServiceProvider, LifeTime, SupportsContext
 from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
@@ -28,6 +28,7 @@ from ._service_info import (
 from ._service_info.extra import CallerFrameServiceInfo, create_lifetime_service_info
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as wrap_signature
+from .annotations import _get_injectable_info
 from .err import ServiceNotFoundError
 from .ioc_resolver import ServiceInfoChainResolver
 from .keys import NamedType, _NamedTypeListKey
@@ -131,6 +132,15 @@ class ServiceProvider(IServiceProvider):
             return self._services[key]
         except KeyError:
             pass
+
+        if injectable_info := _get_injectable_info(key):
+            service_key = injectable_info # info itself
+            provider_root: ServiceProvider = cast(ServiceProvider, self[Symbols.provider_root])
+            provider_root.register(service_key, cast(Callable, key), injectable_info.lifetime)
+            for x in injectable_info.iter_keys():
+                provider_root.register_bind(x, service_key)
+            return self._services[service_key]
+
         # load missing resolver and resolve service info.
         resolver = self._services[Symbols.missing_resolver].get_service(self)
         return resolver.get(self, key)

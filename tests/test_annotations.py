@@ -273,14 +273,16 @@ def test_inject_func_by_annotated_injectable() -> None:
 
     sp = ServiceProvider()
 
+    s = sp[S]
+
     a1 = sp.resolve(A, follow=True)
     a2 = sp.resolve(A, follow=True)
-    assert a1.s is a2.s
+    assert a1.s is a2.s is s
     assert a1.t is not a2.t
 
     b1 = sp.resolve(B, follow=False)
     b2 = sp.resolve(B, follow=False)
-    assert a1.s is b1.s is b2.s
+    assert a1.s is b1.s is b2.s is s
 
 def test_inject_class_by_typed() -> None:
     val = 444

@@ -116,6 +116,12 @@ class _InjectableInfo:
     key: Hashable
     bind_keys: Iterable[Hashable] | None = None
 
+    def iter_keys(self) -> Iterable[Hashable]:
+        if self.key is not None:
+            yield self.key
+        if self.bind_keys:
+            yield from self.bind_keys
+
 
 def injectable[T: type](
         lifetime: LifeTime,
@@ -124,12 +130,17 @@ def injectable[T: type](
     ) -> Callable[[T], T]:
     '''
     Indicate that the class is injectable.
+
+    Set key to `None` to not bind the class type as key.
     '''
 
     if lifetime == LifeTime.transient:
         raise ValueError('transient is the default lifetime, no need to use this decorator.')
 
     def decorator(cls: T) -> T:
+        if not callable(cls):
+            raise TypeError('injectable can only be used to decorate class.')
+
         info: _InjectableInfo = _InjectableInfo(
             lifetime=lifetime,
             key=key if key is not _UNSET_KEY else cls,
@@ -140,8 +151,8 @@ def injectable[T: type](
 
     return decorator
 
-def _get_injectable_info(cls: type) -> _InjectableInfo | None:
-    return getattr(cls, '__anyioc_injectable__', None)
+def _get_injectable_info(obj: object) -> _InjectableInfo | None:
+    return getattr(obj, '__anyioc_injectable__', None)
 
 
 __all__ = [
