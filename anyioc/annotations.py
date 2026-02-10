@@ -113,12 +113,14 @@ class DontInject:
 @dataclass(frozen=True, slots=True, eq=False)
 class _InjectableInfo:
     lifetime: LifeTime
-    key: Hashable | list[Hashable]
+    key: Hashable
+    bind_keys: Iterable[Hashable] | None = None
 
 
 def injectable[T: type](
         lifetime: LifeTime,
-        key: Hashable | list[Hashable] = _UNSET_KEY
+        key: Hashable = _UNSET_KEY,
+        bind_keys: Iterable[Hashable] | None = None,
     ) -> Callable[[T], T]:
     '''
     Indicate that the class is injectable.
@@ -130,7 +132,8 @@ def injectable[T: type](
     def decorator(cls: T) -> T:
         info: _InjectableInfo = _InjectableInfo(
             lifetime=lifetime,
-            key=key
+            key=key if key is not _UNSET_KEY else cls,
+            bind_keys=bind_keys,
         )
         setattr(cls, '__anyioc_injectable__', info)
         return cls

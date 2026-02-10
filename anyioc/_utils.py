@@ -98,12 +98,8 @@ class NamedTypeServiceInfoProxy(ServiceInfoProxy[GetOrDefaultServiceInfo | GetOr
                     from anyioc import ServiceProvider
                     provider_root: ServiceProvider = cast(ServiceProvider, provider[Symbols.provider_root])
                     provider_root.register(service_key, key.type, injectable_info.lifetime)
-                    injectable_info_key = injectable_info.key
-                    if isinstance(injectable_info_key, list):
-                        for x in injectable_info_key:
-                            provider_root.register_bind(x, service_key)
-                    else:
-                        provider_root.register_bind(injectable_info_key, service_key)
+                    for x in (injectable_info.key, *(injectable_info.bind_keys or ())):
+                        provider_root.register_bind(x, service_key)
                     return provider[service_key]
 
             if self._follow:
