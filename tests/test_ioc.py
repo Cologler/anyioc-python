@@ -178,8 +178,8 @@ def test_resolve_with_override_kwargs() -> None:
     def func_with_varkw(*, the_int_value: int, **kwargs: object) -> tuple[int, dict[str, object]]:
         return the_int_value, kwargs
 
-    assert 1, {} == provider.resolve(func_with_kwonly)
-    assert 2, {} == provider.resolve(func_with_kwonly, kwargs={'the_int_value': 2})
+    assert 1, {} == provider.resolve(func_with_varkw)
+    assert 2, {} == provider.resolve(func_with_varkw, kwargs={'the_int_value': 2})
 
 
 def test_predefined_keys() -> None:
