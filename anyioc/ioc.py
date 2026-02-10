@@ -179,6 +179,20 @@ class ServiceProvider(IServiceProvider):
                 return d
             raise
 
+    def get_typed[T, TD](self, _: Type[T], key: Hashable, d: TD=None, /) -> T | TD:
+        '''
+        Get a service by key and cast it to specified type.
+        '''
+        return cast(T, self.get(key, d))
+
+    def get_required_typed[T](self, _: Type[T], key: Hashable, /) -> T:
+        '''
+        Get a required service by key.
+
+        Raise `ServiceNotFoundError` if not found.
+        '''
+        return cast(T, self[key])
+
     @overload
     def get_many[T](self, key: NamedType[T]) -> list[T]: ...
     @overload
