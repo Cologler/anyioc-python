@@ -11,11 +11,13 @@ from anyioc import ServiceProvider
 
 def test_get_typed_typing() -> None:
     sp = ServiceProvider()
+    sp.register_value('', 123)
 
     assert_type(sp.get_typed(int, ''), int | None)
     assert_type(sp.get_typed(int, '', {}), int | dict)
 
 def test_get_required_typed_typing() -> None:
     sp = ServiceProvider()
+    sp.register_value('', 123)
 
     assert_type(sp.get_required_typed(int, ''), int)
