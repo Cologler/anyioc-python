@@ -89,6 +89,28 @@ class IServiceProvider:
         raise NotImplementedError
 
     @overload
+    def get_typed[T, TD](self, type_as_key: type[T], /, *, default: TD=None) -> T | TD: ...
+    @overload
+    def get_typed[T, TD](self, _: type[T], key: Hashable, /, *, default: TD=None) -> T | TD: ...
+    def get_typed[T, TD](self, type_: type[T], key: Hashable = None, /, *, default: TD=None) -> T | TD:
+        '''
+        Get a service by key and cast it to specified type.
+        '''
+        raise NotImplementedError
+
+    @overload
+    def get_required_typed[T](self, type_as_key: type[T], /) -> T: ...
+    @overload
+    def get_required_typed[T](self, _: type[T], key: Hashable, /) -> T: ...
+    def get_required_typed[T](self, type_: type[T], key: Hashable = None, /) -> T:
+        '''
+        Get a required service by key and cast it to specified type.
+
+        Raise `ServiceNotFoundError` if not found.
+        '''
+        raise NotImplementedError
+
+    @overload
     def get_many[T](self, key: NamedType[T]) -> list[T]: ...
     @overload
     def get_many[T](self, key: TypedSymbol[T]) -> list[T]: ...
