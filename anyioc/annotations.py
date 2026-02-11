@@ -124,8 +124,6 @@ def injectable[T: type](
     ) -> Callable[[T], T]:
     '''
     Indicate that the class is injectable.
-
-    Set key to `None` to not bind the class type as key.
     '''
 
     if lifetime == LifeTime.transient:
