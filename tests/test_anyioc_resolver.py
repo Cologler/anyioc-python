@@ -8,7 +8,7 @@
 import types
 from typing import Annotated
 
-from pytest import raises
+from pytest import mark, raises
 
 from anyioc import InjectBy, ServiceNotFoundError, ServiceProvider
 from anyioc.ioc_resolver import (
@@ -19,12 +19,14 @@ from anyioc.ioc_resolver import (
 from anyioc.symbols import Symbols
 
 
-def test_import_resolver() -> None:
+@mark.parametrize('use_cache', [False, True], ids=['without-cache', 'with-cache'])
+def test_import_resolver(use_cache: bool) -> None:
     provider = ServiceProvider()
     with raises(ServiceNotFoundError):
         _ = provider['anyioc']
 
-    provider[Symbols.missing_resolver].append(ImportServiceInfoResolver())
+    resolver = ImportServiceInfoResolver()
+    provider[Symbols.missing_resolver].append(resolver.cache() if use_cache else resolver)
 
     import anyioc
     assert provider['anyioc'] is anyioc
@@ -34,6 +36,7 @@ def test_import_resolver() -> None:
     assert provider['sys'] is sys
     assert provider['module::sys'] is sys
 
+    sys.modules.pop('module2', None)
     with raises(ServiceNotFoundError):
         provider['module2']
     assert provider['module::module2'] is not None
@@ -44,19 +47,8 @@ def test_import_resolver() -> None:
     with raises(ServiceNotFoundError):
         _ = provider['unknown-some-wtf-module']
 
-def test_import_resolver_with_cache() -> None:
-    provider = ServiceProvider()
-    with raises(ServiceNotFoundError):
-        _ = provider['anyioc']
-    provider[Symbols.missing_resolver].append(ImportServiceInfoResolver().cache())
-    import anyioc
-    assert provider['anyioc'] is anyioc
-    import sys
-    assert provider['sys'] is sys
-    with raises(ServiceNotFoundError):
-        _ = provider['unknown-some-wtf-module']
-
-def test_type_resolver() -> None:
+@mark.parametrize('use_cache', [False, True], ids=['without-cache', 'with-cache'])
+def test_type_resolver(use_cache: bool) -> None:
     class CLASS:
         def __init__(self, name: Annotated[str, InjectBy('name')]) -> None:
             self.name = name
@@ -66,29 +58,12 @@ def test_type_resolver() -> None:
     with raises(ServiceNotFoundError):
         _ = provider[CLASS]
     tsir = TypesServiceInfoResolver()
-    provider[Symbols.missing_resolver].append(tsir.cache())
+    provider[Symbols.missing_resolver].append(tsir.cache() if use_cache else tsir)
 
     obj = provider[CLASS]
     assert isinstance(obj, CLASS)
     assert obj.name == 'some-name'
     assert obj is not provider[CLASS]
-
-def test_type_resolver_with_cache() -> None:
-    class CLASS:
-        def __init__(self, name: Annotated[str, InjectBy('name')]) -> None:
-            self.name = name
-
-    provider = ServiceProvider()
-    provider.register_value('name', 'some-name')
-    with raises(ServiceNotFoundError):
-        _ = provider[CLASS]
-    tsir = TypesServiceInfoResolver()
-    provider[Symbols.missing_resolver].append(tsir)
-
-    obj = provider[CLASS]
-    assert isinstance(obj, CLASS)
-    assert obj.name == 'some-name'
-    assert provider[CLASS] is not provider[CLASS]
 
 def test_chain_resolver() -> None:
     class CLASS:
