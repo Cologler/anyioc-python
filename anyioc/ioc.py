@@ -348,7 +348,8 @@ class ServiceProvider(IServiceProvider):
         '''
         register a value by key.
 
-        equals `register_transient(key, lambda ioc: value)`
+        The exact value object is returned for every resolve.
+        Its lifetime is not managed by the container.
         '''
         return self.register_service_info(key, ValueServiceInfo(value))
 
