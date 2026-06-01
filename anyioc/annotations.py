@@ -99,6 +99,23 @@ class InjectWithValue:
 class InjectFrom:
     '''
     Inject from a callable.
+
+    The callable is resolved through the `IServiceProvider`,
+    so its own parameters are injected by the container.
+    If the callable cannot be resolved, the annotated parameter's
+    default value is not used as a fallback.
+
+    For example:
+
+    ``` py
+    def callee(value: int) -> int:
+        return value
+
+    def caller(value: Annotated[object, InjectFrom(callee)] = 200) -> object:
+        return value
+
+    provider.resolve(caller) # raises ServiceNotFoundError for int
+    ```
     '''
 
     func: Callable[..., object]

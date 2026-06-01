@@ -203,6 +203,7 @@ def test_inject_func_by_annotated_injectfrom_with_default() -> None:
     def func_caller(val_from_callee: Annotated[object, InjectFrom(func_callee)] = 200) -> object:
         return val_from_callee
 
+    # The caller parameter default is not a fallback for unresolved InjectFrom dependencies.
     with raises(ServiceNotFoundError) as se:
         sp.resolve(func_caller)
     assert se.value.resolve_chain == (int, )
