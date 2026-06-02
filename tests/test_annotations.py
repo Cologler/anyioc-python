@@ -6,16 +6,36 @@
 # ----------
 
 import inspect
-from typing import Annotated
+import itertools
+from typing import Annotated, Callable, Iterable
 
-from pytest import raises
+from pytest import mark, raises
 
 from anyioc import LifeTime, ServiceNotFoundError, ServiceProvider
 from anyioc.annotations import DontInject, InjectBy, InjectByGroup, InjectFrom, InjectWithValue, injectable
 from anyioc.keys import NamedType
 
 
-def test_inject_func_by_annotated_dontinject() -> None:
+def assert_resolve_lifetime(sps: Iterable[ServiceProvider], key: Callable, lifetime: LifeTime) -> None:
+    for left, right in itertools.combinations_with_replacement(sps, 2):
+        left_val = left.resolve(key)
+        right_val = right.resolve(key)
+        if lifetime == LifeTime.singleton:
+            assert left_val is right_val
+        elif lifetime == LifeTime.scoped:
+            assert (left is right) == (left_val is right_val)
+        elif lifetime == LifeTime.transient:
+            assert left_val is not right_val
+        else:
+            raise ValueError(f'unsupported lifetime: {lifetime}')
+
+def assert_resolve_lifetime_from_root(sp: ServiceProvider, key: Callable, lifetime: LifeTime) -> None:
+    with sp.scope() as sp1:
+        with sp.scope() as sp2:
+            assert_resolve_lifetime([sp, sp1, sp2], key, lifetime)
+
+
+def test_dontinject_resolves_required_parameter_error() -> None:
     def param_without_default_func(x: Annotated[int, DontInject()]) -> None:
         pass
 
@@ -30,7 +50,7 @@ def test_inject_func_by_annotated_dontinject() -> None:
 
     assert 2 == sp.resolve(param_with_default_func)
 
-def test_inject_func_by_annotated_dontinject_for_args() -> None:
+def test_dontinject_ignores_varargs() -> None:
     def param_without_default_func(*args: Annotated[int, DontInject()]) -> tuple:
         return args
 
@@ -39,7 +59,7 @@ def test_inject_func_by_annotated_dontinject_for_args() -> None:
 
     assert () == sp.resolve(param_without_default_func)
 
-def test_inject_func_by_annotated_dontinject_for_kwargs() -> None:
+def test_dontinject_ignores_varkwargs() -> None:
     def default_kwargs_func(**kwargs) -> dict[str, object]:  # noqa: ANN003
         return kwargs
 
@@ -57,7 +77,7 @@ def test_inject_func_by_annotated_dontinject_for_kwargs() -> None:
     assert sp.resolve(kwargs_annotated_dontinject_func) == {}
 
 
-def test_inject_class_by_annotated_injectby() -> None:
+def test_injectby_resolves_class_constructor_parameter() -> None:
     key = 'the_int_key'
     val = 444
 
@@ -70,7 +90,7 @@ def test_inject_class_by_annotated_injectby() -> None:
 
     assert sp.resolve(A).val == val
 
-def test_inject_class_by_annotated_injectby_with_default() -> None:
+def test_injectby_uses_default_for_class_constructor_parameter() -> None:
     key = 'the_int_key'
     val = 444
 
@@ -81,7 +101,7 @@ def test_inject_class_by_annotated_injectby_with_default() -> None:
     sp = ServiceProvider()
     assert sp.resolve(A).val == val
 
-def test_inject_func_by_annotated_injectby() -> None:
+def test_injectby_resolves_callable_parameter() -> None:
     key = 'the_int_key'
     val = 444
 
@@ -93,7 +113,7 @@ def test_inject_func_by_annotated_injectby() -> None:
 
     assert sp.resolve(func) == val
 
-def test_inject_func_by_annotated_injectby_with_name() -> None:
+def test_injectby_resolves_named_parameter() -> None:
     def func(x: Annotated[int, InjectBy(name='name2')]) -> int:
         return x
 
@@ -105,27 +125,27 @@ def test_inject_func_by_annotated_injectby_with_name() -> None:
 
     assert sp.resolve(func) == 2
 
-def test_inject_func_by_annotated_injectby_with_lifetime() -> None:
+@mark.parametrize(
+    'lifetime',
+    [LifeTime.transient, LifeTime.scoped],
+    ids=['transient', 'scoped'],
+)
+def test_injectby_lifetime_caches_parameter(lifetime: LifeTime) -> None:
     key = 'djiaoshfoia'
 
-    def get_transient(x: Annotated[object, InjectBy(key, lifetime=LifeTime.transient)]) -> object:
-        return x
-
-    def get_scoped_1(x: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]) -> object:
-        return x
-
-    def get_scoped_2(x: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]) -> object:
+    def get_value_1(x: Annotated[object, InjectBy(key, lifetime=lifetime)]) -> object:
         return x
 
     sp = ServiceProvider()
     sp.register_transient(key, lambda: object())
 
-    assert sp.resolve(get_transient) is not sp.resolve(get_transient), 'transient should never cached'
-    assert sp.resolve(get_scoped_1) is sp.resolve(get_scoped_1), 'scoped should cached'
-    assert sp.resolve(get_scoped_2) is sp.resolve(get_scoped_2), 'scoped should cached'
-    assert sp.resolve(get_scoped_1) is not sp.resolve(get_scoped_2), 'should not cache cross function'
+    assert_resolve_lifetime_from_root(sp, get_value_1, lifetime)
 
-def test_inject_func_by_annotated_injectby_with_default() -> None:
+def test_injectby_lifetime_rejects_singleton() -> None:
+    with raises(ValueError, match='Singleton lifetime for InjectBy is not allowed\\.'):
+        InjectBy('key', lifetime=LifeTime.singleton)
+
+def test_injectby_uses_default_for_callable_parameter() -> None:
     key = 'the_int_key'
     val = 444
 
@@ -136,7 +156,7 @@ def test_inject_func_by_annotated_injectby_with_default() -> None:
 
     assert sp.resolve(func) == val
 
-def test_inject_func_by_annotated_injectby_for_args() -> None:
+def test_injectby_resolves_varargs() -> None:
     key = 'the_int_key'
 
     def func(*args: Annotated[int, InjectBy(key)]) -> tuple[int, ...]:
@@ -149,36 +169,39 @@ def test_inject_func_by_annotated_injectby_for_args() -> None:
 
     assert sp.resolve(func) == (3, 2, 1)
 
-def test_inject_func_by_annotated_injectby_for_args_with_lifetime() -> None:
+@mark.parametrize(
+    'lifetime',
+    [LifeTime.transient, LifeTime.scoped],
+    ids=['transient', 'scoped'],
+)
+def test_injectby_lifetime_caches_varargs(lifetime: LifeTime) -> None:
     key = 'jioerwjherhg'
 
-    def get_transient(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.transient)]) -> tuple[object, ...]:
+    def get_args_1(*args: Annotated[object, InjectBy(key, lifetime=lifetime)]) -> tuple[object, ...]:
         return args
 
-    def get_scoped_1(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]) -> tuple[object, ...]:
-        return args
-
-    def get_scoped_2(*args: Annotated[object, InjectBy(key, lifetime=LifeTime.scoped)]) -> tuple[object, ...]:
+    def get_args_2(*args: Annotated[object, InjectBy(key, lifetime=lifetime)]) -> tuple[object, ...]:
         return args
 
     sp = ServiceProvider()
     sp.register_transient(key, lambda: object())
     sp.register_transient(key, lambda: object())
 
-    assert all(len(sp.resolve(f)) == 2 for f in [get_transient, get_scoped_1, get_scoped_2]), \
-        'all args are tuple[object, object]'
+    first = sp.resolve(get_args_1)
+    second = sp.resolve(get_args_1)
 
-    assert len(set(x for f in [get_transient, get_transient] for x in sp.resolve(f))) == 4, \
-        'objects are unique on all transient function'
+    assert len(first) == len(second) == 2
 
-    assert len(set(x for f in [get_scoped_1, get_scoped_2] for x in sp.resolve(f))) == 4, \
-        'objects are unique on different scoped function'
+    if lifetime == LifeTime.scoped:
+        assert first == second, 'objects are cached on the same scoped function'
+        assert len(set(first + sp.resolve(get_args_2))) == 4, \
+            'objects are unique on different scoped function'
 
-    assert sp.resolve(get_scoped_1) == sp.resolve(get_scoped_1), \
-        'objects are cached on different scoped function'
+    else:
+        assert len(set(first + second)) == 4, 'objects are unique on transient function'
 
 
-def test_inject_func_by_annotated_injectfrom() -> None:
+def test_injectfrom_resolves_callable_dependency() -> None:
     sp = ServiceProvider()
 
     def func_callee(val: int) -> int:
@@ -194,7 +217,7 @@ def test_inject_func_by_annotated_injectfrom() -> None:
     sp.register_value(int, 100)
     assert sp.resolve(func_caller) == 100
 
-def test_inject_func_by_annotated_injectfrom_with_default() -> None:
+def test_injectfrom_does_not_use_parameter_default_for_unresolved_dependency() -> None:
     sp = ServiceProvider()
 
     def func_callee(val: int) -> int:
@@ -212,7 +235,7 @@ def test_inject_func_by_annotated_injectfrom_with_default() -> None:
     assert sp.resolve(func_caller) == 100
 
 
-def test_inject_func_by_annotated_injectbygroup() -> None:
+def test_injectbygroup_resolves_tuple_parameter() -> None:
     sv = 'ffw'
     iv = 46656
 
@@ -224,7 +247,7 @@ def test_inject_func_by_annotated_injectbygroup() -> None:
     sp.register_value(int, iv)
     assert sp.resolve(func) == (sv, iv)
 
-def test_inject_func_by_annotated_injectbygroup_for_args() -> None:
+def test_injectbygroup_resolves_varargs() -> None:
     sv = 'ffw'
     iv = 46656
 
@@ -237,14 +260,14 @@ def test_inject_func_by_annotated_injectbygroup_for_args() -> None:
     assert sp.resolve(func) == (sv, iv)
 
 
-def test_inject_func_by_annotated_injectwithvalue() -> None:
+def test_injectwithvalue_resolves_parameter() -> None:
     def func(inject_from_ioc: Annotated[int, InjectWithValue(1)] = 0) -> int:
         return inject_from_ioc
 
     assert func() == 0
     assert ServiceProvider().resolve(func) == 1
 
-def test_inject_func_by_annotated_injectwithvalue_for_args() -> None:
+def test_injectwithvalue_rejects_varargs() -> None:
     def func(*args: Annotated[int, InjectWithValue(1)]) -> tuple[int, ...]:
         return args
 
@@ -253,7 +276,7 @@ def test_inject_func_by_annotated_injectwithvalue_for_args() -> None:
     with raises(TypeError):
         ServiceProvider().resolve(func)
 
-def test_inject_func_by_annotated_injectable() -> None:
+def test_injectable_registers_type_with_lifetime() -> None:
     @injectable(LifeTime.singleton)
     class S:
         def __init__(self) -> None:
@@ -285,7 +308,7 @@ def test_inject_func_by_annotated_injectable() -> None:
     b2 = sp.resolve(B, follow=False)
     assert a1.s is b1.s is b2.s is s
 
-def test_inject_class_by_typed() -> None:
+def test_type_annotation_resolves_class_constructor_parameter() -> None:
     val = 444
 
     class A:
@@ -296,7 +319,7 @@ def test_inject_class_by_typed() -> None:
     sp.register_value(int, val)
     assert sp.resolve(A).val == val
 
-def test_inject_class_by_typed_with_default() -> None:
+def test_type_annotation_uses_class_constructor_parameter_default() -> None:
     class A:
         def __init__(self, x: int = 200) -> None:
             self.val = x
@@ -306,14 +329,14 @@ def test_inject_class_by_typed_with_default() -> None:
     sp.register_value(int, 300)
     assert sp.resolve(A).val == 300
 
-def test_inject_types_for_service_provider() -> None:
+def test_type_annotation_resolves_service_provider() -> None:
     def get_value(val: ServiceProvider) -> ServiceProvider:
         return val
 
     sp = ServiceProvider()
     assert sp.resolve(get_value) is sp
 
-def test_inject_types_for_frameinfo() -> None:
+def test_type_annotation_resolves_caller_frameinfo() -> None:
     def get_value(val: inspect.FrameInfo) -> inspect.FrameInfo:
         return val
 

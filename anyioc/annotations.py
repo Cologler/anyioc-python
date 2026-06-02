@@ -30,6 +30,10 @@ class InjectBy:
     ```
     * provider.get_many(key)
     ```
+
+    `LifeTime.singleton` is not allowed because `InjectBy` does not know which
+    `IServiceProvider` owns the singleton cache. Use `LifeTime.transient` or
+    `LifeTime.scoped` instead.
     '''
 
     key: Hashable = field(default=_UNSET_KEY)
