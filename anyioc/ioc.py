@@ -16,6 +16,7 @@ from typing import Any, Callable, Iterable, Optional, Self, Type, cast, overload
 
 from ._bases import IServiceProvider, LifeTime, SupportsContext
 from ._consts import SERVICEPROVIDER_NAMING_CONVENTION
+from ._hooks import Hooks
 from ._internal import Disposable, LockedMapping
 from ._service_info import (
     BindedServiceInfo,
@@ -78,9 +79,9 @@ class ServiceProvider(IServiceProvider):
             self._services[Symbols.cache] = GetAttrServiceInfo('_scoped_cache')
             self._services[Symbols.missing_resolver] = ValueServiceInfo(ServiceInfoChainResolver())
             self._services[Symbols.caller_frame] = get_frameinfo
+            self._services[Symbols.at_init] = GetAttrServiceInfo('_at_init')
 
-            self.__init_hooks = []
-            self.__init_exc = None
+            self.__init_hooks = Hooks[[IServiceProvider]]()
 
             # service alias
             for name in SERVICEPROVIDER_NAMING_CONVENTION:
@@ -98,34 +99,14 @@ class ServiceProvider(IServiceProvider):
 
         assert self._root is not None
 
+    @property
+    def _at_init(self) -> bool:
+        return self._root.__init_hooks.running
+
     def add_init_hook(self, func: Callable) -> None:
-        func = wrap_signature(func)
-        if self.__init_hooks is not None:
-            with self._lock:
-                if self.__init_hooks is not None:
-                    self.__init_hooks.append(func)
-                    return
-        raise RuntimeError('Cannot add init hook after initialized.')
-
-    def __ensure_init_hooks_called(self) -> None:
-        if self.__init_hooks is not None or self.__init_exc is not None:
-            with self._lock:
-                if self.__init_exc is not None:
-                    raise self.__init_exc
-                if self.__init_hooks is not None:
-                    _logger.debug('call init hooks')
-                    hooks = self.__init_hooks
-                    self.__init_hooks = None
-
-                    disposable = self._services.add(Symbols.at_init, ValueServiceInfo(True))
-                    try:
-                        for func in hooks:
-                            func(self)
-                    except Exception as e:
-                        self.__init_exc = e
-                        raise
-                    disposable()
-                    self._services.add(Symbols.at_init, ValueServiceInfo(False))
+        if self is not self._root:
+            raise RuntimeError('Init hooks can only be added to the root provider.')
+        self.__init_hooks.add(wrap_signature(func))
 
     def _get_service_info(self, key: Hashable) -> IServiceInfo:
         try:
@@ -154,7 +135,7 @@ class ServiceProvider(IServiceProvider):
     @override
     def __getitem__(self, key: Hashable) -> object: # type: ignore
         _logger.debug('get service by key: %r', key)
-        self._root.__ensure_init_hooks_called()
+        self._root.__init_hooks.run(self._root)
         service_info = self._get_service_info(key)
         try:
             return service_info.get_service(self)
@@ -228,7 +209,7 @@ class ServiceProvider(IServiceProvider):
         ```
         '''
         _logger.debug('Get services by key: %r', key)
-        self._root.__ensure_init_hooks_called()
+        self._root.__init_hooks.run(self._root)
         service_infos: Iterable[IServiceInfo] = self._services.get_many(key)
         try:
             return [si.get_service(self) for si in service_infos]
