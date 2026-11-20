@@ -29,7 +29,7 @@ from ._service_info import (
 from ._service_info.extra import CallerFrameServiceInfo, create_lifetime_service_info
 from ._servicesmap import ServicesMap
 from ._utils import wrap_signature as wrap_signature
-from .annotations import _get_injectable_info
+from .annotations import _get_injectable_info, _InjectableInfo
 from .err import ServiceNotFoundError
 from .ioc_resolver import ServiceInfoChainResolver
 from .keys import NamedType, _NamedTypeListKey
@@ -109,22 +109,29 @@ class ServiceProvider(IServiceProvider):
         self.__init_hooks.add(wrap_signature(func))
 
     def _get_service_info(self, key: Hashable) -> IServiceInfo:
-        try:
-            return self._services[key]
-        except KeyError:
-            pass
+        with self._services.read_lock():
+            if (service_info := self._services.get(key)) is not None:
+                return service_info
 
-        if injectable_info := _get_injectable_info(key):
-            service_key = injectable_info # info itself
-            provider_root: ServiceProvider = cast(ServiceProvider, self[Symbols.provider_root])
-            provider_root.register(service_key, cast(Callable, key), injectable_info.lifetime)
-            for x in injectable_info.iter_keys():
-                provider_root.register_bind(x, service_key)
-            return self._services[service_key]
+        if isinstance(key, type) and (injectable_info := _get_injectable_info(key)) is not None:
+            return self._root._get_or_register_injectable(injectable_info, factory=key)
 
         # load missing resolver and resolve service info.
         resolver = self._services[Symbols.missing_resolver].get_service(self)
         return resolver.get(self, key)
+
+    def _get_or_register_injectable(self, service_key: _InjectableInfo, *, factory: type) -> IServiceInfo:
+        def create_service_info() -> IServiceInfo:
+            service_info = create_lifetime_service_info(self, service_key, factory, service_key.lifetime)
+            _logger.debug('register %r with key %r', service_info, service_key)
+            return service_info
+
+        if self._services.add_if_new(service_key, create_service_info) is not None:
+            # Aliases can be installed independently once the target is registered.
+            for alias in service_key.iter_keys():
+                self.register_bind(alias, service_key)
+
+        return self._services[service_key]
 
     @overload
     def __getitem__[T](self, key: NamedType[T]) -> T: ...

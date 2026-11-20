@@ -5,10 +5,10 @@
 #
 # ----------
 
-from collections.abc import Generator, Hashable
+from collections.abc import Callable, Generator, Hashable
 from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
-from threading import Lock
+from threading import RLock
 from typing import Any
 
 from ._internal import Disposable
@@ -24,12 +24,21 @@ class _Layer[TK: Hashable, TV]:
 
 class ServicesMap[TK: Hashable, TV]:
     def __init__(self, *maps: dict[TK, list[tuple[TV]]], use_lock: bool=True) -> None:
-        lock = Lock() if use_lock else _NULL_CONTEXT
+        # A caller can hold the layer lock while registering an entry through add().
+        lock = RLock() if use_lock else _NULL_CONTEXT
         self._layers: list[_Layer[TK, TV]] = [
             _Layer({key: tuple(records) for key, records in mapping.items()}, lock)
             for mapping in maps
         ] or [_Layer({}, lock)]
         self._frozen_keys: set[TK] = set()
+
+    def read_lock(self) -> AbstractContextManager[object]:
+        """Read the published snapshots without acquiring a layer lock."""
+        return _NULL_CONTEXT
+
+    def write_lock(self) -> AbstractContextManager[object]:
+        """Serialize writers to the current layer."""
+        return self._layers[0].lock
 
     def resolve(self, key: TK) -> Generator[TV, Any, None]:
         """Yield each layer's registrations in reverse order."""
@@ -78,6 +87,14 @@ class ServicesMap[TK: Hashable, TV]:
     def get[TD](self, key: TK, default: TD=None) -> TV | TD:
         record = self._latest_record(key)
         return record[0] if record is not None else default
+
+    def add_if_new(self, key: TK, factory: Callable[[], TV]) -> Disposable | None:
+        """Register a value only if no visible entry exists for the key."""
+        with self.write_lock():
+            if self._latest_record(key) is not None:
+                return None
+
+            return self.add(key, factory())
 
     def get_many(self, key: TK) -> list[TV]:
         'get items as list'
