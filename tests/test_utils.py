@@ -18,7 +18,8 @@ from anyioc.utils import (
 def test_get_logger() -> None:
     provider = ServiceProvider()
     provider.register_transient('logger', get_logger)
-    logger: Logger = provider['logger']
+    logger = provider['logger']
+    assert isinstance(logger, Logger)
     assert logger.name == __name__
     assert logger.name == 'test_utils'
 

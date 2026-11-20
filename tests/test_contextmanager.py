@@ -7,7 +7,7 @@
 
 import contextlib
 import types
-from typing import Annotated, Iterator, Literal, Self, assert_type, cast
+from typing import Annotated, Generator, Iterator, Literal, Self, assert_type, cast
 from unittest.mock import MagicMock
 
 from anyioc import InjectFrom, ServiceProvider
@@ -32,7 +32,7 @@ def test_enter() -> None:
     cleanup = MagicMock()
 
     @contextlib.contextmanager
-    def ctx() -> Iterator[None]:
+    def ctx() -> Generator[None, None, None]:
         yield
         cleanup()
 
@@ -45,7 +45,7 @@ def test_enter() -> None:
 
 def test_enter_return_type() -> None:
     @contextlib.contextmanager
-    def ctx() -> Iterator[int]:
+    def ctx() -> Generator[int, None, None]:
         yield 42
 
     provider = ServiceProvider()
@@ -85,7 +85,7 @@ def test_injectfrom_with_enter_context_is_true() -> None:
     cleanup = MagicMock()
 
     @contextlib.contextmanager
-    def ctxmgr() -> Iterator[int]:
+    def ctxmgr() -> Generator[int, None, None]:
         yield 42
         cleanup()
 

@@ -18,15 +18,24 @@ ruff = "^0.12.7"
 [tool.poetry-dynamic-versioning]
 enable = true
 
+[tool.pyright]
+reportDeprecated = "warning"
+
 [tool.ruff]
 include = ["anyioc/**/*.py"]
 line-length = 120
+indent-width = 4
 
 [tool.ruff.lint]
 extend-select = [
     "I", # isort
     "ANN", # flake8-annotations
 ]
+
+[tool.ruff.format]
+quote-style = "preserve"
+indent-style = "space"
+line-ending = "native"
 
 [tool.coverage.report]
 exclude_lines = [
@@ -38,6 +47,7 @@ exclude_lines = [
 test = "python -m pytest"
 test-cov = "python -m pytest --cov=anyioc --cov-report=html"
 test-log-debug = "python -m pytest -o log_cli=true -o log_cli_level=DEBUG"
+lint = "ruff check ."
 
 [build-system]
 requires = [ "poetry-core>=1.0.0", "poetry-dynamic-versioning" ]
