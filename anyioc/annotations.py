@@ -5,6 +5,18 @@
 # 
 # ----------
 
+'''Configure dependency injection for classes and parameters.
+
+Use the `@injectable(LifeTime.singleton)` or `@injectable(LifeTime.scoped)`
+class decorator to declare a service lifetime.
+
+Use instances of `InjectBy`, `InjectByGroup`, `InjectFrom`, `InjectWithValue`,
+and `DontInject` as metadata in `typing.Annotated` on function or constructor
+parameters. When the provider resolves the callable with `provider.resolve(...)`,
+an annotation such as `port: Annotated[int, InjectBy('port')]` tells it to
+look up the parameter by the key `'port'`.
+'''
+
 from dataclasses import dataclass, field
 from typing import Callable, Hashable, Iterable
 
@@ -16,24 +28,29 @@ _UNSET_DEFAULT = object()
 
 @dataclass(frozen=True, slots=True, eq=False)
 class InjectBy:
-    '''
-    Inject args by key.
+    '''Select a service key using `typing.Annotated` metadata.
 
-    Equals:
+    Supply either `key` or `name`. With `name`, the provider first looks up
+    the `NamedType` formed from that name and the annotated type, then falls
+    back to the type alone if the named lookup fails.
 
+    ``` py
+    from typing import Annotated
+
+    from anyioc import InjectBy
+
+    def get_port(port: Annotated[int, InjectBy('http_port', default=8080)]) -> int:
+        return port
     ```
-    provider.get(key, default) if has_default() else provider[key]
-    ```
 
-    For VAR_POSITIONAL parameter, this equals:
+    Pass `default` to `InjectBy` to supply a fallback for a missing service.
+    On `*args`, supply a key to inject all values from `provider.get_many(key)`.
+    For `*args`, `name` is invalid and `default` is ignored. `**kwargs` is
+    unsupported.
 
-    ```
-    * provider.get_many(key)
-    ```
-
-    `LifeTime.singleton` is not allowed because `InjectBy` does not know which
-    `IServiceProvider` owns the singleton cache. Use `LifeTime.transient` or
-    `LifeTime.scoped` instead.
+    The default `lifetime` is `LifeTime.transient`. Use `LifeTime.scoped`
+    to cache the injected result per scope. `LifeTime.singleton` is invalid
+    because the annotation has no owning provider for a singleton cache.
     '''
 
     key: Hashable = field(default=_UNSET_KEY)
@@ -65,61 +82,69 @@ class InjectBy:
 
 @dataclass(frozen=True, slots=True, eq=False)
 class InjectByGroup:
-    '''
-    Inject args as tuple group.
+    '''Inject a tuple of services using `typing.Annotated` metadata.
 
-    Equals:
+    Resolve one service per key in the order given by `keys`.
 
-    ```
-    tuple(provider[k] for k in keys)
+    ``` py
+    from typing import Annotated
+
+    from anyioc import InjectByGroup
+
+    def get_address(address: Annotated[tuple[str, int], InjectByGroup(['host', 'port'])]) -> tuple[str, int]:
+        return address
     ```
 
-    For VAR_POSITIONAL parameter, this equals:
-
-    ```
-    * tuple(provider[k] for k in keys)
-    ```
+    On `*args`, the provider unpacks the tuple into positional arguments.
+    `**kwargs` is unsupported.
     '''
     keys: Iterable[Hashable]
 
 
 @dataclass(frozen=True, slots=True, eq=False)
 class InjectWithValue:
-    '''
-    Inject with the fixed value.
+    '''Supply a fixed value using `typing.Annotated` metadata.
 
-    Equals:
+    The provider injects `value` directly, without a service lookup.
 
+    ``` py
+    from typing import Annotated
+
+    from anyioc import InjectWithValue
+
+    def get_port(port: Annotated[int, InjectWithValue(8080)]) -> int:
+        return port
     ```
-    value
-    ```
 
-    For VAR_POSITIONAL parameter, this is not allowed.
+    `*args` and `**kwargs` are unsupported.
     '''
     value: object
 
 
 @dataclass(frozen=True, slots=True, eq=False)
 class InjectFrom:
-    '''
-    Inject from a callable.
+    '''Inject the result of a callable using `typing.Annotated` metadata.
 
-    The callable is resolved through the `IServiceProvider`,
-    so its own parameters are injected by the container.
-    If the callable cannot be resolved, the annotated parameter's
-    default value is not used as a fallback.
-
-    For example:
+    The service provider injects the callable's own parameters. A missing
+    dependency raises `ServiceNotFoundError` even if the annotated parameter
+    has a default. `*args` and `**kwargs` are unsupported.
 
     ``` py
-    def callee(value: int) -> int:
-        return value
+    from typing import Annotated
 
-    def caller(value: Annotated[object, InjectFrom(callee)] = 200) -> object:
-        return value
+    from anyioc import InjectFrom
 
-    provider.resolve(caller) # raises ServiceNotFoundError for int
+    def make_url(host: str) -> str:
+        return f'https://{host}'
+
+    def get_url(url: Annotated[str, InjectFrom(make_url)]) -> str:
+        return url
     ```
+
+    Set `enter_context=True` to inject the value obtained by entering the
+    returned context manager or the value yielded by a single-yield generator.
+    `False` injects the returned object directly, and `None` (the default)
+    follows the provider's automatic context-entry rules.
     '''
 
     func: Callable[..., object]
@@ -128,7 +153,21 @@ class InjectFrom:
 
 @dataclass(frozen=True, slots=True, eq=False)
 class DontInject:
-    pass
+    '''Skip service injection for a parameter using `typing.Annotated` metadata.
+
+    Give the parameter a default or supply it through `resolve(..., kwargs=...)`
+    if it accepts a keyword argument. On `*args` and `**kwargs`, the provider
+    skips automatic injection of items.
+
+    ``` py
+    from typing import Annotated
+
+    from anyioc import DontInject
+
+    def get_retries(retries: Annotated[int, DontInject()] = 3) -> int:
+        return retries
+    ```
+    '''
 
 
 @dataclass(frozen=True, slots=True, eq=False)
@@ -143,8 +182,23 @@ class _InjectableInfo:
 def injectable[T: type](
         lifetime: LifeTime
     ) -> Callable[[T], T]:
-    '''
-    Indicate that the class is injectable.
+    '''Return a class decorator that declares an injectable service lifetime.
+
+    The provider registers the class under its own type on first lookup if
+    the class has no existing registration. Use `LifeTime.singleton` or
+    `LifeTime.scoped`. `LifeTime.transient` is rejected because it is the
+    default lifetime.
+
+    ``` py
+    from anyioc import LifeTime, ServiceProvider, injectable
+
+    @injectable(LifeTime.singleton)
+    class Client:
+        pass
+
+    provider = ServiceProvider()
+    assert provider[Client] is provider[Client]
+    ```
     '''
 
     if lifetime == LifeTime.transient:
