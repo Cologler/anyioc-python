@@ -83,6 +83,19 @@ class ServicesMap[TK: Hashable, TV]:
         'get items as list'
         return list(self.resolve(key))
 
+    def snapshot_registrations(self) -> list[list[tuple[TK, TV]]]:
+        """Copy registrations by layer, from the current scope to the root."""
+        layers: list[list[tuple[TK, TV]]] = []
+        for layer in self._layers:
+            with layer.lock:
+                registrations = [
+                    (key, record[0])
+                    for key, records in layer.snapshots.items()
+                    for record in reversed(records)
+                ]
+            layers.append(registrations)
+        return layers
+
     def scope(self, use_lock: bool=False) -> 'ServicesMap[TK, TV]':
         scoped = self.__class__(use_lock=use_lock)
         # Share the owners' published snapshots and writer locks.

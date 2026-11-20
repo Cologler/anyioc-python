@@ -11,7 +11,7 @@ from typing import Annotated, Callable, overload
 
 from ._utils import get_module_name as _get_module_name
 from .annotations import DontInject, InjectBy
-from .ioc import IServiceProvider
+from .ioc import IServiceProvider, ServiceProvider
 from .symbols import Symbols
 
 
@@ -94,3 +94,14 @@ def get_scope_depth(provider: IServiceProvider) -> int:
         current = current[Symbols.provider_parent]
         depth += 1
     return depth
+
+
+def debug_ioc(ioc: ServiceProvider) -> str:
+    """Describe the registered services in scope lookup order without resolving them."""
+    layers = ioc._services.snapshot_registrations()
+    lines: list[str] = []
+    for index, registrations in enumerate(layers, start=1):
+        depth = len(layers) - index
+        lines.append(f'Scope (depth {depth})' if depth else 'Root')
+        lines.extend(f'  {key!r}: {service_info!r}' for key, service_info in registrations)
+    return '\n'.join(lines)

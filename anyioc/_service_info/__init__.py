@@ -287,6 +287,11 @@ class GetGroupServiceInfo(IServiceInfo[tuple[Any, ...]]):
         super().__init__()
         self._keys = tuple(keys)
 
+    def __repr__(self) -> str:
+        lookups = ', '.join(f'ioc[{key!r}]' for key in self._keys)
+        trailing_comma = ',' if len(self._keys) == 1 else ''
+        return f'<(ioc) => ({lookups}{trailing_comma})>'
+
     @override
     def get_service(self, provider: IServiceProvider) -> tuple[Any, ...]:
         return tuple(provider[k] for k in self._keys)
