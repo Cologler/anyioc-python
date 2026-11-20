@@ -8,35 +8,34 @@
 from collections.abc import Generator, Hashable
 from contextlib import AbstractContextManager, nullcontext
 from dataclasses import dataclass
-from logging import getLogger
 from threading import Lock
 from typing import Any
 
 from ._internal import Disposable
 
 _NULL_CONTEXT = nullcontext()
-_logger = getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True, eq=False)
 class _Layer[TK: Hashable, TV]:
-    registrations: dict[TK, list[tuple[TV]]]
+    snapshots: dict[TK, tuple[tuple[TV], ...]]
     lock: AbstractContextManager[object]
 
 
 class ServicesMap[TK: Hashable, TV]:
     def __init__(self, *maps: dict[TK, list[tuple[TV]]], use_lock: bool=True) -> None:
         lock = Lock() if use_lock else _NULL_CONTEXT
-        self._layers = [_Layer(mapping, lock) for mapping in maps or ({},)]
+        self._layers: list[_Layer[TK, TV]] = [
+            _Layer({key: tuple(records) for key, records in mapping.items()}, lock)
+            for mapping in maps
+        ] or [_Layer({}, lock)]
         self._frozen_keys: set[TK] = set()
 
     def resolve(self, key: TK) -> Generator[TV, Any, None]:
         """Yield each layer's registrations in reverse order."""
         for layer in self._layers:
-            with layer.lock:
-                snapshot = tuple(layer.registrations.get(key, ()))
-            # Iteration can suspend while the owner changes its registrations.
-            for record in reversed(snapshot):
+            # Writers replace the tuple so a suspended iterator keeps its snapshot.
+            for record in reversed(layer.snapshots.get(key, ())):
                 yield record[0]
 
     def add(self, key: TK, value: TV) -> Disposable:
@@ -45,20 +44,15 @@ class ServicesMap[TK: Hashable, TV]:
             if key in self._frozen_keys:
                 raise RuntimeError(f'Key {key!r} is frozen.')
 
-            record = (value,) # ensure dispose the right value
-            vec = layer.registrations.setdefault(key, [])
-            inserted_index = len(vec) # no insert func, so we can cache this index
-            vec.append(record)
+            # Each registration needs its own identity even when values are equal.
+            record = (value,)
+            snapshot = layer.snapshots.get(key, ())
+            layer.snapshots[key] = (*snapshot, record)
 
         def dispose() -> None:
-            try:
-                with layer.lock:
-                    # in most case, the del is del from end.
-                    for i in range(min(inserted_index, len(vec) - 1), -1, -1):
-                        if vec[i] is record:
-                            del vec[i]
-            except ValueError:
-                _logger.warning('dispose() is called after the key be removed.')
+            with layer.lock:
+                snapshot = layer.snapshots[key]
+                layer.snapshots[key] = tuple(item for item in snapshot if item is not record)
 
         return Disposable(dispose)
 
@@ -71,9 +65,8 @@ class ServicesMap[TK: Hashable, TV]:
 
     def _latest_record(self, key: TK) -> tuple[TV] | None:
         for layer in self._layers:
-            with layer.lock:
-                if records := layer.registrations.get(key):
-                    return records[-1]
+            if snapshot := layer.snapshots.get(key):
+                return snapshot[-1]
         return None
 
     def __getitem__(self, key: TK) -> TV:
@@ -92,6 +85,6 @@ class ServicesMap[TK: Hashable, TV]:
 
     def scope(self, use_lock: bool=False) -> 'ServicesMap[TK, TV]':
         scoped = self.__class__(use_lock=use_lock)
-        # Reuse the locks that guard writes to the inherited registrations.
+        # Share the owners' published snapshots and writer locks.
         scoped._layers.extend(self._layers)
         return scoped

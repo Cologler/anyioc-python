@@ -7,7 +7,6 @@
 
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import nullcontext
-from threading import Event
 
 import pytest
 
@@ -97,15 +96,13 @@ def test_servicesmap_freeze() -> None:
 
 
 @pytest.mark.parametrize('use_lock', [False, True])
-def test_scope_shares_ancestor_layers_and_uses_its_own_lock_setting(use_lock: bool) -> None:
+def test_scope_reads_ancestor_snapshot_while_writer_lock_is_held(use_lock: bool) -> None:
     root = ServicesMap[int, str]({1: [('root',)]})
     parent = root.scope()
     scope = parent.scope(use_lock=use_lock)
-    started = Event()
 
-    def read() -> str:
-        started.set()
-        return scope[1]
+    def read() -> tuple[str, str | None, list[str]]:
+        return scope[1], scope.get(1), list(scope.resolve(1))
 
     assert scope._layers[1] is parent._layers[0]
     assert scope._layers[2] is root._layers[0]
@@ -114,12 +111,7 @@ def test_scope_shares_ancestor_layers_and_uses_its_own_lock_setting(use_lock: bo
 
     with ThreadPoolExecutor(max_workers=1) as executor:
         with root._layers[0].lock:
-            reader = executor.submit(read)
-            assert started.wait(timeout=5)
-            with pytest.raises(TimeoutError):
-                reader.result(timeout=0.05)
-
-        assert reader.result(timeout=5) == 'root'
+            assert executor.submit(read).result(timeout=5) == ('root', 'root', ['root'])
 
 
 def test_resolve_keeps_a_snapshot_without_holding_the_layer_lock() -> None:
